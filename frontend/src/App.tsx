@@ -1,11 +1,40 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
-import MainLayout from './components/Layout/MainLayout';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import NotFound from './pages/NotFound';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
+import MainLayout from './components/Layout/MainLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Overview from './pages/Overview'
+import Alerts from './pages/Alerts'
+import Prometheus from './pages/Prometheus'
+import NotFound from './pages/NotFound'
+import { useAuthStore } from './store/authStore'
+import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
+
+function findItemByKey(items: MenuItem[], key: string): MenuItem | undefined {
+  for (const item of items) {
+    if (item.key === key) return item
+    if (item.children) {
+      const found = findItemByKey(item.children, key)
+      if (found) return found
+    }
+  }
+}
+
+function DashboardRoute() {
+  const { menuKey } = useParams<{ menuKey: string }>()
+  const user = useAuthStore((s) => s.user)
+  const menus = roleMenus[user?.role || 'dev']?.menus || []
+  const item = findItemByKey(menus, menuKey || '')
+  if (!item) return <NotFound />
+  if (item.native) {
+    if (item.key === nativeMenuKeys.overview) return <Overview />
+    if (item.key === nativeMenuKeys.alerts) return <Alerts />
+    if (item.key === 'prometheus') return <Prometheus />
+  }
+  return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
+}
 
 export default function App() {
   return (
@@ -21,13 +50,13 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Dashboard />} />
-            <Route path=":menuKey" element={<Dashboard />} />
+            <Route index element={<Overview />} />
+            <Route path=":menuKey" element={<DashboardRoute />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ConfigProvider>
-  );
+  )
 }

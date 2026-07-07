@@ -24,10 +24,10 @@ class Settings(BaseSettings):
 
     # 既有组件地址
     alertmanager_url: str = "http://172.16.10.27:9093"
-    grafana_url: str = "http://172.16.10.99:3001"
-    pmm_url: str = "http://172.16.10.99:30080"
+    grafana_url: str = "https://172.16.10.99/grafana"
+    pmm_url: str = "https://172.16.10.99"
     glowroot_url: str = "http://172.16.10.27:4000"
-    prometheus_url: str = "http://172.16.10.27:9090"
+    prometheus_url: str = "https://172.16.10.99/prometheus"
     loki_url: str = "http://172.16.10.27:3100"
     vmselect_url: str = "http://172.16.10.27:8481"
 
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     role_group_ops: str = "monitoring-ops"
     role_group_dev: str = "monitoring-dev"
     role_group_mgmt: str = "monitoring-mgmt"
+
+    # 开发模式:跳过 OIDC,用 mock 用户登录
+    dev_mock: bool = False
 
 
 settings = Settings()

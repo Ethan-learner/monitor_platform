@@ -1,24 +1,36 @@
-import { create } from 'zustand';
-
-interface User {
-  username: string;
-  displayName: string;
-  role: 'ops' | 'dev' | 'mgmt';
-  avatar?: string;
-}
+import { create } from 'zustand'
+import { fetchMe, type PortalUser, login as apiLogin, logout as apiLogout } from '../lib/auth'
 
 interface AuthState {
-  user: User;
-  isAuthenticated: boolean;
-  login: (user: User) => void;
-  logout: () => void;
+  user: PortalUser | null
+  isAuthenticated: boolean
+  loading: boolean
+  init: () => Promise<void>
+  login: () => void
+  logout: () => Promise<void>
+  reset: () => void
 }
 
-const defaultUser: User = { username: 'admin', displayName: '运维管理员', role: 'ops' };
-
 export const useAuthStore = create<AuthState>()((set) => ({
-  user: defaultUser,
-  isAuthenticated: true,
-  login: (user) => set({ user, isAuthenticated: true }),
-  logout: () => set({ user: defaultUser, isAuthenticated: false }),
-}));
+  user: null,
+  isAuthenticated: false,
+  loading: true,
+  login: () => apiLogin(),
+  logout: async () => {
+    try {
+      await apiLogout()
+    } finally {
+      set({ user: null, isAuthenticated: false })
+    }
+  },
+  init: async () => {
+    set({ loading: true })
+    try {
+      const user = await fetchMe()
+      set({ user, isAuthenticated: true, loading: false })
+    } catch {
+      set({ user: null, isAuthenticated: false, loading: false })
+    }
+  },
+  reset: () => set({ user: null, isAuthenticated: false, loading: false }),
+}))

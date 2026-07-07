@@ -1,0 +1,16 @@
+[Unit]
+Description=Portal Backend (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=portal
+Group=portal
+WorkingDirectory=/data/software/portal-backend
+EnvironmentFile=/data/software/portal-backend/.env
+ExecStart=/data/software/portal-backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

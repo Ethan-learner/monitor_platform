@@ -2,7 +2,8 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Layout, Menu, Button, Dropdown, Typography } from 'antd';
 import {
   BarChartOutlined, DashboardOutlined, DatabaseOutlined, DesktopOutlined,
-  ApiOutlined, LogoutOutlined, UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
+  ApiOutlined, AlertOutlined, FileTextOutlined, LogoutOutlined, UserOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, ExportOutlined,
 } from '@ant-design/icons';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -17,6 +18,8 @@ const iconMap: Record<string, React.ReactNode> = {
   DatabaseOutlined: <DatabaseOutlined />,
   DesktopOutlined: <DesktopOutlined />,
   ApiOutlined: <ApiOutlined />,
+  AlertOutlined: <AlertOutlined />,
+  FileTextOutlined: <FileTextOutlined />,
 };
 
 function toAntdItems(items: MenuItem[]): any[] {
@@ -25,7 +28,12 @@ function toAntdItems(items: MenuItem[]): any[] {
     return {
       key: item.key,
       icon: iconMap[item.icon] || <DashboardOutlined />,
-      label: item.label,
+      label: (
+        <span>
+          {item.label}
+          {item.external && <ExportOutlined style={{ fontSize: 11, marginLeft: 4, color: '#999' }} />}
+        </span>
+      ),
       children: hasChildren ? toAntdItems(item.children!) : undefined,
     };
   });
@@ -33,23 +41,13 @@ function toAntdItems(items: MenuItem[]): any[] {
 
 function findLeafKey(items: MenuItem[]): string | null {
   for (const item of items) {
-    if (item.url) return item.key;
+    if (item.url || item.native) return item.key;
     if (item.children) {
       const found = findLeafKey(item.children);
       if (found) return found;
     }
   }
   return null;
-}
-
-function findUrlByKey(items: MenuItem[], targetKey: string): string | undefined {
-  for (const item of items) {
-    if (item.key === targetKey) return item.url;
-    if (item.children) {
-      const found = findUrlByKey(item.children, targetKey);
-      if (found) return found;
-    }
-  }
 }
 
 function findParentKeys(items: MenuItem[], targetKey: string): string[] {
@@ -61,6 +59,16 @@ function findParentKeys(items: MenuItem[], targetKey: string): string[] {
     }
   }
   return [];
+}
+
+function findItemByKey(items: MenuItem[], key: string): MenuItem | undefined {
+  for (const item of items) {
+    if (item.key === key) return item;
+    if (item.children) {
+      const found = findItemByKey(item.children, key);
+      if (found) return found;
+    }
+  }
 }
 
 export default function MainLayout() {
@@ -81,12 +89,16 @@ export default function MainLayout() {
   const openKeys = findParentKeys(menus, currentKey).slice(0, -1);
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    const url = findUrlByKey(menus, key);
-    if (url) navigate(`/dashboard/${key}`);
+    const item = findItemByKey(menus, key);
+    if (item?.external && item?.url) {
+      window.open(item.url, '_blank');
+      return;
+    }
+    navigate(`/dashboard/${key}`);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -141,7 +153,7 @@ export default function MainLayout() {
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: 0, height: 'calc(100vh - 64px)' }}>
+        <Content style={{ margin: 0, minHeight: 'calc(100vh - 64px)', background: '#f5f5f5' }}>
           <Outlet />
         </Content>
       </Layout>
