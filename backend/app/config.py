@@ -39,5 +39,8 @@ class Settings(BaseSettings):
     # 开发模式:跳过 OIDC,用 mock 用户登录
     dev_mock: bool = False
 
+    # 告警规则文件目录
+    alerts_dir: str = "/data/software/prometheus/alerts"
+
 
 settings = Settings()

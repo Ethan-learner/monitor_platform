@@ -111,6 +111,10 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/alertmanager/': {
+        target: 'http://172.16.10.27:9093',
+        changeOrigin: true,
+      },
       '/prometheus': {
         target: 'http://172.16.10.27:9090',
         changeOrigin: true,

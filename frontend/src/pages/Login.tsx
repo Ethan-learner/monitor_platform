@@ -16,15 +16,7 @@ export default function Login() {
 
   const handleFinish = (values: { username: string; password: string }) => {
     if (VALID_USERS[values.username] === values.password) {
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = '/api/auth/dev-login'
-      const u = document.createElement('input'); u.name = 'username'; u.value = values.username
-      const p = document.createElement('input'); p.name = 'password'; p.value = values.password
-      form.appendChild(u); form.appendChild(p)
-      document.body.appendChild(form)
-      form.submit()
-      document.body.removeChild(form)
+      window.location.href = `/api/auth/dev-login?username=${values.username}&password=${values.password}`
     } else {
       message.error('用户名或密码错误')
     }

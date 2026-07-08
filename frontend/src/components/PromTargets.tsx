@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Collapse, Table, Tag, Typography } from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, CloseCircleOutlined, CheckOutlined, CloseOutlined, LinkOutlined } from '@ant-design/icons'
 import type { PrometheusTarget } from '../lib/prometheus'
 
 const { Text } = Typography
@@ -17,7 +17,13 @@ const columns = [
       : <Tag icon={<CloseCircleOutlined />} color="red">DOWN</Tag>,
   },
   { title: '实例', dataIndex: ['labels', 'instance'], width: 200 },
-  { title: '地址', dataIndex: 'scrapeUrl', width: 260, ellipsis: true },
+  { title: '地址', dataIndex: 'scrapeUrl', width: 260, ellipsis: true,
+    render: (url: string) => (
+      <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+        <LinkOutlined /> {url}
+      </a>
+    ),
+  },
   {
     title: '耗时', dataIndex: 'lastScrapeDuration', width: 80,
     render: (d: number) => `${(d * 1000).toFixed(0)}ms`,

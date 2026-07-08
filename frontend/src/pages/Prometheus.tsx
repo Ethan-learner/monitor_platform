@@ -1,25 +1,22 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Button, Tabs, Badge } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
-import { fetchTargets, fetchPromAlerts, fetchRules } from '../lib/prometheus'
-import type { PrometheusTarget, PrometheusAlert, RuleGroup } from '../lib/prometheus'
+import { fetchTargets, fetchPromAlerts } from '../lib/prometheus'
+import type { PrometheusTarget, PrometheusAlert } from '../lib/prometheus'
 import PromTargets from '../components/PromTargets'
 import PromAlerts from '../components/PromAlerts'
-import PromRules from '../components/PromRules'
 
 export default function PrometheusPage() {
   const [targets, setTargets] = useState<PrometheusTarget[]>([])
   const [alerts, setAlerts] = useState<PrometheusAlert[]>([])
-  const [rules, setRules] = useState<RuleGroup[]>([])
   const [loading, setLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const [t, a, r] = await Promise.all([fetchTargets(), fetchPromAlerts(), fetchRules()])
+      const [t, a] = await Promise.all([fetchTargets(), fetchPromAlerts()])
       setTargets(t.data?.activeTargets || [])
       setAlerts(a.data?.alerts || [])
-      setRules(r.data?.groups || [])
     } finally {
       setLoading(false)
     }
@@ -49,10 +46,6 @@ export default function PrometheusPage() {
           {
             key: 'alerts', label: `Alerts (${alerts.length})`,
             children: <PromAlerts alerts={alerts} />,
-          },
-          {
-            key: 'rules', label: `Rules (${rules.reduce((s, g) => s + g.rules.length, 0)})`,
-            children: <PromRules groups={rules} />,
           },
         ]}
       />

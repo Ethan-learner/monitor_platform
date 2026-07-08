@@ -16,7 +16,8 @@ export interface RoleConfig {
 
 export const nativeMenuKeys = {
   overview: 'overview',
-  alerts: 'alerts',
+  newRules: 'new-rules',
+  rulesList: 'alerts-list',
 } as const
 
 export const roleMenus: Record<string, RoleConfig> = {
@@ -24,7 +25,20 @@ export const roleMenus: Record<string, RoleConfig> = {
     name: '运维人员',
     menus: [
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
-      { key: 'alerts', label: '告警中心', icon: 'AlertOutlined', native: true },
+      {
+        key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
+          { key: 'alertmanager-alerts', label: 'Alerts', children: [
+            { key: 'alerts-list', label: 'List', native: true },
+            { key: 'new-rules', label: 'New Rules', native: true },
+          ]},
+          { key: 'alertmanager-silences', label: 'Silences', children: [
+            { key: 'alertmanager-silences-list', label: 'List', url: 'http://172.16.10.27:9093/#/silences', hideHeader: true },
+            { key: 'alertmanager-silences-new', label: 'New Silence', url: 'http://172.16.10.27:9093/#/silences/new', hideHeader: true },
+          ] },
+          { key: 'alertmanager-status', label: 'Status', url: 'http://172.16.10.27:9093/#/status', hideHeader: true },
+          { key: 'alertmanager-settings', label: 'Settings', url: 'http://172.16.10.27:9093/#/settings', hideHeader: true },
+        ],
+      },
       {
         key: 'system', label: '系统监控', icon: 'DashboardOutlined', children: [
           { key: 'prometheus', label: 'Prometheus', native: true },
@@ -51,6 +65,7 @@ export const roleMenus: Record<string, RoleConfig> = {
       },
       {
         key: 'apm', label: '应用性能', icon: 'ApiOutlined', children: [
+          { key: 'ioc-dashboard', label: 'IOC 应用', url: '/grafana/d/SgnAIYcIk/bie4bbaa-e8a1a8-e79b98?orgId=1&kiosk' },
           { key: 'glowroot-transactions', label: 'Transactions', url: 'https://172.16.10.99:4020/transaction/average', hideHeader: true },
           { key: 'glowroot-errors', label: 'Errors', url: 'https://172.16.10.99:4020/error/messages', hideHeader: true },
           { key: 'glowroot-jvm', label: 'JVM', url: 'https://172.16.10.99:4020/jvm/gauges', hideHeader: true },
@@ -74,7 +89,13 @@ export const roleMenus: Record<string, RoleConfig> = {
     name: '开发人员',
     menus: [
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
-      { key: 'alerts', label: '告警中心', icon: 'AlertOutlined', native: true },
+      { key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
+          { key: 'dev-alerts', label: 'Alerts', children: [
+            { key: 'dev-alerts-list', label: 'List', native: true },
+            { key: 'dev-new-rules', label: 'New Rules', native: true },
+          ]},
+        ],
+      },
       {
         key: 'dev-apm', label: '应用性能', icon: 'ApiOutlined', children: [
           { key: 'glowroot', label: 'Glowroot APM', url: 'https://172.16.10.99:4020' },

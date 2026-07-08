@@ -11,7 +11,7 @@ export default function IframeView({ url, title, hideHeader }: IframeViewProps) 
         <iframe
           src={url}
           title={title || '监控看板'}
-          style={{ width: '100%', height: 'calc(100% + 50px)', border: 'none', marginTop: -50 }}
+          style={{ width: '100%', height: 'calc(100% + 60px)', border: 'none', marginTop: -60 }}
         />
       </div>
     )

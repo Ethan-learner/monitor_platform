@@ -29,6 +29,18 @@ def _set_auth_cookie(resp: Response, username: str, role: str, name: str) -> Non
     )
 
 
+@router.get("/dev-login")
+async def dev_login_get(username: str = "admin", password: str = "") -> RedirectResponse:
+    if not settings.dev_mock:
+        return RedirectResponse("/login")
+    valid = {"admin": "admin123", "dev": "dev123", "manager": "mgr123"}
+    if valid.get(username) != password:
+        return RedirectResponse("/login?error=invalid")
+    user = _MOCK_USERS.get(username, _MOCK_USERS["admin"])
+    resp = RedirectResponse("/dashboard", status_code=302)
+    _set_auth_cookie(resp, user["sub"], user["role"], user["name"])
+    return resp
+
 @router.post("/dev-login")
 async def dev_login(username: str = Form("admin"), password: str = Form("")) -> RedirectResponse:
     """开发模式 mock 登录,跳过 OIDC 流程。账号 admin/admin123 dev/dev123 manager/mgr123"""
@@ -38,7 +50,7 @@ async def dev_login(username: str = Form("admin"), password: str = Form("")) -> 
     if valid.get(username) != password:
         return RedirectResponse("/login?error=invalid")
     user = _MOCK_USERS.get(username, _MOCK_USERS["admin"])
-    resp = RedirectResponse("/dashboard")
+    resp = RedirectResponse("/dashboard", status_code=302)
     _set_auth_cookie(resp, user["sub"], user["role"], user["name"])
     return resp
 

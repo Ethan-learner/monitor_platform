@@ -6,8 +6,9 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Overview from './pages/Overview'
-import Alerts from './pages/Alerts'
 import Prometheus from './pages/Prometheus'
+import NewRules from './pages/NewRules'
+import RulesList from './pages/RulesList'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -30,7 +31,8 @@ function DashboardRoute() {
   if (!item) return <NotFound />
   if (item.native) {
     if (item.key === nativeMenuKeys.overview) return <Overview />
-    if (item.key === nativeMenuKeys.alerts) return <Alerts />
+    if (item.key === nativeMenuKeys.newRules) return <NewRules />
+    if (item.key === nativeMenuKeys.rulesList) return <RulesList />
     if (item.key === 'prometheus') return <Prometheus />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
