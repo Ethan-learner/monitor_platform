@@ -44,10 +44,17 @@ async def alerts_summary() -> dict:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="alertmanager_unreachable")
 
     counts = {"critical": 0, "warning": 0, "info": 0, "other": 0, "total": len(alerts)}
+    seen = set()
     for a in alerts:
-        sev = (a.get("labels") or {}).get("severity", "other")
+        labels = a.get("labels") or {}
+        key = f'{labels.get("alertname", "")}|{labels.get("instance", "")}'
+        if key in seen:
+            continue
+        seen.add(key)
+        sev = labels.get("severity", "other")
         if sev in counts:
             counts[sev] += 1
         else:
             counts["other"] += 1
+    counts["total"] = sum(counts.values()) - counts["total"] + len(seen)
     return counts

@@ -76,7 +76,15 @@ export default function PromTargets({ targets }: Props) {
       if (!map.has(job)) map.set(job, [])
       map.get(job)!.push(t)
     })
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+    const entries = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+    return entries.map(([job, list]) => {
+      const sorted = [...list].sort((a, b) => {
+        if (a.health === 'up' && b.health !== 'up') return 1
+        if (a.health !== 'up' && b.health === 'up') return -1
+        return 0
+      })
+      return [job, sorted] as [string, PrometheusTarget[]]
+    })
   }, [targets])
 
   return (
@@ -100,7 +108,7 @@ export default function PromTargets({ targets }: Props) {
               rowKey={(r) => r.labels.instance}
               dataSource={list}
               size="small"
-              pagination={list.length > 20 ? { pageSize: 20, size: 'small' } : false}
+              pagination={list.length > 20 ? { pageSize: 20, size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] } : false}
               columns={columns}
             />
           ),

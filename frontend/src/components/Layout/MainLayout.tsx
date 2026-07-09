@@ -117,12 +117,13 @@ export default function MainLayout() {
         trigger={null}
         theme="dark"
         width={220}
-        style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 10 }}
+        style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         <div style={{
           height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontSize: collapsed ? 16 : 18, fontWeight: 600,
           borderBottom: '1px solid rgba(255,255,255,0.1)',
+          flexShrink: 0,
         }}>
           {collapsed ? 'MP' : '统一监控门户'}
         </div>
@@ -133,6 +134,7 @@ export default function MainLayout() {
           defaultOpenKeys={openKeys}
           items={antdItems}
           onClick={handleMenuClick}
+          style={{ height: 'calc(100vh - 64px)', overflowY: 'auto', overflowX: 'hidden' }}
         />
       </Sider>
       <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'margin-left 0.2s' }}>

@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Table, Tag, Badge, Button, Space, Typography } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { Table, Tag, Badge, Button, Space, Typography, Tooltip } from 'antd'
+import { ReloadOutlined, BellOutlined } from '@ant-design/icons'
 import { fetchActiveAlerts, type ActiveAlert } from '../lib/rules'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
 
 const { Title } = Typography
 
@@ -16,6 +18,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function RulesList() {
   const [alerts, setAlerts] = useState<ActiveAlert[]>([])
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
 
   const load = async () => {
     setLoading(true)
@@ -72,6 +76,15 @@ export default function RulesList() {
                 render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s}</Tag>,
               },
               { title: '描述', dataIndex: 'summary', ellipsis: true },
+              {
+                title: '', width: 40,
+                render: (_: any, r: ActiveAlert) => (
+                  <Tooltip title="静默处理">
+                    <Button size="small" type="text" icon={<BellOutlined style={{ color: '#fa8c16' }} />}
+                      onClick={() => navigate('/dashboard/silence-new', { state: { alertName: r.name, alertLabels: { alertname: r.name, instance: r.instance, job: r.job }, createdBy: user?.displayName || user?.username || '' } })} />
+                  </Tooltip>
+                ),
+              },
             ]}
           />
         </div>

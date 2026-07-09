@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Form, Input, Button, DatePicker, message, Card, Typography, Space, Tag } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Form, Input, Button, DatePicker, message, Card, Typography, Space } from 'antd'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { createSilence } from '../lib/rules'
 
 const { Title } = Typography
@@ -8,14 +8,27 @@ const { RangePicker } = DatePicker
 
 export default function SilenceNew() {
   const [loading, setLoading] = useState(false)
+  const [form] = Form.useForm()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const state = (location.state as any) || {}
+    if (state.alertName) {
+      form.setFieldsValue({
+        matcherName: 'alertname',
+        matcherValue: state.alertName,
+        createdBy: state.createdBy || 'admin',
+      })
+    }
+  }, [])
 
   const handleFinish = async (values: any) => {
     setLoading(true)
     try {
       const [start, end] = values.timeRange || []
       const body = {
-        matchers: [{ name: values.matcherName || 'alertname', value: values.matcherValue, isRegex: values.isRegex || false }],
+        matchers: [{ name: values.matcherName || 'alertname', value: values.matcherValue, isRegex: false }],
         startsAt: start?.toISOString() || new Date().toISOString(),
         endsAt: end?.toISOString() || new Date(Date.now() + 3600000).toISOString(),
         createdBy: values.createdBy || 'admin',
@@ -31,7 +44,7 @@ export default function SilenceNew() {
     <div style={{ padding: 16, maxWidth: 600 }}>
       <Title level={5}>新建静默</Title>
       <Card>
-        <Form layout="vertical" onFinish={handleFinish} initialValues={{ createdBy: 'admin', matcherName: 'alertname' }}>
+        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ createdBy: 'admin', matcherName: 'alertname' }}>
           <Form.Item label="匹配标签名" name="matcherName"><Input placeholder="alertname" /></Form.Item>
           <Form.Item label="匹配值" name="matcherValue" rules={[{ required: true, message: '必填' }]}><Input placeholder="InstanceDown" /></Form.Item>
           <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }]}>
