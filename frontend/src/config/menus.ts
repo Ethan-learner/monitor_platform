@@ -32,8 +32,8 @@ export const roleMenus: Record<string, RoleConfig> = {
             { key: 'new-rules', label: 'New Rules', native: true },
           ]},
           { key: 'alertmanager-silences', label: 'Silences', children: [
-            { key: 'alertmanager-silences-list', label: 'List', url: 'http://172.16.10.27:9093/#/silences', hideHeader: true },
-            { key: 'alertmanager-silences-new', label: 'New Silence', url: 'http://172.16.10.27:9093/#/silences/new', hideHeader: true },
+            { key: 'silence-list', label: 'List', native: true },
+            { key: 'silence-new', label: 'New Silence', native: true },
           ] },
           { key: 'alertmanager-status', label: 'Status', url: 'http://172.16.10.27:9093/#/status', hideHeader: true },
           { key: 'alertmanager-settings', label: 'Settings', url: 'http://172.16.10.27:9093/#/settings', hideHeader: true },

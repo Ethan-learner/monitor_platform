@@ -53,3 +53,33 @@ export async function fetchParsedRules(): Promise<ParsedRule[]> {
   const { data } = await api.get<ParsedRule[]>('/rules/parsed')
   return data
 }
+
+export interface Silence {
+  id: string
+  createdBy: string
+  comment: string
+  startsAt: string
+  endsAt: string
+  matchers: Array<{ name: string; value: string; isRegex: boolean }>
+  status: { state: string }
+}
+
+export async function fetchSilences(): Promise<Silence[]> {
+  const { data } = await api.get<Silence[]>('/alerts/silences')
+  return data
+}
+
+export async function expireSilence(id: string): Promise<void> {
+  await api.delete(`/alerts/silences/${id}`)
+}
+
+export async function createSilence(body: {
+  matchers: Array<{ name: string; value: string; isRegex: boolean }>
+  startsAt: string
+  endsAt: string
+  createdBy: string
+  comment: string
+}): Promise<{ silenceID: string }> {
+  const { data } = await api.post('/alerts/silences', body)
+  return data
+}
