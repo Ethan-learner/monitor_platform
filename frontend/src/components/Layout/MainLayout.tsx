@@ -136,6 +136,7 @@ export default function MainLayout() {
           items={antdItems}
           onClick={handleMenuClick}
           style={{ height: 'calc(100vh - 64px)', overflowY: 'auto', overflowX: 'hidden' }}
+          className="sidebar-menu"
         />
       </Sider>
       <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'margin-left 0.2s' }}>

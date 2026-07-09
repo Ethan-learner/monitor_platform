@@ -77,8 +77,13 @@ export const roleMenus: Record<string, RoleConfig> = {
       },
       {
         key: 'cloud', label: '云服务监控', icon: 'CloudOutlined', children: [
-          { key: 'cloud-line', label: '云专线服务', url: '/grafana/d/9CWBz0bi6/e4ba91-e4b893-e7babf-dcaas?kiosk' },
-          { key: 'cloud-oss', label: '对象存储服务', url: '/grafana/d/feu5xqqdpe5fkb/0eed0aa?kiosk' },
+          { key: 'huawei-cloud', label: '华为云服务', children: [
+            { key: 'cloud-line', label: '云专线(DCASS)', url: '/grafana/d/9CWBz0bi6/e4ba91-e4b893-e7babf-dcaas?kiosk' },
+            { key: 'cloud-oss', label: '对象存储(OBS)', url: '/grafana/d/feu5xqqdpe5fkb/0eed0aa?kiosk' },
+            { key: 'cloud-vpc', label: '弹性公网IP和带宽(VPC)', url: '/grafana/d/dfa72048-c799-4fdc-adfa-36b472b981a5/57411b9?kiosk' },
+            { key: 'cloud-cdm', label: '数据集成(CDM)', url: '/grafana/d/cdm-monitor-dashboard/e695b0-e68dae-e99b86-e68890-cdm?kiosk' },
+            { key: 'cloud-dws', label: '数据仓库(DWS)', url: '/grafana/d/dws-monitor-dashboard/e695b0-e68dae-e4bb93-e5ba93-dws?kiosk' },
+          ]},
         ],
       },
       {
