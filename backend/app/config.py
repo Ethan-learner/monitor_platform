@@ -42,5 +42,11 @@ class Settings(BaseSettings):
     # 告警规则文件目录
     alerts_dir: str = "/data/software/prometheus/alerts"
 
+    # SSH 连接（远程读取告警规则文件，部署在同一服务器时可留空）
+    ssh_host: str = ""
+    ssh_port: int = 22
+    ssh_user: str = ""
+    ssh_password: str = ""
+
 
 settings = Settings()

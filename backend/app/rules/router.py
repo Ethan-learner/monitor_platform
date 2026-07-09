@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import httpx
+import paramiko
 import yaml
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -26,8 +27,37 @@ def _categorize(filename: str) -> str:
     return "其他"
 
 
+def _list_files_ssh() -> List[dict]:
+    """通过 SSH 读取远程告警规则文件"""
+    files = []
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(settings.ssh_host, port=settings.ssh_port,
+                    username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+        sftp = ssh.open_sftp()
+        for entry in sorted(sftp.listdir_attr(settings.alerts_dir), key=lambda x: x.filename):
+            if entry.filename.endswith(".yml"):
+                fpath = f"{settings.alerts_dir}/{entry.filename}"
+                with sftp.open(fpath, "r") as f:
+                    content = f.read().decode("utf-8")
+                rules = _parse_yaml(content, entry.filename)
+                files.append({
+                    "filename": entry.filename,
+                    "category": _categorize(entry.filename),
+                    "size": entry.st_size,
+                    "mtime": entry.st_mtime,
+                    "content": content,
+                    "rules": rules,
+                })
+        sftp.close()
+        ssh.close()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ssh_read_failed: {e}")
+    return files
+
+
 def _parse_yaml(content: str, filename: str) -> List[dict]:
-    """解析 YAML 告警规则文件,返回每条规则的结构化数据"""
     try:
         data = yaml.safe_load(content)
     except Exception:
@@ -49,6 +79,27 @@ def _parse_yaml(content: str, filename: str) -> List[dict]:
                 "category": category,
             })
     return results
+
+
+@router.get("/parsed")
+async def list_parsed_rules() -> List[dict]:
+    """读取全部 YAML 告警规则文件，解析每条规则按分类返回"""
+    local_dir = Path(settings.alerts_dir)
+    if local_dir.is_dir():
+        all_rules = []
+        for f in sorted(local_dir.glob("*.yml")):
+            try:
+                all_rules.extend(_parse_yaml(f.read_text(encoding="utf-8"), f.name))
+            except Exception:
+                continue
+        return all_rules
+    if settings.ssh_host:
+        files = _list_files_ssh()
+        all_rules = []
+        for f in files:
+            all_rules.extend(f.get("rules", []))
+        return all_rules
+    raise HTTPException(status_code=404, detail="alerts dir not found and no ssh configured")
 
 
 @router.get("/active")
@@ -91,59 +142,71 @@ async def list_active_categorized() -> List[dict]:
             "category": assign_category(a),
         })
     return results
-    """读取全部 YAML 文件, 解析每条告警规则返回"""
-    alerts_dir = Path(settings.alerts_dir)
-    if not alerts_dir.is_dir():
-        return []
-    all_rules = []
-    for f in sorted(alerts_dir.glob("*.yml")):
-        try:
-            content = f.read_text(encoding="utf-8")
-            rules = _parse_yaml(content, f.name)
-            all_rules.extend(rules)
-        except Exception:
-            continue
-    return all_rules
 
 
 @router.get("/files")
 async def list_rule_files() -> List[dict]:
-    alerts_dir = Path(settings.alerts_dir)
-    if not alerts_dir.is_dir():
-        raise HTTPException(status_code=404, detail=f"alerts dir not found: {settings.alerts_dir}")
-    files = []
-    for f in sorted(alerts_dir.glob("*.yml")):
-        filename = f.name
-        files.append({
-            "filename": filename,
-            "category": _categorize(filename),
-            "size": f.stat().st_size,
-            "mtime": os.path.getmtime(f),
-            "content": f.read_text(encoding="utf-8"),
-        })
-    return files
+    local_dir = Path(settings.alerts_dir)
+    if local_dir.is_dir():
+        files = []
+        for f in sorted(local_dir.glob("*.yml")):
+            files.append({
+                "filename": f.name,
+                "category": _categorize(f.name),
+                "size": f.stat().st_size,
+                "mtime": os.path.getmtime(f),
+                "content": f.read_text(encoding="utf-8"),
+            })
+        return files
+    if settings.ssh_host:
+        return _list_files_ssh()
+    raise HTTPException(status_code=404, detail="alerts dir not found and no ssh configured")
 
 
 @router.get("/files/{filename}")
 async def get_rule_file(filename: str) -> dict:
-    fpath = Path(settings.alerts_dir) / filename
-    if not fpath.is_file():
-        raise HTTPException(status_code=404, detail="file not found")
-    return {
-        "filename": filename,
-        "category": _categorize(filename),
-        "content": fpath.read_text(encoding="utf-8"),
-    }
+    local = Path(settings.alerts_dir) / filename
+    if local.is_file():
+        return {"filename": filename, "category": _categorize(filename), "content": local.read_text(encoding="utf-8")}
+    if settings.ssh_host:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            fpath = f"{settings.alerts_dir}/{filename}"
+            with sftp.open(fpath, "r") as f:
+                content = f.read().decode("utf-8")
+            sftp.close(); ssh.close()
+            return {"filename": filename, "category": _categorize(filename), "content": content}
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"ssh_failed: {e}")
+    raise HTTPException(status_code=404, detail="file not found")
 
 
 @router.post("/files/{filename}")
 async def save_rule_file(filename: str, body: dict) -> dict:
     content = body.get("content", "")
-    fpath = Path(settings.alerts_dir) / filename
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
-    fpath.write_text(content, encoding="utf-8")
-    return {"status": "saved", "filename": filename}
+    local = Path(settings.alerts_dir) / filename
+    if local.parent.is_dir():
+        local.write_text(content, encoding="utf-8")
+        return {"status": "saved", "filename": filename}
+    if settings.ssh_host:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            fpath = f"{settings.alerts_dir}/{filename}"
+            with sftp.open(fpath, "w") as f:
+                f.write(content.encode("utf-8"))
+            sftp.close(); ssh.close()
+            return {"status": "saved", "filename": filename}
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"ssh_save_failed: {e}")
+    raise HTTPException(status_code=404, detail="cannot save: no target")
 
 
 @router.post("/reload")

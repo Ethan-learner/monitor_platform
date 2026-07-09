@@ -19,6 +19,18 @@ export interface ActiveAlert {
   category: string
 }
 
+export interface ParsedRule {
+  name: string
+  expr: string
+  for: string
+  severity: string
+  summary: string
+  group: string
+  file: string
+  category: string
+  active?: boolean
+}
+
 export async function fetchRuleFiles(): Promise<RuleFile[]> {
   const { data } = await api.get<RuleFile[]>('/rules/files')
   return data
@@ -34,5 +46,10 @@ export async function reloadPrometheus(): Promise<void> {
 
 export async function fetchActiveAlerts(): Promise<ActiveAlert[]> {
   const { data } = await api.get<ActiveAlert[]>('/rules/active')
+  return data
+}
+
+export async function fetchParsedRules(): Promise<ParsedRule[]> {
+  const { data } = await api.get<ParsedRule[]>('/rules/parsed')
   return data
 }
