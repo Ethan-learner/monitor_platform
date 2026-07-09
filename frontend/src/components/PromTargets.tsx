@@ -1,59 +1,46 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Collapse, Table, Tag, Typography } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, CheckOutlined, CloseOutlined, LinkOutlined } from '@ant-design/icons'
 import type { PrometheusTarget } from '../lib/prometheus'
 
 const { Text } = Typography
 
-interface Props {
-  targets: PrometheusTarget[]
-}
+interface Props { targets: PrometheusTarget[] }
 
 const columns = [
-  {
-    title: '状态', dataIndex: 'health', width: 70,
-    render: (h: string) => h === 'up'
-      ? <Tag icon={<CheckCircleOutlined />} color="green">UP</Tag>
-      : <Tag icon={<CloseCircleOutlined />} color="red">DOWN</Tag>,
-  },
+  { title: '状态', dataIndex: 'health', width: 70, render: (h: string) => h === 'up' ? <Tag icon={<CheckCircleOutlined />} color="green">UP</Tag> : <Tag icon={<CloseCircleOutlined />} color="red">DOWN</Tag> },
   { title: '实例', dataIndex: ['labels', 'instance'], width: 200 },
-  { title: '地址', dataIndex: 'scrapeUrl', width: 260, ellipsis: true,
-    render: (url: string) => (
-      <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-        <LinkOutlined /> {url}
-      </a>
-    ),
-  },
-  {
-    title: '耗时', dataIndex: 'lastScrapeDuration', width: 80,
-    render: (d: number) => `${(d * 1000).toFixed(0)}ms`,
-  },
-  {
-    title: '最后采集', dataIndex: 'lastScrape', width: 160,
-    render: (s: string) => s ? new Date(s).toLocaleString() : '-',
-  },
-  {
-    title: '错误', dataIndex: 'lastError', width: 200, ellipsis: true,
-    render: (e: string) => e ? <Text type="danger" style={{ fontSize: 12 }}>{e}</Text> : '-',
-  },
+  { title: '地址', dataIndex: 'scrapeUrl', width: 260, ellipsis: true, render: (url: string) => (
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><LinkOutlined /> {url}</a>
+  )},
+  { title: '耗时', dataIndex: 'lastScrapeDuration', width: 80, render: (d: number) => `${(d * 1000).toFixed(0)}ms` },
+  { title: '最后采集', dataIndex: 'lastScrape', width: 160, render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
+  { title: '错误', dataIndex: 'lastError', width: 200, ellipsis: true, render: (e: string) => e ? <Text type="danger" style={{ fontSize: 12 }}>{e}</Text> : '-' },
 ]
+
+function TargetTable({ list }: { list: PrometheusTarget[] }) {
+  const [pageSize, setPageSize] = useState(20)
+  return (
+    <Table<PrometheusTarget>
+      rowKey={(r) => r.labels.instance}
+      dataSource={list} size="small"
+      pagination={list.length > 10 ? { pageSize, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], onChange: (_, size) => setPageSize(size) } : false}
+      columns={columns}
+    />
+  )
+}
 
 function StatRing({ up, down }: { up: number; down: number }) {
   const total = up + down || 1
-  const r = 28
-  const circ = 2 * Math.PI * r
+  const r = 28; const circ = 2 * Math.PI * r
   const upPct = Math.round((up / total) * 100)
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center', padding: '4px 0', marginBottom: 12 }}>
       <svg width={80} height={80}>
         <circle cx={40} cy={40} r={r} fill="none" stroke="#ff4d4f" strokeWidth={7} />
         <circle cx={40} cy={40} r={r} fill="none" stroke="#52c41a" strokeWidth={7}
-          strokeDasharray={`${circ} ${circ}`}
-          strokeDashoffset={circ * (1 - up / total)}
-          strokeLinecap="round"
-          transform="rotate(-90 40 40)"
-        />
+          strokeDasharray={`${circ} ${circ}`} strokeDashoffset={circ * (1 - up / total)}
+          strokeLinecap="round" transform="rotate(-90 40 40)" />
         <text x={40} y={38} textAnchor="middle" fontSize={15} fontWeight={700} fill="#333">{upPct}%</text>
         <text x={40} y={55} textAnchor="middle" fontSize={9} fill="#999">健康度</text>
       </svg>
@@ -71,50 +58,26 @@ export default function PromTargets({ targets }: Props) {
 
   const groups = useMemo(() => {
     const map = new Map<string, PrometheusTarget[]>()
-    targets.forEach((t) => {
-      const job = t.labels.job || 'unknown'
-      if (!map.has(job)) map.set(job, [])
-      map.get(job)!.push(t)
-    })
-    const entries = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
-    return entries.map(([job, list]) => {
-      const sorted = [...list].sort((a, b) => {
+    targets.forEach((t) => { const j = t.labels.job || 'unknown'; if (!map.has(j)) map.set(j, []); map.get(j)!.push(t) })
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+      .map(([job, list]) => [job, [...list].sort((a, b) => {
         if (a.health === 'up' && b.health !== 'up') return 1
         if (a.health !== 'up' && b.health === 'up') return -1
         return 0
-      })
-      return [job, sorted] as [string, PrometheusTarget[]]
-    })
+      })] as [string, PrometheusTarget[]])
   }, [targets])
 
   return (
     <div>
       <StatRing up={up} down={down} />
-      <Collapse
-        defaultActiveKey={groups.map((_, i) => String(i))}
+      <Collapse defaultActiveKey={groups.map((_, i) => String(i))}
         items={groups.map(([job, list], i) => ({
           key: String(i),
-          label: (
-            <span>
-              <strong>{job}</strong>
-              <Tag color="green" style={{ marginLeft: 8 }}>UP {list.filter((t) => t.health === 'up').length}</Tag>
-              {list.filter((t) => t.health !== 'up').length > 0 && (
-                <Tag color="red">DOWN {list.filter((t) => t.health !== 'up').length}</Tag>
-              )}
-            </span>
-          ),
-          children: (
-            <Table<PrometheusTarget>
-              rowKey={(r) => r.labels.instance}
-              dataSource={list}
-              size="small"
-              pagination={list.length > 20 ? { pageSize: 20, size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] } : false}
-              columns={columns}
-            />
-          ),
+          label: (<span><strong>{job}</strong><Tag color="green" style={{ marginLeft: 8 }}>UP {list.filter((t) => t.health === 'up').length}</Tag>
+            {list.filter((t) => t.health !== 'up').length > 0 && <Tag color="red">DOWN {list.filter((t) => t.health !== 'up').length}</Tag>}</span>),
+          children: <TargetTable list={list} />,
         }))}
       />
     </div>
   )
 }
- 

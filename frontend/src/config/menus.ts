@@ -66,11 +66,19 @@ export const roleMenus: Record<string, RoleConfig> = {
       {
         key: 'apm', label: '应用性能', icon: 'ApiOutlined', children: [
           { key: 'ioc-dashboard', label: 'IOC 应用', url: '/grafana/d/SgnAIYcIk/bie4bbaa-e8a1a8-e79b98?orgId=1&kiosk' },
-          { key: 'glowroot-transactions', label: 'Transactions', url: 'https://172.16.10.99:4020/transaction/average', hideHeader: true },
-          { key: 'glowroot-errors', label: 'Errors', url: 'https://172.16.10.99:4020/error/messages', hideHeader: true },
-          { key: 'glowroot-jvm', label: 'JVM', url: 'https://172.16.10.99:4020/jvm/gauges', hideHeader: true },
-          { key: 'glowroot-config', label: 'Configuration', url: 'https://172.16.10.99:4020/config/general?agent-rollup-id=%E6%95%B0%E6%8D%AE%E6%B2%BB%E7%90%86%E9%83%A8::', hideHeader: true },
-          { key: 'glowroot-admin', label: 'Administration', url: 'https://172.16.10.99:4020/admin/general', hideHeader: true },
+          { key: 'java-app', label: 'Java 应用', children: [
+            { key: 'glowroot-transactions', label: 'Transactions', url: 'https://172.16.10.99:4020/transaction/average', hideHeader: true },
+            { key: 'glowroot-errors', label: 'Errors', url: 'https://172.16.10.99:4020/error/messages', hideHeader: true },
+            { key: 'glowroot-jvm', label: 'JVM', url: 'https://172.16.10.99:4020/jvm/gauges', hideHeader: true },
+            { key: 'glowroot-config', label: 'Configuration', url: 'https://172.16.10.99:4020/config/general?agent-rollup-id=%E6%95%B0%E6%8D%AE%E6%B2%BB%E7%90%86%E9%83%A8::', hideHeader: true },
+            { key: 'glowroot-admin', label: 'Administration', url: 'https://172.16.10.99:4020/admin/general', hideHeader: true },
+          ]},
+        ],
+      },
+      {
+        key: 'cloud', label: '云服务监控', icon: 'CloudOutlined', children: [
+          { key: 'cloud-line', label: '云专线服务', url: '/grafana/d/9CWBz0bi6/e4ba91-e4b893-e7babf-dcaas?kiosk' },
+          { key: 'cloud-oss', label: '对象存储服务', url: '/grafana/d/feu5xqqdpe5fkb/0eed0aa?kiosk' },
         ],
       },
       {

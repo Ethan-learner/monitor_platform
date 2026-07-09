@@ -3,7 +3,7 @@ import { Layout, Menu, Button, Dropdown, Typography } from 'antd';
 import {
   BarChartOutlined, DashboardOutlined, DatabaseOutlined, DesktopOutlined,
   ApiOutlined, AlertOutlined, FileTextOutlined, LogoutOutlined, UserOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, ExportOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, ExportOutlined, CloudOutlined,
 } from '@ant-design/icons';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -20,6 +20,7 @@ const iconMap: Record<string, React.ReactNode> = {
   ApiOutlined: <ApiOutlined />,
   AlertOutlined: <AlertOutlined />,
   FileTextOutlined: <FileTextOutlined />,
+  CloudOutlined: <CloudOutlined />,
 };
 
 function toAntdItems(items: MenuItem[]): any[] {
