@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
 
@@ -14,8 +14,10 @@ export default function NewRules() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
-  const [deleteReason, setDeleteReason] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ParsedRule | null>(null)
+  const [editTarget, setEditTarget] = useState<ParsedRule | null>(null)
+  const [editForm] = Form.useForm()
+  const [deleteReason, setDeleteReason] = useState('')
 
   const load = async () => { setLoading(true); try { setRules(await fetchParsedRules()) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
@@ -42,6 +44,21 @@ export default function NewRules() {
     } catch (e: any) { message.error(e?.response?.data?.detail || '删除失败，请检查服务器连接和文件路径') }
   }
 
+  const handleEdit = async (values: any) => {
+    if (!editTarget) return
+    try {
+      await api.post('/rules/update', {
+        filename: editTarget.file, groupName: editTarget.group,
+        oldRuleName: editTarget.name,
+        newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary,
+      })
+      await reloadPrometheus()
+      message.success('规则已更新')
+      setEditTarget(null)
+      load()
+    } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
+  }
+
   return (<div style={{ padding: 16 }}>
     <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
       <Title level={5} style={{ margin: 0 }}>告警规则 ({rules.length})</Title>
@@ -55,14 +72,16 @@ export default function NewRules() {
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
           { title: '持续', dataIndex: 'for', width: 80 }, { title: '级别', dataIndex: 'severity', width: 70, render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
           { title: '文件', dataIndex: 'file', width: 220 }, { title: '描述', dataIndex: 'summary', ellipsis: true },
-          { title: '操作', width: 60, render: (_, r) => (
+          { title: '操作', width: 120, render: (_, r) => (<Space>
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />}
+              onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary }) }} />
             <Popconfirm title="确认删除该规则？"
               onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }}
               okText="确认删除" cancelText="取消"
             >
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
-          )},
+          </Space>)},
         ]}
       />
     </div>))}
@@ -81,6 +100,16 @@ export default function NewRules() {
       <p>规则: <strong>{deleteTarget?.name}</strong></p>
       <p>文件: {deleteTarget?.file}</p>
       <Input.TextArea rows={2} placeholder="删除原因（可选）" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} style={{ marginTop: 8 }} />
+    </Modal>
+    <Modal title="编辑告警规则" open={!!editTarget} onCancel={() => setEditTarget(null)} footer={null} width={600}>
+      <Form form={editForm} layout="vertical" onFinish={handleEdit}>
+        <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
+        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
+        <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
+        <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
+        <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
+        <Space><Button type="primary" htmlType="submit" loading={submitting}>保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
+      </Form>
     </Modal>
   </div>)
 }

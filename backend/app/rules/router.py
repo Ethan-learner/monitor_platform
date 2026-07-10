@@ -222,6 +222,51 @@ async def reload_prometheus() -> dict:
         raise HTTPException(status_code=502, detail="prometheus_unreachable")
 
 
+@router.post("/update")
+async def update_rule(body: dict) -> dict:
+    """修改一条告警规则的名称/表达式/持续时间/级别/描述"""
+    filename = body.get("filename", "")
+    group_name = body.get("groupName", "")
+    old_name = body.get("oldRuleName", "")
+    new_name = body.get("newName", "")
+    expr = body.get("expr", "")
+    duration = body.get("for", "")
+    severity = body.get("severity", "warning")
+    summary = body.get("summary", "")
+
+    content = _read_file(filename)
+    data = yaml.safe_load(content)
+    if not data or "groups" not in data:
+        raise HTTPException(status_code=400, detail="invalid rules file")
+
+    found = False
+    for group in data["groups"]:
+        if group.get("name") != group_name:
+            continue
+        for rule in group.get("rules", []):
+            if rule.get("alert") == old_name:
+                rule["alert"] = new_name
+                rule["expr"] = expr
+                if duration:
+                    rule["for"] = duration
+                elif "for" in rule:
+                    del rule["for"]
+                if "labels" not in rule:
+                    rule["labels"] = {}
+                rule["labels"]["severity"] = severity
+                if "annotations" not in rule:
+                    rule["annotations"] = {}
+                rule["annotations"]["summary"] = summary
+                found = True
+                break
+
+    if not found:
+        raise HTTPException(status_code=404, detail="rule not found")
+
+    _write_file(filename, yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    return {"status": "updated"}
+
+
 def _write_file(filename: str, content: str) -> None:
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
