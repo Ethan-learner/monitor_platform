@@ -47,16 +47,16 @@ export default function AlertHistory() {
         dataSource={data} size="middle" bordered
         pagination={{ total, pageSize: 100, showSizeChanger: false }}
         columns={[
-          { title: '告警名称', dataIndex: 'alertName', width: 180 },
-          { title: '级别', dataIndex: 'severity', width: 80, render: (s: string) => <Tag color={sevColor[s] || 'default'}>{s}</Tag> },
-          { title: '实例', dataIndex: 'instance', width: 160 },
-          { title: '时间', dataIndex: 'alertTime', width: 160, render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
-          { title: '状态', dataIndex: 'status', width: 70, render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s}</Tag> },
-          { title: '部门', dataIndex: 'department', width: 100 },
-          { title: '项目', dataIndex: 'project', width: 80 },
-          { title: '环境', dataIndex: 'env', width: 70 },
-          { title: '服务', dataIndex: 'service', width: 100 },
-          { title: '描述', dataIndex: 'summary', ellipsis: true },
+          { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true },
+          { title: '级别', dataIndex: 'severity', width: 70, align: 'center', render: (s: string) => <Tag color={sevColor[s] || 'default'}>{s}</Tag> },
+          { title: '实例', dataIndex: 'instance', width: 200, ellipsis: true },
+          { title: '时间', dataIndex: 'alertTime', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
+          { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s || '-'}</Tag> },
+          { title: '部门', dataIndex: 'department', width: 90, ellipsis: true },
+          { title: '项目', dataIndex: 'project', width: 80, ellipsis: true },
+          { title: '环境', dataIndex: 'env', width: 60, align: 'center' },
+          { title: '服务', dataIndex: 'service', width: 120, ellipsis: true },
+          { title: '描述', dataIndex: 'summary', ellipsis: true, width: 100 },
         ]}
       />
     </div>
