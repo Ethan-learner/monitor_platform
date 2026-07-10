@@ -9,6 +9,7 @@ import Overview from './pages/Overview'
 import Prometheus from './pages/Prometheus'
 import NewRules from './pages/NewRules'
 import RulesList from './pages/RulesList'
+import AlertHistory from './pages/AlertHistory'
 import SilenceList from './pages/SilenceList'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
@@ -34,6 +35,7 @@ function DashboardRoute() {
     if (item.key === nativeMenuKeys.overview) return <Overview />
     if (item.key === nativeMenuKeys.newRules) return <NewRules />
     if (item.key === nativeMenuKeys.rulesList) return <RulesList />
+    if (item.key === nativeMenuKeys.alertHistory) return <AlertHistory />
     if (item.key === 'alertmanager-silences') return <SilenceList />
     if (item.key === 'prometheus') return <Prometheus />
   }

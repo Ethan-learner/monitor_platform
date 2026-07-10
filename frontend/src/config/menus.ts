@@ -18,6 +18,7 @@ export const nativeMenuKeys = {
   overview: 'overview',
   newRules: 'rules',
   rulesList: 'alertmanager-alerts',
+  alertHistory: 'alert-history',
 } as const
 
 export const roleMenus: Record<string, RoleConfig> = {
@@ -30,6 +31,7 @@ export const roleMenus: Record<string, RoleConfig> = {
           { key: 'alertmanager-alerts', label: 'Alerts', native: true },
           { key: 'rules', label: 'Rules', native: true },
           { key: 'alertmanager-silences', label: 'Silences', native: true },
+          { key: 'alert-history', label: '历史告警', native: true },
         ],
       },
       {

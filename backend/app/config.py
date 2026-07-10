@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     # 告警规则文件目录
     alerts_dir: str = "/data/software/prometheus/alerts"
 
+    # Doris (告警历史)
+    doris_host: str = ""
+    doris_port: int = 9030
+    doris_user: str = ""
+    doris_password: str = ""
+    doris_database: str = "sdi"
+
     # SSH 连接（远程读取告警规则文件，部署在同一服务器时可留空）
     ssh_host: str = ""
     ssh_port: int = 22

@@ -56,7 +56,7 @@ export default function NewRules() {
           { title: '持续', dataIndex: 'for', width: 80 }, { title: '级别', dataIndex: 'severity', width: 70, render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
           { title: '文件', dataIndex: 'file', width: 220 }, { title: '描述', dataIndex: 'summary', ellipsis: true },
           { title: '操作', width: 60, render: (_, r) => (
-            <Popconfirm title="确认删除该规则？此操作将从配置文件中移除并移至已删除记录。"
+            <Popconfirm title="确认删除该规则？"
               onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }}
               okText="确认删除" cancelText="取消"
             >

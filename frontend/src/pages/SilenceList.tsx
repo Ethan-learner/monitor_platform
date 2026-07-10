@@ -57,16 +57,18 @@ export default function SilenceList() {
     <div style={{ padding: 16 }}>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
         <Title level={5} style={{ margin: 0 }}>静默规则</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新建静默</Button>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>创建静默</Button>
+          <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
+        </Space>
       </Space>
-      <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
+      <Space style={{ marginBottom: 12 }}>
         <Space>
           <Select placeholder="创建人" allowClear style={{ width: 140 }} value={filterCreator || undefined} onChange={v => setFilterCreator(v || '')}
             options={creators.map(c => ({ label: c, value: c }))} />
           <Select placeholder="状态" allowClear style={{ width: 120 }} value={filterState || undefined} onChange={v => setFilterState(v || '')}
             options={[{ label: '活跃', value: 'active' }, { label: '已过期', value: 'expired' }]} />
         </Space>
-        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
       </Space>
       <Table<Silence>
         rowKey="id" dataSource={filtered} size="small" pagination={false}
