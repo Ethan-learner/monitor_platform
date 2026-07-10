@@ -29,10 +29,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
           { key: 'alertmanager-alerts', label: 'Alerts', native: true },
           { key: 'rules', label: 'Rules', native: true },
-          { key: 'alertmanager-silences', label: 'Silences', children: [
-            { key: 'silence-list', label: 'List', native: true },
-            { key: 'silence-new', label: 'New Silence', native: true },
-          ] },
+          { key: 'alertmanager-silences', label: 'Silences', native: true },
           { key: 'alertmanager-status', label: 'Status', url: 'http://172.16.10.27:9093/#/status', hideHeader: true },
           { key: 'alertmanager-settings', label: 'Settings', url: 'http://172.16.10.27:9093/#/settings', hideHeader: true },
         ],
