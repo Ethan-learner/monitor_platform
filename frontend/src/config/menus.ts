@@ -81,6 +81,11 @@ export const roleMenus: Record<string, RoleConfig> = {
         ],
       },
       {
+        key: 'job-mon', label: '作业监控', icon: 'FileTextOutlined', children: [
+          { key: 'job-dgc', label: 'DGC', url: '/grafana/d/dgc-monitor-dashboard/2b6158a?kiosk' },
+        ],
+      },
+      {
         key: 'cloud', label: '云服务监控', icon: 'CloudOutlined', children: [
           { key: 'huawei-cloud', label: '华为云服务', children: [
             { key: 'cloud-line', label: '云专线(DCASS)', url: '/grafana/d/9CWBz0bi6/e4ba91-e4b893-e7babf-dcaas?kiosk' },
