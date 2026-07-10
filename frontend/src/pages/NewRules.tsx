@@ -39,7 +39,7 @@ export default function NewRules() {
       await reloadPrometheus()
       message.success('规则已删除（移至 _disabled.yml）')
       setDeleteTarget(null); setDeleteReason(''); load()
-    } catch { message.error('删除失败') }
+    } catch (e: any) { message.error(e?.response?.data?.detail || '删除失败，请检查服务器连接和文件路径') }
   }
 
   return (<div style={{ padding: 16 }}>
@@ -60,7 +60,7 @@ export default function NewRules() {
               onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }}
               okText="确认删除" cancelText="取消"
             >
-              <Button size="small" danger icon={<DeleteOutlined />} />
+              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
           )},
         ]}

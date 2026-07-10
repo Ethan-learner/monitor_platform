@@ -288,8 +288,6 @@ async def delete_rule(body: dict) -> dict:
     }
     try:
         disabled = yaml.safe_load(_read_file("_disabled.yml")) or {"deleted_rules": []}
-    except HTTPException:
-        disabled = {"deleted_rules": []}
     except Exception:
         disabled = {"deleted_rules": []}
     disabled["deleted_rules"].append(deleted_entry)
