@@ -71,7 +71,7 @@ export default function SilenceList() {
         </Space>
       </Space>
       <Table<Silence>
-        rowKey="id" dataSource={filtered} size="small" pagination={false}
+        rowKey="id" dataSource={filtered} pagination={false}
         columns={[
           { title: '创建人', dataIndex: 'createdBy', width: 90 },
           { title: '匹配规则', width: 240, render: (_, r) => r.matchers?.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}={m.value}</Tag>) },
@@ -81,7 +81,7 @@ export default function SilenceList() {
           { title: '备注', dataIndex: 'comment', ellipsis: true },
           { title: '操作', width: 60, render: (_, r) => r.status?.state === 'active' && (
             <Popconfirm title="确认过期该静默？" onConfirm={() => handleExpire(r.id)}>
-              <Button size="small" danger icon={<DeleteOutlined />} />
+              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
           )},
         ]}

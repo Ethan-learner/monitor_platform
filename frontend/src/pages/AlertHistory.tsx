@@ -44,7 +44,7 @@ export default function AlertHistory() {
       </Space>
       <Table<HistoryAlert>
         rowKey={(r, i) => r.alertName + r.alertTime + i}
-        dataSource={data} size="small"
+        dataSource={data} size="middle"
         pagination={{ total, pageSize: 100, showSizeChanger: false }}
         columns={[
           { title: '告警名称', dataIndex: 'alertName', width: 180 },

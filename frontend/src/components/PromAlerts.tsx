@@ -35,7 +35,7 @@ export default function PromAlerts({ alerts }: Props) {
       rowKey={(r, i) => `${r.labels.alertname}-${r.labels.instance}-${i}`}
       dataSource={alerts}
       columns={columns}
-      size="small"
+      size="middle"
       pagination={{ pageSize, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], onChange: (_, s) => setPageSize(s) }}
     />
   )

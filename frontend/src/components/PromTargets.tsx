@@ -23,7 +23,7 @@ function TargetTable({ list }: { list: PrometheusTarget[] }) {
   return (
     <Table<PrometheusTarget>
       rowKey={(r) => r.labels.instance}
-      dataSource={list} size="small"
+      dataSource={list} size="middle"
       pagination={list.length > 10 ? { pageSize, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], onChange: (_, size) => setPageSize(size) } : false}
       columns={columns}
     />

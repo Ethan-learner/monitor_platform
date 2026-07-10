@@ -46,7 +46,7 @@ export default function PromRules({ groups }: Props) {
           <Table<PromRule>
             rowKey={(r, j) => `${r.name}-${j}`}
             dataSource={g.rules}
-            size="small"
+            size="middle"
             pagination={g.rules.length > 20 ? { pageSize: 20, size: 'small' } : false}
             columns={columns}
           />
