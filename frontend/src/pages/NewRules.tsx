@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
 
@@ -69,10 +69,10 @@ export default function NewRules() {
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'name', width: 200 },
+          { title: '名称', dataIndex: 'name', width: 200, align: 'center' },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
-          { title: '持续', dataIndex: 'for', width: 80 }, { title: '级别', dataIndex: 'severity', width: 70, render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
-          { title: '文件', dataIndex: 'file', width: 220 }, { title: '描述', dataIndex: 'summary', ellipsis: true },
+          { title: '持续', dataIndex: 'for', width: 80, align: 'center' }, { title: '级别', dataIndex: 'severity', width: 80, align: 'center', render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
+          { title: '文件', dataIndex: 'file', width: 220, ellipsis: true }, { title: '描述', dataIndex: 'summary', ellipsis: true },
           { title: '操作', width: 120, render: (_, r) => (<Space>
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary }) }} />
             <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
@@ -90,8 +90,8 @@ export default function NewRules() {
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
           <Input.TextArea rows={2} />
         </Form.Item>
-        <div style={{ marginBottom: 16 }}>
-          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        <div style={{ marginTop: -12, marginBottom: 24 }}>
+          <Button size="small" onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
         </div>
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
@@ -106,8 +106,8 @@ export default function NewRules() {
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
           <Input.TextArea rows={2} />
         </Form.Item>
-        <div style={{ marginBottom: 16 }}>
-          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        <div style={{ marginTop: -12, marginBottom: 24 }}>
+          <Button size="small" onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
         </div>
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>

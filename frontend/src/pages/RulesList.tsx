@@ -65,14 +65,14 @@ export default function RulesList() {
             pagination={false}
             columns={[
               {
-                title: '级别', dataIndex: 'severity', width: 70,
+                title: '级别', dataIndex: 'severity', width: 70, align: 'center',
                 render: (s: string) => <Tag color={severityColor[s] || 'default'}>{s || '-'}</Tag>,
               },
               { title: '告警名称', dataIndex: 'name', width: 200 },
               { title: '实例', dataIndex: 'instance', width: 180 },
               { title: 'Job', dataIndex: 'job', width: 140 },
               {
-                title: '状态', dataIndex: 'state', width: 70,
+                title: '状态', dataIndex: 'state', width: 70, align: 'center',
                 render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s}</Tag>,
               },
               { title: '描述', dataIndex: 'summary', ellipsis: true },
