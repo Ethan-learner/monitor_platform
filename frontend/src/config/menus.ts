@@ -76,6 +76,11 @@ export const roleMenus: Record<string, RoleConfig> = {
         ],
       },
       {
+        key: 'api-mon', label: '接口监控', icon: 'ApiOutlined', children: [
+          { key: 'api-blackbox', label: 'HTTP Blackbox', url: '/grafana/d/iKcj6tXnq/blackbox-exporter-http-dashboards-english?kiosk' },
+        ],
+      },
+      {
         key: 'cloud', label: '云服务监控', icon: 'CloudOutlined', children: [
           { key: 'huawei-cloud', label: '华为云服务', children: [
             { key: 'cloud-line', label: '云专线(DCASS)', url: '/grafana/d/9CWBz0bi6/e4ba91-e4b893-e7babf-dcaas?kiosk' },
