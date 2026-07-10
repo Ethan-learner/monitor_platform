@@ -1,6 +1,7 @@
 import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import httpx
 import paramiko
@@ -219,3 +220,100 @@ async def reload_prometheus() -> dict:
             raise HTTPException(status_code=502, detail="reload failed")
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="prometheus_unreachable")
+
+
+def _write_file(filename: str, content: str) -> None:
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+    local = Path(settings.alerts_dir) / filename
+    if local.parent.is_dir():
+        local.write_text(content, encoding="utf-8")
+        return
+    if settings.ssh_host:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            with sftp.open(f"{settings.alerts_dir}/{filename}", "w") as f:
+                f.write(content.encode("utf-8"))
+            sftp.close(); ssh.close()
+            return
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"ssh_write_failed: {e}")
+    raise HTTPException(status_code=404, detail="cannot write: no target")
+
+
+@router.post("/delete")
+async def delete_rule(body: dict) -> dict:
+    """软删除一条告警规则：从原文件移除，追加到 _disabled.yml"""
+    filename = body.get("filename", "")
+    rule_name = body.get("ruleName", "")
+    group_name = body.get("groupName", "")
+    reason = body.get("reason", "")
+    deleted_by = body.get("deletedBy", "unknown")
+    now = datetime.now(timezone.utc).isoformat()
+
+    # 读取原文件
+    content = _read_file(filename)
+    data = yaml.safe_load(content)
+    if not data or "groups" not in data:
+        raise HTTPException(status_code=400, detail="invalid rules file")
+
+    removed_rule = None
+    new_groups = []
+    for group in data["groups"]:
+        if group.get("name") == group_name:
+            new_rules = [r for r in group.get("rules", []) if r.get("alert") != rule_name]
+            if len(new_rules) < len(group["rules"]):
+                removed_rule = next(r for r in group["rules"] if r.get("alert") == rule_name)
+            if new_rules:
+                new_groups.append({**group, "rules": new_rules})
+        else:
+            new_groups.append(group)
+
+    if not removed_rule:
+        raise HTTPException(status_code=404, detail="rule not found")
+
+    # 写回原文件
+    data["groups"] = new_groups
+    _write_file(filename, yaml.dump(data, default_flow_style=False, allow_unicode=True))
+
+    # 追加到 _disabled.yml
+    deleted_entry = {
+        "metadata": {"deleted_at": now, "deleted_by": deleted_by, "reason": reason},
+        "original_file": filename,
+        "original_group": group_name,
+        "rule": dict(removed_rule),
+    }
+    try:
+        disabled = yaml.safe_load(_read_file("_disabled.yml")) or {"deleted_rules": []}
+    except HTTPException:
+        disabled = {"deleted_rules": []}
+    except Exception:
+        disabled = {"deleted_rules": []}
+    disabled["deleted_rules"].append(deleted_entry)
+    _write_file("_disabled.yml", yaml.dump(disabled, default_flow_style=False, allow_unicode=True))
+
+    return {"status": "deleted", "rule": rule_name}
+
+
+def _read_file(filename: str) -> str:
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+    local = Path(settings.alerts_dir) / filename
+    if local.is_file():
+        return local.read_text(encoding="utf-8")
+    if settings.ssh_host:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            with sftp.open(f"{settings.alerts_dir}/{filename}", "r") as f:
+                content = f.read().decode("utf-8")
+            sftp.close(); ssh.close()
+            return content
+        except Exception:
+            raise HTTPException(status_code=404, detail="file not found via ssh")
+    raise HTTPException(status_code=404, detail="file not found")
