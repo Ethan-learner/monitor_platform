@@ -103,6 +103,18 @@ async def list_parsed_rules() -> List[dict]:
     raise HTTPException(status_code=404, detail="alerts dir not found and no ssh configured")
 
 
+@router.get("/preview")
+async def preview_query(query: str = Query(...)) -> dict:
+    """执行 PromQL 查询并返回结果"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
+            resp = await client.get(f"{settings.prometheus_url}/api/v1/query", params={"query": query})
+            resp.raise_for_status()
+            return resp.json()
+    except (httpx.HTTPError, httpx.ConnectError):
+        raise HTTPException(status_code=502, detail="prometheus_unreachable")
+
+
 @router.get("/active")
 async def list_active_categorized() -> List[dict]:
     """从 Prometheus API 拉取活跃告警, 按关键词规则分类"""

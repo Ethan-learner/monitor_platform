@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm, Collapse } from 'antd'
+import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
 
@@ -9,20 +9,27 @@ const CATEGORY_COLORS: Record<string, string> = { '应用告警': '#1677ff', '�
 const CATEGORY_PREFIX: Record<string, string> = { '应用告警': 'app_', '数据库告警': 'db_', '服务器告警': 'host_', '平台组件告警': 'component_', '性能告警': 'perf_' }
 
 export default function NewRules() {
-  const [rules, setRules] = useState<ParsedRule[]>([])
-  const [loading, setLoading] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form] = Form.useForm()
-  const [submitting, setSubmitting] = useState(false)
+  const [rules, setRules] = useState<ParsedRule[]>([]); const [loading, setLoading] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false); const [form] = Form.useForm(); const [submitting, setSubmitting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ParsedRule | null>(null)
-  const [editTarget, setEditTarget] = useState<ParsedRule | null>(null)
-  const [editForm] = Form.useForm()
+  const [editTarget, setEditTarget] = useState<ParsedRule | null>(null); const [editForm] = Form.useForm()
   const [deleteReason, setDeleteReason] = useState('')
+  const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
 
   const load = async () => { setLoading(true); try { setRules(await fetchParsedRules()) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
 
   const grouped = useMemo(() => { const m: Record<string, ParsedRule[]> = {}; rules.forEach(r => { (m[r.category] = m[r.category] || []).push(r) }); return m }, [rules])
+
+  const handlePreview = async (expr: string) => {
+    if (!expr) { message.warning('请先输入表达式'); return }
+    setPreviewLoading(true)
+    try {
+      const { data } = await api.get('/rules/preview', { params: { query: expr } })
+      const result = data?.data?.result
+      setPreviewResult(!result || result.length === 0 ? '无数据' : JSON.stringify(result.slice(0, 5), null, 2))
+    } catch { setPreviewResult('查询失败') } finally { setPreviewLoading(false) }
+  }
 
   const handleCreate = async (values: any) => {
     setSubmitting(true)
@@ -38,24 +45,16 @@ export default function NewRules() {
     if (!deleteTarget) return
     try {
       await api.post('/rules/delete', { filename: deleteTarget.file, ruleName: deleteTarget.name, groupName: deleteTarget.group, reason: deleteReason, deletedBy: 'admin' })
-      await reloadPrometheus()
-      message.success('规则已删除（移至 _disabled.yml）')
+      await reloadPrometheus(); message.success('规则已删除（移至 _disabled.yml）')
       setDeleteTarget(null); setDeleteReason(''); load()
-    } catch (e: any) { message.error(e?.response?.data?.detail || '删除失败，请检查服务器连接和文件路径') }
+    } catch (e: any) { message.error(e?.response?.data?.detail || '删除失败') }
   }
 
   const handleEdit = async (values: any) => {
     if (!editTarget) return
     try {
-      await api.post('/rules/update', {
-        filename: editTarget.file, groupName: editTarget.group,
-        oldRuleName: editTarget.name,
-        newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary,
-      })
-      await reloadPrometheus()
-      message.success('规则已更新')
-      setEditTarget(null)
-      load()
+      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary })
+      await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
   }
 
@@ -73,43 +72,53 @@ export default function NewRules() {
           { title: '持续', dataIndex: 'for', width: 80 }, { title: '级别', dataIndex: 'severity', width: 70, render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
           { title: '文件', dataIndex: 'file', width: 220 }, { title: '描述', dataIndex: 'summary', ellipsis: true },
           { title: '操作', width: 120, render: (_, r) => (<Space>
-            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />}
-              onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary }) }} />
-            <Popconfirm title="确认删除该规则？"
-              onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }}
-              okText="确认删除" cancelText="取消"
-            >
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary }) }} />
+            <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
           </Space>)},
         ]}
       />
     </div>))}
+
     <Modal title="创建告警规则" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={600}>
       <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: '应用告警', severity: 'warning' }}>
         <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
+        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
+          <Input.TextArea rows={3} />
+        </Form.Item>
+        <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        {previewResult !== null && (
+          <Collapse size="small" defaultActiveKey={['1']} items={[{ key: '1', label: '查询结果', children: <pre style={{ fontSize: 11, maxHeight: 200, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 4 }}>{previewResult}</pre> }]} style={{ margin: '8px 0' }} />
+        )}
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
         <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
       </Form>
     </Modal>
-    <Modal title="确认删除" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDelete} okText="确认删除" okButtonProps={{ danger: true }}>
-      <p>规则: <strong>{deleteTarget?.name}</strong></p>
-      <p>文件: {deleteTarget?.file}</p>
-      <Input.TextArea rows={2} placeholder="删除原因（可选）" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} style={{ marginTop: 8 }} />
-    </Modal>
+
     <Modal title="编辑告警规则" open={!!editTarget} onCancel={() => setEditTarget(null)} footer={null} width={600}>
       <Form form={editForm} layout="vertical" onFinish={handleEdit}>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
+        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
+          <Input.TextArea rows={3} />
+        </Form.Item>
+        <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        {previewResult !== null && (
+          <Collapse size="small" defaultActiveKey={['1']} items={[{ key: '1', label: '查询结果', children: <pre style={{ fontSize: 11, maxHeight: 200, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 4 }}>{previewResult}</pre> }]} style={{ margin: '8px 0' }} />
+        )}
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
         <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
-        <Space><Button type="primary" htmlType="submit" loading={submitting}>保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
+        <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
       </Form>
+    </Modal>
+
+    <Modal title="确认删除" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDelete} okText="确认删除" okButtonProps={{ danger: true }}>
+      <p>规则: <strong>{deleteTarget?.name}</strong></p><p>文件: {deleteTarget?.file}</p>
+      <Input.TextArea rows={2} placeholder="删除原因（可选）" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} style={{ marginTop: 8 }} />
     </Modal>
   </div>)
 }
