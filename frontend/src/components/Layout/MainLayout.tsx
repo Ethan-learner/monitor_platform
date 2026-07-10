@@ -4,6 +4,7 @@ import {
   BarChartOutlined, DashboardOutlined, DatabaseOutlined, DesktopOutlined,
   ApiOutlined, AlertOutlined, FileTextOutlined, LogoutOutlined, UserOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, ExportOutlined, CloudOutlined,
+  PieChartOutlined, SwapOutlined, ScheduleOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -22,6 +23,10 @@ const iconMap: Record<string, React.ReactNode> = {
   AlertOutlined: <AlertOutlined />,
   FileTextOutlined: <FileTextOutlined />,
   CloudOutlined: <CloudOutlined />,
+  PieChartOutlined: <PieChartOutlined />,
+  SwapOutlined: <SwapOutlined />,
+  ScheduleOutlined: <ScheduleOutlined />,
+  SearchOutlined: <SearchOutlined />,
 };
 
 function toAntdItems(items: MenuItem[], alertCount: number): any[] {

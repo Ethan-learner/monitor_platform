@@ -35,7 +35,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         ],
       },
       {
-        key: 'system', label: '系统监控', icon: 'DashboardOutlined', children: [
+        key: 'system', label: '系统监控', icon: 'PieChartOutlined', children: [
           { key: 'prometheus', label: 'Prometheus', native: true },
           { key: 'vmselect', label: 'VictoriaMetrics', url: '/vmselect/select/0/prometheus/vmui/#/?g0.range_input=30m&g0.end_input=2026-07-07T07%3A21%3A41&g0.relative_time=last_30_minutes&g0.tab=0', hideHeader: true },
         ],
@@ -71,12 +71,12 @@ export const roleMenus: Record<string, RoleConfig> = {
         ],
       },
       {
-        key: 'api-mon', label: '接口监控', icon: 'ApiOutlined', children: [
+        key: 'api-mon', label: '接口监控', icon: 'SwapOutlined', children: [
           { key: 'api-blackbox', label: 'HTTP Blackbox', url: '/grafana/d/iKcj6tXnq/blackbox-exporter-http-dashboards-english?kiosk' },
         ],
       },
       {
-        key: 'job-mon', label: '作业监控', icon: 'FileTextOutlined', children: [
+        key: 'job-mon', label: '作业监控', icon: 'ScheduleOutlined', children: [
           { key: 'job-dgc', label: 'DGC', url: '/grafana/d/dgc-monitor-dashboard/2b6158a?kiosk' },
         ],
       },
@@ -92,7 +92,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         ],
       },
       {
-        key: 'logs', label: '日志监控', icon: 'FileTextOutlined', children: [
+        key: 'logs', label: '日志监控', icon: 'SearchOutlined', children: [
           { key: 'loki', label: 'Loki 日志', url: '/grafana/a/grafana-lokiexplore-app/explore?from=now-1m&to=now&var-ds=cfid27mkbyvpcd&var-filters=&patterns=%5B%5D&var-primary_label=service_name%7C%3D~%7C.%2B&timezone=browser&var-lineFormat=&var-fields=&var-levels=&var-metadata=&var-jsonFields=&var-all-fields=&var-patterns=&var-lineFilterV2=&var-lineFilters=&var-filters_replica=&kiosk' },
         ],
       },
