@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm, Collapse } from 'antd'
+import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
@@ -15,6 +15,7 @@ export default function NewRules() {
   const [editTarget, setEditTarget] = useState<ParsedRule | null>(null); const [editForm] = Form.useForm()
   const [deleteReason, setDeleteReason] = useState('')
   const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const load = async () => { setLoading(true); try { setRules(await fetchParsedRules()) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
@@ -28,7 +29,8 @@ export default function NewRules() {
       const { data } = await api.get('/rules/preview', { params: { query: expr } })
       const result = data?.data?.result
       setPreviewResult(!result || result.length === 0 ? '无数据' : JSON.stringify(result.slice(0, 5), null, 2))
-    } catch { setPreviewResult('查询失败') } finally { setPreviewLoading(false) }
+      setPreviewOpen(true)
+    } catch { setPreviewResult('查询失败'); setPreviewOpen(true) } finally { setPreviewLoading(false) }
   }
 
   const handleCreate = async (values: any) => {
@@ -86,12 +88,11 @@ export default function NewRules() {
         <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
-          <Input.TextArea rows={3} />
+          <Input.TextArea rows={2} />
         </Form.Item>
-        <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
-        {previewResult !== null && (
-          <Collapse size="small" defaultActiveKey={['1']} items={[{ key: '1', label: '查询结果', children: <pre style={{ fontSize: 11, maxHeight: 200, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 4 }}>{previewResult}</pre> }]} style={{ margin: '8px 0' }} />
-        )}
+        <div style={{ marginBottom: 16 }}>
+          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        </div>
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
         <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
@@ -103,12 +104,11 @@ export default function NewRules() {
       <Form form={editForm} layout="vertical" onFinish={handleEdit}>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
-          <Input.TextArea rows={3} />
+          <Input.TextArea rows={2} />
         </Form.Item>
-        <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
-        {previewResult !== null && (
-          <Collapse size="small" defaultActiveKey={['1']} items={[{ key: '1', label: '查询结果', children: <pre style={{ fontSize: 11, maxHeight: 200, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 4 }}>{previewResult}</pre> }]} style={{ margin: '8px 0' }} />
-        )}
+        <div style={{ marginBottom: 16 }}>
+          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        </div>
         <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
         <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
         <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
@@ -119,6 +119,9 @@ export default function NewRules() {
     <Modal title="确认删除" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDelete} okText="确认删除" okButtonProps={{ danger: true }}>
       <p>规则: <strong>{deleteTarget?.name}</strong></p><p>文件: {deleteTarget?.file}</p>
       <Input.TextArea rows={2} placeholder="删除原因（可选）" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} style={{ marginTop: 8 }} />
+    </Modal>
+    <Modal title="查询预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} footer={null} width={700}>
+      <pre style={{ fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f6f8fa', padding: 12, borderRadius: 4 }}>{previewResult}</pre>
     </Modal>
   </div>)
 }
