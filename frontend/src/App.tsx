@@ -34,7 +34,7 @@ function DashboardRoute() {
     if (item.key === nativeMenuKeys.overview) return <Overview />
     if (item.key === nativeMenuKeys.newRules) return <NewRules />
     if (item.key === nativeMenuKeys.rulesList) return <RulesList />
-    if (item.key === 'silence-list') return <SilenceList />
+    if (item.key === 'alertmanager-silences') return <SilenceList />
     if (item.key === 'prometheus') return <Prometheus />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
