@@ -1,13 +1,14 @@
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Typography } from 'antd';
+import { Layout, Menu, Button, Dropdown, Typography, Badge } from 'antd';
 import {
   BarChartOutlined, DashboardOutlined, DatabaseOutlined, DesktopOutlined,
   ApiOutlined, AlertOutlined, FileTextOutlined, LogoutOutlined, UserOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, ExportOutlined, CloudOutlined,
 } from '@ant-design/icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { roleMenus, type MenuItem } from '../../config/menus';
+import { api } from '../../lib/api';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -23,19 +24,20 @@ const iconMap: Record<string, React.ReactNode> = {
   CloudOutlined: <CloudOutlined />,
 };
 
-function toAntdItems(items: MenuItem[]): any[] {
+function toAntdItems(items: MenuItem[], alertCount: number): any[] {
   return items.map((item) => {
     const hasChildren = item.children && item.children.length > 0;
+    let label: React.ReactNode = item.label;
+    if (item.key === 'alertmanager-alerts' && alertCount > 0) {
+      label = <span>{item.label} <Badge count={alertCount} size="small" color="#ff4d4f" style={{ marginLeft: 4, fontSize: 10 }} /></span>;
+    } else if (item.external) {
+      label = <span>{item.label}<ExportOutlined style={{ fontSize: 11, marginLeft: 4, color: '#999' }} /></span>;
+    }
     return {
       key: item.key,
       icon: iconMap[item.icon] || <DashboardOutlined />,
-      label: (
-        <span>
-          {item.label}
-          {item.external && <ExportOutlined style={{ fontSize: 11, marginLeft: 4, color: '#999' }} />}
-        </span>
-      ),
-      children: hasChildren ? toAntdItems(item.children!) : undefined,
+      label,
+      children: hasChildren ? toAntdItems(item.children!, alertCount) : undefined,
     };
   });
 }
@@ -77,12 +79,25 @@ export default function MainLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const { data } = await api.get('/rules/active')
+        setAlertCount(data?.length || 0)
+      } catch {}
+    }
+    fetchCount()
+    const timer = setInterval(fetchCount, 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   if (!user) return null;
 
   const config = roleMenus[user.role];
   const menus = config?.menus || [];
-  const antdItems = toAntdItems(menus);
+  const antdItems = toAntdItems(menus, alertCount);
 
   const menuKeyFromPath = location.pathname.replace('/dashboard/', '');
   const defaultLeafKey = findLeafKey(menus) || '';

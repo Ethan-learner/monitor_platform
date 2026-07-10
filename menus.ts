@@ -16,8 +16,8 @@ export interface RoleConfig {
 
 export const nativeMenuKeys = {
   overview: 'overview',
-  newRules: 'rules',
-  rulesList: 'alertmanager-alerts',
+  newRules: 'new-rules',
+  rulesList: 'alerts-list',
 } as const
 
 export const roleMenus: Record<string, RoleConfig> = {
@@ -27,8 +27,10 @@ export const roleMenus: Record<string, RoleConfig> = {
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
       {
         key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
-          { key: 'alertmanager-alerts', label: 'Alerts', native: true },
-          { key: 'rules', label: 'Rules', native: true },
+          { key: 'alertmanager-alerts', label: 'Alerts', children: [
+            { key: 'alerts-list', label: 'List', native: true },
+            { key: 'new-rules', label: 'New Rules', native: true },
+          ]},
           { key: 'alertmanager-silences', label: 'Silences', children: [
             { key: 'silence-list', label: 'List', native: true },
             { key: 'silence-new', label: 'New Silence', native: true },
@@ -111,8 +113,10 @@ export const roleMenus: Record<string, RoleConfig> = {
     menus: [
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
       { key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
-          { key: 'dev-alerts', label: 'Alerts', native: true },
-          { key: 'dev-rules', label: 'Rules', native: true },
+          { key: 'dev-alerts', label: 'Alerts', children: [
+            { key: 'dev-alerts-list', label: 'List', native: true },
+            { key: 'dev-new-rules', label: 'New Rules', native: true },
+          ]},
         ],
       },
       {
