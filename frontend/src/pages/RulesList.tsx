@@ -61,7 +61,7 @@ export default function RulesList() {
           <Table<ActiveAlert>
             rowKey={(r, i) => r.name + r.instance + i}
             dataSource={items}
-            size="middle"
+            size="middle" bordered
             pagination={false}
             columns={[
               {

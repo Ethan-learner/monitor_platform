@@ -49,7 +49,7 @@ export default function NewRules() {
     </Space>
     {Object.entries(grouped).map(([cat, items]) => (<div key={cat} style={{ marginBottom: 16 }}>
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
-      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false}
+      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
         columns={[
           { title: '名称', dataIndex: 'name', width: 200 },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },

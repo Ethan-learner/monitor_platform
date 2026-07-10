@@ -71,7 +71,7 @@ export default function SilenceList() {
         </Space>
       </Space>
       <Table<Silence>
-        rowKey="id" dataSource={filtered} pagination={false}
+        rowKey="id" dataSource={filtered} pagination={false} bordered
         columns={[
           { title: '创建人', dataIndex: 'createdBy', width: 90 },
           { title: '匹配规则', width: 240, render: (_, r) => r.matchers?.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}={m.value}</Tag>) },
@@ -79,9 +79,9 @@ export default function SilenceList() {
           { title: '结束', dataIndex: 'endsAt', width: 150, render: (s: string) => new Date(s).toLocaleString() },
           { title: '状态', dataIndex: ['status', 'state'], width: 70, render: (s: string) => <Tag color={s === 'active' ? 'green' : 'default'}>{s}</Tag> },
           { title: '备注', dataIndex: 'comment', ellipsis: true },
-          { title: '操作', width: 60, render: (_, r) => r.status?.state === 'active' && (
-            <Popconfirm title="确认过期该静默？" onConfirm={() => handleExpire(r.id)}>
-              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
+          { title: '操作', width: 60, render: (_, r) => (
+            <Popconfirm title="确认过期该静默？" disabled={r.status?.state !== 'active'} onConfirm={() => handleExpire(r.id)}>
+              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: r.status?.state === 'active' ? '#999' : '#ddd' }} />} />
             </Popconfirm>
           )},
         ]}
