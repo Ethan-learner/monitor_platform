@@ -1,4 +1,6 @@
-import { Table, Tag, Typography, Empty, Alert } from 'antd'
+import { Table, Tag, Typography, Empty, Alert, Button, Tooltip } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useNavigate } from 'react-router-dom'
 import type { AlertItem } from '../lib/alerts'
 
 const { Text } = Typography
@@ -15,6 +17,8 @@ interface AlertListProps {
 }
 
 export default function AlertList({ alerts, error }: AlertListProps) {
+  const navigate = useNavigate()
+
   if (error) {
     return (
       <Alert
@@ -35,7 +39,7 @@ export default function AlertList({ alerts, error }: AlertListProps) {
     )
   }
 
-  const columns = [
+  const columns: ColumnsType<AlertItem> = [
     {
       title: '严重度',
       dataIndex: ['labels', 'severity'],
@@ -54,6 +58,30 @@ export default function AlertList({ alerts, error }: AlertListProps) {
       dataIndex: ['status', 'state'],
       width: 90,
       render: (st: string) => <Tag color={st === 'firing' ? 'red' : 'green'}>{st || 'firing'}</Tag>,
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 90,
+      align: 'center',
+      render: (_: any, record: AlertItem) => (
+        <Tooltip title="创建静默规则">
+          <Button
+            size="small"
+            onClick={() =>
+              navigate('/dashboard/silence-new', {
+                state: {
+                  alertName: record.labels.alertname,
+                  alertLabels: record.labels,
+                  createdBy: 'admin',
+                },
+              })
+            }
+          >
+            静默
+          </Button>
+        </Tooltip>
+      ),
     },
   ]
 

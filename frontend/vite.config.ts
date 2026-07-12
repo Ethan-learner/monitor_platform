@@ -26,6 +26,7 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
             proxyReq.setHeader('origin', 'https://172.16.10.99')
+            proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from('admin:123456').toString('base64'))
             if (req.headers['referer']) proxyReq.setHeader('referer', req.headers['referer'].replace(/localhost:\d+/, '172.16.10.99'))
           })
           proxy.on('proxyRes', hideFrameHeaders)

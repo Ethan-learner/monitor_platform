@@ -4,20 +4,10 @@ import { ReloadOutlined } from '@ant-design/icons'
 import OverviewHealth from '../components/OverviewHealth'
 import { fetchHealth, fetchAlertsSummary, type ComponentHealth, type AlertsSummary } from '../lib/overview'
 import { useAuthStore } from '../store/authStore'
-import { roleMenus, type MenuItem } from '../config/menus'
+import { roleMenus } from '../config/menus'
 import { useNavigate } from 'react-router-dom'
 
 const { Title } = Typography
-
-function findLeafUrl(items: MenuItem[]): string | undefined {
-  for (const item of items) {
-    if (item.url) return item.url
-    if (item.children) {
-      const found = findLeafUrl(item.children)
-      if (found) return found
-    }
-  }
-}
 
 export default function Overview() {
   const navigate = useNavigate()

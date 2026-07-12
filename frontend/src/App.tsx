@@ -11,6 +11,7 @@ import NewRules from './pages/NewRules'
 import RulesList from './pages/RulesList'
 import AlertHistory from './pages/AlertHistory'
 import SilenceList from './pages/SilenceList'
+import SilenceNew from './pages/SilenceNew'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -58,6 +59,7 @@ export default function App() {
           >
             <Route index element={<Overview />} />
             <Route path=":menuKey" element={<DashboardRoute />} />
+            <Route path="silence-new" element={<SilenceNew />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFound />} />

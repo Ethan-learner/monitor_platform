@@ -40,7 +40,7 @@ function toAntdItems(items: MenuItem[], alertCount: number): any[] {
     }
     return {
       key: item.key,
-      icon: iconMap[item.icon] || <DashboardOutlined />,
+      icon: (item.icon && iconMap[item.icon]) || <DashboardOutlined />,
       label,
       children: hasChildren ? toAntdItems(item.children!, alertCount) : undefined,
     };

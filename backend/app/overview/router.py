@@ -1,6 +1,7 @@
 import asyncio
+import base64
 import time
-from typing import Literal
+from typing import Dict, Literal
 
 import httpx
 from fastapi import APIRouter, HTTPException, status
@@ -13,11 +14,24 @@ router = APIRouter(prefix="/api/overview", tags=["overview"])
 _HEALTH_TIMEOUT = 2.0
 
 
+def _basic_auth_header(username: str, password: str) -> str:
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+    return f"Basic {token}"
+
+
+_AUTH_HEADERS: Dict[str, str] = {}
+if settings.grafana_username and settings.grafana_password:
+    _AUTH_HEADERS["grafana"] = _basic_auth_header(
+        settings.grafana_username, settings.grafana_password
+    )
+
+
 async def _probe(name: str, url: str) -> dict:
     start = time.monotonic()
+    headers = {"Authorization": _AUTH_HEADERS[name]} if name in _AUTH_HEADERS else None
     try:
         async with httpx.AsyncClient(timeout=_HEALTH_TIMEOUT, verify=False) as client:
-            resp = await client.get(url)
+            resp = await client.get(url, headers=headers)
             ok = resp.status_code < 500
         latency_ms = int((time.monotonic() - start) * 1000)
         return {"name": name, "status": "up" if ok else "down", "latencyMs": latency_ms}

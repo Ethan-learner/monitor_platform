@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Typography, Button, Space } from 'antd'
+import { Table, Tag, Typography, Button, Space, Input, Select, Row, Col } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -18,34 +18,133 @@ interface HistoryAlert {
   summary: string
 }
 
+interface Filters {
+  alertName: string
+  instance: string
+  status: '' | 'firing' | 'resolved'
+  severity: string
+}
+
 export default function AlertHistory() {
   const [data, setData] = useState<HistoryAlert[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [filters, setFilters] = useState<Filters>({ alertName: '', instance: '', status: '', severity: '' })
 
-  const load = async () => {
+  const load = async (currentPage = page, currentSize = pageSize, currentFilters = filters) => {
     setLoading(true)
     try {
-      const { data: d } = await api.get('/alerts/history', { params: { limit: 100, offset: 0 } })
+      const params: Record<string, any> = {
+        limit: currentSize,
+        offset: (currentPage - 1) * currentSize,
+      }
+      if (currentFilters.alertName) params.alertname = currentFilters.alertName
+      if (currentFilters.instance) params.instance = currentFilters.instance
+      if (currentFilters.status) params.status = currentFilters.status
+      if (currentFilters.severity) params.severity = currentFilters.severity
+
+      const { data: d } = await api.get('/alerts/history', { params })
       setData(d.data)
       setTotal(d.total)
     } catch {} finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(1, pageSize, filters) }, [])
+
+  const handleTextFilterChange = (key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleStatusChange = (value: string) => {
+    const next = { ...filters, status: value as Filters['status'] }
+    setFilters(next)
+    setPage(1)
+    load(1, pageSize, next)
+  }
+
+  const handleSearch = () => {
+    setPage(1)
+    load(1, pageSize, filters)
+  }
+
+  const handlePageChange = (p: number, size: number) => {
+    setPage(p)
+    setPageSize(size)
+    load(p, size, filters)
+  }
+
+  const handleShowSizeChange = (_: number, size: number) => {
+    setPage(1)
+    setPageSize(size)
+    load(1, size, filters)
+  }
 
   const sevColor: Record<string, string> = { critical: 'red', warning: 'orange', info: 'blue' }
 
   return (
     <div style={{ padding: 16 }}>
-      <Space style={{ marginBottom: 12, justifyContent: 'space-between', width: '100%' }}>
-        <Title level={5} style={{ margin: 0 }}>历史告警 ({total})</Title>
-        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
-      </Space>
+      <Row gutter={[12, 12]} align="middle" style={{ marginBottom: 12 }}>
+        <Col flex="auto">
+          <Title level={5} style={{ margin: 0 }}>历史告警 ({total})</Title>
+        </Col>
+        <Col>
+          <Space wrap>
+            <Input
+              placeholder="告警名称"
+              value={filters.alertName}
+              onChange={(e) => handleTextFilterChange('alertName', e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              style={{ width: 160 }}
+            />
+            <Input
+              placeholder="实例"
+              value={filters.instance}
+              onChange={(e) => handleTextFilterChange('instance', e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              style={{ width: 180 }}
+            />
+            <Select
+              placeholder="状态"
+              value={filters.status || undefined}
+              onChange={handleStatusChange}
+              allowClear
+              options={[
+                { label: '触发中', value: 'firing' },
+                { label: '已恢复', value: 'resolved' },
+              ]}
+              style={{ width: 100 }}
+            />
+            <Input
+              placeholder="级别"
+              value={filters.severity}
+              onChange={(e) => handleTextFilterChange('severity', e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              style={{ width: 100 }}
+            />
+            <Button type="primary" onClick={handleSearch}>查询</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => load()} loading={loading}>刷新</Button>
+          </Space>
+        </Col>
+      </Row>
       <Table<HistoryAlert>
         rowKey={(r, i) => r.alertName + r.alertTime + i}
         dataSource={data} size="middle" bordered
-        pagination={{ total, pageSize: 100, showSizeChanger: false }}
+        loading={loading}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          pageSizeOptions: [20, 50, 100],
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
+          onChange: handlePageChange,
+          onShowSizeChange: handleShowSizeChange,
+        }}
         columns={[
           { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true },
           { title: '级别', dataIndex: 'severity', width: 70, align: 'center', render: (s: string) => <Tag color={sevColor[s] || 'default'}>{s}</Tag> },

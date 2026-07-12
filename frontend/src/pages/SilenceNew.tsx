@@ -36,7 +36,7 @@ export default function SilenceNew() {
       }
       await createSilence(body)
       message.success('静默创建成功')
-      navigate('/dashboard/silence-list')
+      navigate('/dashboard/alertmanager-silences')
     } catch { message.error('创建失败') } finally { setLoading(false) }
   }
 
@@ -54,7 +54,7 @@ export default function SilenceNew() {
           <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="维护窗口" /></Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={loading}>创建</Button>
-            <Button onClick={() => navigate('/dashboard/silence-list')}>取消</Button>
+            <Button onClick={() => navigate('/dashboard/alertmanager-silences')}>取消</Button>
           </Space>
         </Form>
       </Card>

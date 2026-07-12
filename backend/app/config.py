@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # 既有组件地址
     alertmanager_url: str = "http://172.16.10.27:9093"
     grafana_url: str = "https://172.16.10.99/grafana"
+    grafana_username: str = ""
+    grafana_password: str = ""
     pmm_url: str = "https://172.16.10.99"
     glowroot_url: str = "http://172.16.10.27:4000"
     prometheus_url: str = "https://172.16.10.99/prometheus"
