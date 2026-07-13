@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
 import { ReloadOutlined, MailOutlined, SendOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
+import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
@@ -113,7 +114,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 export default function WebhookEvents() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [loading, setLoading] = useState(false)
-  const load = async () => { setLoading(true); try { const { data } = await api.get('/webhook/health'); setHealth(data) } catch { setHealth(null) }; setLoading(false) }
+  const load = async () => { setLoading(true); try { const cached = cacheGet('webhook:health'); if (cached) setHealth(cached); const { data } = await api.get('/webhook/health'); setHealth(data); cacheSet('webhook:health', data) } catch { setHealth(null) }; setLoading(false) }
   useEffect(() => { load() }, [])
 
   const nodes = health?.nodes || []

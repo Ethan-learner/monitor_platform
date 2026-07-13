@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Table, Tag, Typography, Button, Space, Input, Select, Row, Col } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
+import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 

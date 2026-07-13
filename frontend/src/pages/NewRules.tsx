@@ -3,6 +3,7 @@ import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Selec
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
+import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 const CATEGORY_COLORS: Record<string, string> = { '应用告警': '#1677ff', '数据库告警': '#722ed1', '服务器告警': '#52c41a', '平台组件告警': '#fa8c16', '性能告警': '#eb2f96' }
@@ -17,7 +18,7 @@ export default function NewRules() {
   const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  const load = async () => { setLoading(true); try { setRules(await fetchParsedRules()) } catch {} finally { setLoading(false) } }
+  const load = async () => { setLoading(true); try { const cached = cacheGet('rules:parsed'); if (cached) setRules(cached); const data = await fetchParsedRules(); setRules(data); cacheSet('rules:parsed', data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
 
   const grouped = useMemo(() => { const m: Record<string, ParsedRule[]> = {}; rules.forEach(r => { (m[r.category] = m[r.category] || []).push(r) }); return m }, [rules])

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, DatePicker, Select, message, Popconfirm } from 'antd'
 import { ReloadOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { fetchSilences, expireSilence, createSilence, type Silence } from '../lib/rules'
+import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 const { RangePicker } = DatePicker
@@ -17,7 +18,7 @@ export default function SilenceList() {
 
   const load = async () => {
     setLoading(true)
-    try { setSilences(await fetchSilences()) }
+    try { const cached = cacheGet('rules:silences'); if (cached) setSilences(cached); const data = await fetchSilences(); setSilences(data); cacheSet('rules:silences', data) }
     catch { message.error('Alertmanager 不可达') } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
