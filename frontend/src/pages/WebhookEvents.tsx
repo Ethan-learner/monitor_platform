@@ -16,92 +16,92 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   const dot = (v?: boolean) => ok(v) ? '#52c41a' : v === false ? '#ff4d4f' : '#bbb'
   const lbl = (v?: boolean) => ok(v) ? '正常' : v === false ? '异常' : '未知'
 
-  const W = 1100; const H = 200
-  const cy = 100 // vertical center
+  const W = 1200; const H = 460
+  // centers
+  const amCx = 100; const whCx = 320; const midCx = 580
+  const dstCx = 880; const endCx = 1080
+  const y1 = 90; const y2 = 230; const y3 = 370 // 3 lane Ys
 
-  // Node positions (horizontally spread)
-  const am = { x: 30, w: 130 }       // Alertmanager
-  const wh = { x: 260, w: 120 }       // Webhook
-  const n1 = { x: 530, w: 140 }       // 邮件/飞书
-  const n2 = { x: 530, w: 140, y: cy }       // VM (center)
-  const n3 = { x: 530, w: 140 }       // Kafka
-  const dst = { x: 830, w: 160 }      // Destinations
+  // curve helper
+  const curve = (x1: number, y1: number, x2: number, y2: number) =>
+    `M${x1},${y1} C${x1 + 60},${y1} ${x2 - 60},${y2} ${x2},${y2}`
 
-  const amCx = am.x + am.w / 2; const amCy = cy
-  const whCx = wh.x + wh.w / 2; const whCy = cy
-  const n1Cy = 40; const n2Cy = cy; const n3Cy = 160
+  const paths = [
+    { y: y1, label: '邮件 / 飞书', ok: health?.mail_ok, fill: '#f6ffed' },
+    { y: y2, label: 'VM 落盘', ok: health?.vm_ok, fill: '#fff7e6' },
+    { y: y3, label: 'Kafka', ok: health?.kafka_ok, fill: '#f9f0ff' },
+  ]
 
   return (
     <div style={{ width: '100%', overflow: 'auto' }}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', margin: '0 auto' }}>
         <defs>
-          <marker id="ar" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto"><path d="M0,3 L10,5 L0,7" fill="#bbb" /></marker>
+          <marker id="ar" viewBox="0 0 8 8" refX={7} refY={4} markerWidth={5} markerHeight={5} orient="auto">
+            <path d="M0,1 L8,4 L0,7" fill="#1677ff" />
+          </marker>
         </defs>
 
         {/* === Alertmanager === */}
-        <rect x={am.x} y={cy - 30} width={am.w} height={60} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
-        <text x={amCx} y={cy - 6} textAnchor="middle" fontSize={13} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
-        <text x={amCx} y={cy + 14} textAnchor="middle" fontSize={11} fill="#999">告警源</text>
+        <rect x={amCx - 65} y={200} width={130} height={60} rx={12} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
+        <text x={amCx} y={226} textAnchor="middle" fontSize={14} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
+        <text x={amCx} y={246} textAnchor="middle" fontSize={11} fill="#999">告警源</text>
 
-        {/* AM → Webhook line */}
-        <line x1={am.x + am.w} y1={cy} x2={wh.x} y2={cy} stroke="#2f54eb" strokeWidth={2} markerEnd="url(#ar)" />
-        <text x={(am.x + am.w + wh.x) / 2} y={cy - 10} textAnchor="middle" fontSize={10} fill="#bbb">POST /alerts</text>
+        {/* AM → Webhook curve */}
+        <path d={curve(amCx + 65, 230, whCx - 60, 230)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+        <text x={200} y={218} textAnchor="middle" fontSize={10} fill="#bbb">POST /alerts</text>
 
         {/* === Webhook === */}
-        <rect x={wh.x} y={cy - 35} width={wh.w} height={70} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
-        <text x={whCx} y={cy - 8} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
-        <text x={whCx} y={cy + 12} textAnchor="middle" fontSize={11} fill={dot(health?.status === 'healthy')}>{health ? lbl(health?.status === 'healthy') : '未知'}</text>
-        <circle cx={wh.x + 12} cy={cy - 22} r={5} fill={health?.status === 'healthy' ? '#52c41a' : '#bbb'} />
+        <rect x={whCx - 60} y={194} width={120} height={72} rx={12} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
+        <text x={whCx} y={222} textAnchor="middle" fontSize={14} fill="#1677ff" fontWeight={600}>Webhook</text>
+        <text x={whCx} y={242} textAnchor="middle" fontSize={11} fill={dot(health?.status === 'healthy')}>{health ? lbl(health?.status === 'healthy') : '未知'}</text>
+        <circle cx={whCx - 46} cy={210} r={5} fill={health?.status === 'healthy' ? '#52c41a' : '#bbb'} />
 
-        {/* === Branch lines (Webhook → 3 channels) === */}
-        <line x1={wh.x + wh.w} y1={cy - 18} x2={n1.x} y2={n1Cy} stroke="#ddd" strokeWidth={1.5} />
-        <line x1={wh.x + wh.w} y1={cy} x2={n2.x} y2={n2Cy} stroke="#ddd" strokeWidth={1.5} />
-        <line x1={wh.x + wh.w} y1={cy + 18} x2={n3.x} y2={n3Cy} stroke="#ddd" strokeWidth={1.5} />
+        {/* Webhook → 3 channels (curves) */}
+        {paths.map((p, i) => (
+          <path key={`w2c-${i}`} d={curve(whCx + 60, 230 + (i - 1) * 16, midCx - 60, p.y)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        ))}
 
-        {/* === 邮件/飞书 === */}
-        <rect x={n1.x} y={n1Cy - 28} width={n1.w} height={56} rx={10} fill="#f6ffed" stroke={dot(health?.mail_ok)} strokeWidth={1.5} />
-        <text x={n1.x + n1.w / 2} y={n1Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>邮件 / 飞书</text>
-        <text x={n1.x + n1.w / 2} y={n1Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.mail_ok)}>{lbl(health?.mail_ok)}</text>
-        <circle cx={n1.x + 12} cy={n1Cy - 18} r={4} fill={dot(health?.mail_ok)} />
+        {/* === 3 Channel nodes === */}
+        {paths.map((p, i) => (
+          <g key={`ch-${i}`}>
+            <rect x={midCx - 70} y={p.y - 30} width={140} height={60} rx={10} fill={p.fill} stroke={dot(p.ok)} strokeWidth={1.5} />
+            <text x={midCx} y={p.y - 6} textAnchor="middle" fontSize={13} fill="#333" fontWeight={600}>{p.label}</text>
+            <text x={midCx} y={p.y + 14} textAnchor="middle" fontSize={10} fill={dot(p.ok)}>{lbl(p.ok)}</text>
+            <circle cx={midCx - 56} cy={p.y - 18} r={4} fill={dot(p.ok)} />
+          </g>
+        ))}
 
-        {/* === VM === */}
-        <rect x={n2.x} y={n2Cy - 28} width={n2.w} height={56} rx={10} fill="#fff7e6" stroke={dot(health?.vm_ok)} strokeWidth={1.5} />
-        <text x={n2.x + n2.w / 2} y={n2Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>VM 落盘</text>
-        <text x={n2.x + n2.w / 2} y={n2Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.vm_ok)}>{lbl(health?.vm_ok)}</text>
-        <circle cx={n2.x + 12} cy={n2Cy - 18} r={4} fill={dot(health?.vm_ok)} />
+        {/* Channels → Destinations (curves) */}
+        {paths.map((p, i) => (
+          <path key={`c2d-${i}`} d={curve(midCx + 70, p.y, dstCx - 80, p.y)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        ))}
 
-        {/* === Kafka === */}
-        <rect x={n3.x} y={n3Cy - 28} width={n3.w} height={56} rx={10} fill="#f9f0ff" stroke={dot(health?.kafka_ok)} strokeWidth={1.5} />
-        <text x={n3.x + n3.w / 2} y={n3Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>Kafka</text>
-        <text x={n3.x + n3.w / 2} y={n3Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.kafka_ok)}>{lbl(health?.kafka_ok)}</text>
-        <circle cx={n3.x + 12} cy={n3Cy - 18} r={4} fill={dot(health?.kafka_ok)} />
+        {/* === Destination labels === */}
+        {[
+          { y: y1, t: 'Exchange / 飞书 API' },
+          { y: y2, t: 'VictoriaMetrics' },
+          { y: y3, t: 'Kafka → Flink → Doris' },
+        ].map((d, i) => (
+          <g key={`dst-${i}`}>
+            <rect x={dstCx - 80} y={d.y - 20} width={160} height={40} rx={8} fill="#fafafa" stroke="#eee" />
+            <text x={dstCx} y={d.y + 5} textAnchor="middle" fontSize={11} fill="#999">{d.t}</text>
+          </g>
+        ))}
 
-        {/* === Output lines (3 channels → destinations) === */}
-        <line x1={n1.x + n1.w} y1={n1Cy} x2={dst.x} y2={n1Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
-        <line x1={n2.x + n2.w} y1={n2Cy} x2={dst.x} y2={n2Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
-        <line x1={n3.x + n3.w} y2={n3Cy} x2={dst.x} y2={n3Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        {/* === Particles: 3 dots, synchronized === */}
+        {paths.map((p, i) => (
+          <circle key={`pt-${i}`} r={4} fill="#1677ff" opacity={0.7}>
+            <animateMotion dur="3s" repeatCount="indefinite" begin="0s"
+              path={`${curve(whCx + 60, 230 + (i - 1) * 16, midCx - 60, p.y)} ${curve(midCx + 70, p.y, dstCx - 80, p.y)}`} />
+          </circle>
+        ))}
 
-        {/* === Destinations === */}
-        <rect x={dst.x} y={n1Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
-        <text x={dst.x + dst.w / 2} y={n1Cy + 4} textAnchor="middle" fontSize={11} fill="#999">Exchange / 飞书 API</text>
-        <rect x={dst.x} y={n2Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
-        <text x={dst.x + dst.w / 2} y={n2Cy + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
-        <rect x={dst.x} y={n3Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
-        <text x={dst.x + dst.w / 2} y={n3Cy + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Flink → Doris</text>
-
-        {/* === Particles: 3 dots, same start & end timing === */}
-        <circle r={4} fill="#1677ff" opacity={0.7}>
-          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy - 18} L${n1.x},${n1Cy} L${n1.x + n1.w},${n1Cy} L${dst.x},${n1Cy}`} />
-        </circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}>
-          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy} L${n2.x},${n2Cy} L${n2.x + n2.w},${n2Cy} L${dst.x},${n2Cy}`} />
-        </circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}>
-          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy + 18} L${n3.x},${n3Cy} L${n3.x + n3.w},${n3Cy} L${dst.x},${n3Cy}`} />
-        </circle>
+        {/* === Redis label === */}
+        <text x={whCx} y={320} textAnchor="middle" fontSize={10} fill="#ccc">Redis Sentinel · 告警防抖 / 状态管理</text>
       </svg>
     </div>
   )
+}
 }
 
 export default function WebhookEvents() {
