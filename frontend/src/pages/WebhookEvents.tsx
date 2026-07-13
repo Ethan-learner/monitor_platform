@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
@@ -14,94 +14,91 @@ interface HealthData {
 function FlowTopo({ health }: { health: HealthData | null }) {
   const ok = (v?: boolean) => v === true
   const dot = (v?: boolean) => ok(v) ? '#52c41a' : v === false ? '#ff4d4f' : '#bbb'
+  const lbl = (v?: boolean) => ok(v) ? '正常' : v === false ? '异常' : '未知'
 
-  // Node positions
-  const am = { x: 50, y: 170, w: 120, h: 60 }          // Alertmanager
-  const wh = { x: 230, y: 165, w: 110, h: 70 }          // Webhook
-  const notify = { x: 440, y: 45, w: 130, h: 70 }       // 邮件/飞书
-  const vm = { x: 440, y: 145, w: 130, h: 70 }          // VM
-  const kafka = { x: 440, y: 245, w: 130, h: 70 }       // Kafka
-  const dst = { x: 650, y1: 48, y2: 148, y3: 248, w: 130, h: 40 } // Destinations
+  const W = 1100; const H = 200
+  const cy = 100 // vertical center
 
-  const W = 810; const H = 380
-  const amCx = am.x + am.w / 2; const amCy = am.y + am.h / 2
-  const whCx = wh.x + wh.w / 2; const whCy = wh.y + wh.h / 2
-  const nCx = notify.x + notify.w / 2; const nCy = notify.y + notify.h / 2
-  const vCx = vm.x + vm.w / 2; const vCy = vm.y + vm.h / 2
-  const kCx = kafka.x + kafka.w / 2; const kCy = kafka.y + kafka.h / 2
+  // Node positions (horizontally spread)
+  const am = { x: 30, w: 130 }       // Alertmanager
+  const wh = { x: 260, w: 120 }       // Webhook
+  const n1 = { x: 530, w: 140 }       // 邮件/飞书
+  const n2 = { x: 530, w: 140, y: cy }       // VM (center)
+  const n3 = { x: 530, w: 140 }       // Kafka
+  const dst = { x: 830, w: 160 }      // Destinations
+
+  const amCx = am.x + am.w / 2; const amCy = cy
+  const whCx = wh.x + wh.w / 2; const whCy = cy
+  const n1Cy = 40; const n2Cy = cy; const n3Cy = 160
 
   return (
     <div style={{ width: '100%', overflow: 'auto' }}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', margin: '0 auto' }}>
         <defs>
-          <marker id="arr" viewBox="0 0 10 10" refX={8} refY={5} markerWidth={5} markerHeight={5} orient="auto"><path d="M0,2 L10,5 L0,8" fill="#1677ff" /></marker>
-          <style>{'.pulse{animation:pulse 2s ease-in-out infinite}.dot1{animation:dot1 3s linear infinite}.dot2{animation:dot2 3.5s linear infinite}.dot3{animation:dot3 4s linear infinite}@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}@keyframes dot1{0%{transform:translate(0,0)}100%{transform:translate(140,0)}}@keyframes dot2{0%{transform:translate(0,0)}100%{transform:translate(140,0)}}@keyframes dot3{0%{transform:translate(0,0)}100%{transform:translate(140,0)}}'}</style>
+          <marker id="ar" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={6} markerHeight={6} orient="auto"><path d="M0,3 L10,5 L0,7" fill="#bbb" /></marker>
         </defs>
 
-        {/* ===== Alertmanager ===== */}
-        <rect x={am.x} y={am.y} width={am.w} height={am.h} rx={10} fill="#f0f5ff" stroke="#1677ff" strokeWidth={1.5} />
-        <text x={amCx} y={amCy - 4} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Alertmanager</text>
-        <text x={amCx} y={amCy + 16} textAnchor="middle" fontSize={11} fill="#999">告警源</text>
+        {/* === Alertmanager === */}
+        <rect x={am.x} y={cy - 30} width={am.w} height={60} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
+        <text x={amCx} y={cy - 6} textAnchor="middle" fontSize={13} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
+        <text x={amCx} y={cy + 14} textAnchor="middle" fontSize={11} fill="#999">告警源</text>
 
-        {/* Webhook connection */}
-        <line x1={am.x + am.w} y1={amCy} x2={wh.x} y2={whCy} stroke="#1677ff" strokeWidth={2} markerEnd="url(#arr)" />
-        <text x={180} y={amCy - 10} textAnchor="middle" fontSize={9} fill="#999">POST /alerts</text>
+        {/* AM → Webhook line */}
+        <line x1={am.x + am.w} y1={cy} x2={wh.x} y2={cy} stroke="#2f54eb" strokeWidth={2} markerEnd="url(#ar)" />
+        <text x={(am.x + am.w + wh.x) / 2} y={cy - 10} textAnchor="middle" fontSize={10} fill="#bbb">POST /alerts</text>
 
-        {/* ===== Webhook ===== */}
-        <rect x={wh.x} y={wh.y} width={wh.w} height={wh.h} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
-        <text x={whCx} y={whCy - 4} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
-        <text x={whCx} y={whCy + 16} textAnchor="middle" fontSize={11} fill={dot(health?.status === 'healthy')}>{health ? (health.status === 'healthy' ? '运行中' : '异常') : '未知'}</text>
-        <circle cx={wh.x + 14} cy={wh.y + 14} r={5} fill={health?.status === 'healthy' ? '#52c41a' : '#d9d9d9'} />
+        {/* === Webhook === */}
+        <rect x={wh.x} y={cy - 35} width={wh.w} height={70} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
+        <text x={whCx} y={cy - 8} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
+        <text x={whCx} y={cy + 12} textAnchor="middle" fontSize={11} fill={dot(health?.status === 'healthy')}>{health ? lbl(health?.status === 'healthy') : '未知'}</text>
+        <circle cx={wh.x + 12} cy={cy - 22} r={5} fill={health?.status === 'healthy' ? '#52c41a' : '#bbb'} />
 
-        {/* ===== Distribution lines ===== */}
-        <line x1={wh.x + wh.w} y1={whCy - 20} x2={notify.x} y2={nCy} stroke="#e0e0e0" strokeWidth={1.5} />
-        <line x1={wh.x + wh.w} y1={whCy} x2={vm.x} y2={vCy} stroke="#e0e0e0" strokeWidth={1.5} />
-        <line x1={wh.x + wh.w} y1={whCy + 20} x2={kafka.x} y2={kCy} stroke="#e0e0e0" strokeWidth={1.5} />
+        {/* === Branch lines (Webhook → 3 channels) === */}
+        <line x1={wh.x + wh.w} y1={cy - 18} x2={n1.x} y2={n1Cy} stroke="#ddd" strokeWidth={1.5} />
+        <line x1={wh.x + wh.w} y1={cy} x2={n2.x} y2={n2Cy} stroke="#ddd" strokeWidth={1.5} />
+        <line x1={wh.x + wh.w} y1={cy + 18} x2={n3.x} y2={n3Cy} stroke="#ddd" strokeWidth={1.5} />
 
-        {/* ===== Notify ===== */}
-        <rect x={notify.x} y={notify.y} width={notify.w} height={notify.h} rx={10} fill="#f6ffed" stroke={dot(health?.mail_ok)} strokeWidth={1.5} />
-        <text x={nCx} y={nCy - 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>邮件 / 飞书</text>
-        <text x={nCx} y={nCy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.mail_ok)}>{health?.mail_ok === true ? '正常' : health?.mail_ok === false ? '异常' : '未知'}</text>
-        <circle cx={notify.x + 12} cy={notify.y + 12} r={4} fill={dot(health?.mail_ok)} />
+        {/* === 邮件/飞书 === */}
+        <rect x={n1.x} y={n1Cy - 28} width={n1.w} height={56} rx={10} fill="#f6ffed" stroke={dot(health?.mail_ok)} strokeWidth={1.5} />
+        <text x={n1.x + n1.w / 2} y={n1Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>邮件 / 飞书</text>
+        <text x={n1.x + n1.w / 2} y={n1Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.mail_ok)}>{lbl(health?.mail_ok)}</text>
+        <circle cx={n1.x + 12} cy={n1Cy - 18} r={4} fill={dot(health?.mail_ok)} />
 
-        {/* ===== VM ===== */}
-        <rect x={vm.x} y={vm.y} width={vm.w} height={vm.h} rx={10} fill="#fff7e6" stroke={dot(health?.vm_ok)} strokeWidth={1.5} />
-        <text x={vCx} y={vCy - 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>VM 落盘</text>
-        <text x={vCx} y={vCy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.vm_ok)}>{health?.vm_ok === true ? '正常' : health?.vm_ok === false ? '异常' : '未知'}</text>
-        <circle cx={vm.x + 12} cy={vm.y + 12} r={4} fill={dot(health?.vm_ok)} />
+        {/* === VM === */}
+        <rect x={n2.x} y={n2Cy - 28} width={n2.w} height={56} rx={10} fill="#fff7e6" stroke={dot(health?.vm_ok)} strokeWidth={1.5} />
+        <text x={n2.x + n2.w / 2} y={n2Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>VM 落盘</text>
+        <text x={n2.x + n2.w / 2} y={n2Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.vm_ok)}>{lbl(health?.vm_ok)}</text>
+        <circle cx={n2.x + 12} cy={n2Cy - 18} r={4} fill={dot(health?.vm_ok)} />
 
-        {/* ===== Kafka ===== */}
-        <rect x={kafka.x} y={kafka.y} width={kafka.w} height={kafka.h} rx={10} fill="#f0f5ff" stroke={dot(health?.kafka_ok)} strokeWidth={1.5} />
-        <text x={kCx} y={kCy - 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>Kafka 推送</text>
-        <text x={kCx} y={kCy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.kafka_ok)}>{health?.kafka_ok === true ? '正常' : health?.kafka_ok === false ? '异常' : '未知'}</text>
-        <circle cx={kafka.x + 12} cy={kafka.y + 12} r={4} fill={dot(health?.kafka_ok)} />
+        {/* === Kafka === */}
+        <rect x={n3.x} y={n3Cy - 28} width={n3.w} height={56} rx={10} fill="#f9f0ff" stroke={dot(health?.kafka_ok)} strokeWidth={1.5} />
+        <text x={n3.x + n3.w / 2} y={n3Cy - 5} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>Kafka</text>
+        <text x={n3.x + n3.w / 2} y={n3Cy + 14} textAnchor="middle" fontSize={10} fill={dot(health?.kafka_ok)}>{lbl(health?.kafka_ok)}</text>
+        <circle cx={n3.x + 12} cy={n3Cy - 18} r={4} fill={dot(health?.kafka_ok)} />
 
-        {/* ===== Output lines to destinations ===== */}
-        <line x1={notify.x + notify.w} y1={nCy} x2={dst.x} y2={dst.y1 + dst.h / 2} stroke="#e0e0e0" strokeWidth={1.5} markerEnd="url(#arr)" />
-        <line x1={vm.x + vm.w} y1={vCy} x2={dst.x} y2={dst.y2 + dst.h / 2} stroke="#e0e0e0" strokeWidth={1.5} markerEnd="url(#arr)" />
-        <line x1={kafka.x + kafka.w} y1={kCy} x2={dst.x} y2={dst.y3 + dst.h / 2} stroke="#e0e0e0" strokeWidth={1.5} markerEnd="url(#arr)" />
+        {/* === Output lines (3 channels → destinations) === */}
+        <line x1={n1.x + n1.w} y1={n1Cy} x2={dst.x} y2={n1Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <line x1={n2.x + n2.w} y1={n2Cy} x2={dst.x} y2={n2Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <line x1={n3.x + n3.w} y2={n3Cy} x2={dst.x} y2={n3Cy} stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
 
-        {/* ===== Destination labels ===== */}
-        <rect x={dst.x} y={dst.y1} width={dst.w} height={dst.h} rx={6} fill="#fafafa" stroke="#eee" strokeWidth={1} />
-        <text x={dst.x + dst.w / 2} y={dst.y1 + dst.h / 2 + 4} textAnchor="middle" fontSize={11} fill="#999">Exchange / 飞书</text>
-        <rect x={dst.x} y={dst.y2} width={dst.w} height={dst.h} rx={6} fill="#fafafa" stroke="#eee" strokeWidth={1} />
-        <text x={dst.x + dst.w / 2} y={dst.y2 + dst.h / 2 + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
-        <rect x={dst.x} y={dst.y3} width={dst.w} height={dst.h} rx={6} fill="#fafafa" stroke="#eee" strokeWidth={1} />
-        <text x={dst.x + dst.w / 2} y={dst.y3 + dst.h / 2 + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
+        {/* === Destinations === */}
+        <rect x={dst.x} y={n1Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
+        <text x={dst.x + dst.w / 2} y={n1Cy + 4} textAnchor="middle" fontSize={11} fill="#999">Exchange / 飞书 API</text>
+        <rect x={dst.x} y={n2Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
+        <text x={dst.x + dst.w / 2} y={n2Cy + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
+        <rect x={dst.x} y={n3Cy - 18} width={dst.w} height={36} rx={6} fill="#fafafa" stroke="#eee" />
+        <text x={dst.x + dst.w / 2} y={n3Cy + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Flink → Doris</text>
 
-        {/* ===== Flow particles (single dot per path) ===== */}
-        <circle r={3} fill="#1677ff" opacity={0.6}>
-          <animateMotion dur="2s" repeatCount="indefinite" path={`M${wh.x + wh.w},${whCy - 20} L${notify.x},${nCy}`} />
+        {/* === Particles: 3 dots, same start & end timing === */}
+        <circle r={4} fill="#1677ff" opacity={0.7}>
+          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy - 18} L${n1.x},${n1Cy} L${n1.x + n1.w},${n1Cy} L${dst.x},${n1Cy}`} />
         </circle>
-        <circle r={3} fill="#1677ff" opacity={0.6}>
-          <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.5s" path={`M${wh.x + wh.w},${whCy} L${vm.x},${vCy}`} />
+        <circle r={4} fill="#1677ff" opacity={0.7}>
+          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy} L${n2.x},${n2Cy} L${n2.x + n2.w},${n2Cy} L${dst.x},${n2Cy}`} />
         </circle>
-        <circle r={3} fill="#1677ff" opacity={0.6}>
-          <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path={`M${wh.x + wh.w},${whCy + 20} L${kafka.x},${kCy}`} />
+        <circle r={4} fill="#1677ff" opacity={0.7}>
+          <animateMotion dur="2s" repeatCount="indefinite" begin="0s" path={`M${wh.x + wh.w},${cy + 18} L${n3.x},${n3Cy} L${n3.x + n3.w},${n3Cy} L${dst.x},${n3Cy}`} />
         </circle>
-
-        {/* ===== Redis ===== */}
-        <text x={whCx} y={wh.y + wh.h + 30} textAnchor="middle" fontSize={10} fill="#ccc">Redis Sentinel · 告警防抖/状态管理</text>
       </svg>
     </div>
   )
