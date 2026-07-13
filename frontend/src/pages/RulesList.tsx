@@ -4,6 +4,7 @@ import { ReloadOutlined, BellOutlined } from '@ant-design/icons'
 import { fetchActiveAlerts, type ActiveAlert } from '../lib/rules'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
@@ -24,8 +25,10 @@ export default function RulesList() {
   const load = async () => {
     setLoading(true)
     try {
+      const cached = cacheGet('rules:alerts')
+      if (cached) { setAlerts(cached); setLoading(false) }
       const data = await fetchActiveAlerts()
-      setAlerts(data)
+      setAlerts(data); cacheSet('rules:alerts', data)
     } catch { /* ignore */ } finally { setLoading(false) }
   }
 
