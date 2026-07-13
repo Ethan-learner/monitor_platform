@@ -13,9 +13,15 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   const curve = (x1: number, y1: number, x2: number, y2: number) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`
 
   // Node center X positions - equal spacing between each pair
-  const pmX = 80; const amX = 250; const whX = 420
-  const sendX = 630; const sendW = 120
-  const subX = 900; const endX = 1060; const endW = 160
+  // Node center X positions - all gaps ~180px
+  const pmX = 80; const amX = 260; const whX = 440
+  const sendX = 660; const sendW = 120
+  const subX = 920; const endX = 1080; const endW = 160
+
+  // Y positions
+  const row0 = 140  // main line
+  const rEmail = 55; const rLark = 140; const rEll = 225
+  const rVM = 345; const rKafka = 480
 
   // Y positions
   const row0 = 140  // main line: prometheus(center), webhook, 告警发送 center
@@ -28,7 +34,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
   return (
     <div style={{ width: '100%', overflow: 'auto' }}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', margin: '0 auto' }}>
         <defs><marker id="ar" viewBox="0 0 8 8" refX={7} refY={4} markerWidth={5} markerHeight={5} orient="auto"><path d="M0,1 L8,4 L0,7" fill="#1677ff" /></marker></defs>
 
         {/* ===== Prometheus ===== */}
@@ -36,7 +42,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={pmX} y={row0 + 4} textAnchor="middle" fontSize={12} fill="#999" fontWeight={500}>Prometheus</text>
 
         {/* Prometheus → Alertmanager */}
-        <path d={curve(pmX + 55, row0, amX - 55, row0)} fill="none" stroke="#d9d9d9" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <path d={curve(pmX + 55, row0, amX - 65, row0)} fill="none" stroke="#bbb" strokeWidth={1.5} markerEnd="url(#ar)" />
 
         {/* ===== Alertmanager ===== */}
         <rect x={amX - 65} y={row0 - 22} width={130} height={44} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
