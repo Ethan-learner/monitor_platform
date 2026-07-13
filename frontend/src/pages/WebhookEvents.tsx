@@ -93,7 +93,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7" opacity={0.7}"><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.7}"><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
         <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEll)} /></circle>
@@ -109,15 +109,15 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
         {/* Webhook → VM 落盘 → VictoriaMetrics (orange, same begin) */}
         <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} /></circle>
-        <circle r={4" fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} /></circle>
-        <circle r={4" fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
-        <circle r={4" fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
+        <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} /></circle>
+        <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
+        <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
 
         {/* Webhook → Kafka 推送 → Kafka → Doris (purple, same begin) */}
-        <circle r={4" fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
-        <circle r={4" fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
-        <circle r={4" fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} /></circle>
-        <circle r={4" fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} /></circle>
+        <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
+        <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
+        <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} /></circle>
+        <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} /></circle>
       </svg>
     </div>
   )
