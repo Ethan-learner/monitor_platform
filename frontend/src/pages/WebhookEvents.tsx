@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
+import { Card, Statistic, Row, Col, Tag, Typography, Space, Button } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -154,21 +154,13 @@ export default function WebhookEvents() {
         </Row>
       </Card>
 
-      <Card title="服务模块" size="small">
-        <Table dataSource={[
-          { channel: '告警入口', path: 'POST /alerts (Alertmanager webhook)', desc: '接收 Alertmanager 告警推送，去重后分发' },
-          { channel: '通知通道', path: 'mail_sender.py + larkMsgCard.py', desc: '邮件 + 飞书卡片通知' },
-          { channel: 'VM 落盘', path: 'vm_client.py', desc: '告警事件写入 VictoriaMetrics' },
-          { channel: 'Kafka 推送', path: 'KafkaProducer → alert-records', desc: '推送 Kafka，Flink→Doris 消费' },
-          { channel: 'Redis 防抖', path: 'Sentinel + state_machine.py', desc: '告警去重/防抖，Sentinel 高可用' },
-        ]}
-        rowKey="channel" pagination={false} size="middle"
-        columns={[
-          { title: '模块', dataIndex: 'channel', width: 120, align: 'center' },
-          { title: '路径', dataIndex: 'path', width: 280, align: 'center', render: (s: string) => <code style={{ fontSize: 11 }}>{s}</code> },
-          { title: '说明', dataIndex: 'desc' },
-        ]}
-        />
+      <Card title="运行信息" size="small">
+        <Row gutter={24}>
+          <Col span={6}><Statistic title="Redis 防抖" value={health?.redis_ok ? '正常' : health ? '异常' : '-'} valueStyle={{ color: health?.redis_ok ? '#52c41a' : '#ff4d4f' }} /></Col>
+          <Col span={6}><Statistic title="发送成功" value={(health?.stats?.email_sent||0)+(health?.stats?.lark_sent||0)+(health?.stats?.vm_writes||0)} suffix="次" /></Col>
+          <Col span={6}><Statistic title="发送失败" value={(health?.stats?.email_failed||0)+(health?.stats?.lark_failed||0)+(health?.stats?.vm_failed||0)} suffix="次" /></Col>
+          <Col span={6}><Statistic title="最后活跃" value={health?.timestamp ? health.timestamp.substring(11, 19) : '-'} /></Col>
+        </Row>
       </Card>
     </div>
   )
