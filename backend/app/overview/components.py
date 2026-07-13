@@ -11,4 +11,5 @@ COMPONENTS: List[Tuple[str, str]] = [
     ("loki", f"{settings.loki_url}/ready"),
     ("vmselect", f"{settings.vmselect_url}/health"),
     ("alertmanager", f"{settings.alertmanager_url}/-/healthy"),
+    ("webhook", f"{settings.webhook_url}/health"),
 ]
