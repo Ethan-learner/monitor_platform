@@ -9,72 +9,101 @@ interface NodeInfo { url: string; up: boolean; latency_ms: number | null; stats?
 interface HealthData { status: string; nodes?: NodeInfo[]; redis_ok?: boolean; timestamp?: string }
 
 function FlowTopo({ health }: { health: HealthData | null }) {
-  const W = 1300; const H = 520
-  const amCx = 100; const whCx = 320
-  const sendCx = 560; const sendW = 130
-  const subCx = 800
-  const curve = (x1: number, y1: number, x2: number, y2: number) => `M${x1},${y1} C${x1 + 60},${y1} ${x2 - 60},${y2} ${x2},${y2}`
+  const W = 1250; const H = 560
+  const curve = (x1: number, y1: number, x2: number, y2: number) => `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}`
 
-  // lanes
-  const sendCy = 140       // 告警发送 center
-  const emailY = 60; const larkY = 140; const ellY = 220
-  const vmY = 340; const kafkaY = 440
+  // Node center X positions
+  const pmX = 95; const amX = 250; const whX = 430
+  const sendX = 630; const sendW = 120
+  const subX = 890; const endX = 1050; const endW = 160
 
+  // Y positions
+  const row0 = 140  // main line: prometheus(center), webhook, 告警发送 center
+  const rEmail = 55; const rLark = 140; const rEll = 225  // 告警发送 branches
+  const rVM = 345; const rKafka = 480                     // VM / Kafka
+
+  const ok = (v?: boolean) => v === true
   const up = health?.status === 'up'
+  const dot = up ? '#52c41a' : '#bbb'
 
   return (
     <div style={{ width: '100%', overflow: 'auto' }}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', margin: '0 auto' }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
         <defs><marker id="ar" viewBox="0 0 8 8" refX={7} refY={4} markerWidth={5} markerHeight={5} orient="auto"><path d="M0,1 L8,4 L0,7" fill="#1677ff" /></marker></defs>
 
-        {/* Alertmanager */}
-        <rect x={amCx - 60} y={sendCy - 22} width={120} height={44} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
-        <text x={amCx} y={sendCy} textAnchor="middle" fontSize={13} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
-        <path d={curve(amCx + 60, sendCy, whCx - 60, sendCy)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+        {/* ===== Prometheus ===== */}
+        <rect x={pmX - 55} y={row0 - 22} width={110} height={44} rx={10} fill="#fff0f6" stroke="#eb2f96" strokeWidth={1.5} />
+        <text x={pmX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#eb2f96" fontWeight={600}>Prometheus</text>
 
-        {/* Webhook */}
-        <rect x={whCx - 55} y={sendCy - 22} width={110} height={44} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
-        <text x={whCx} y={sendCy} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
-        <circle cx={whCx - 40} cy={sendCy - 12} r={4} fill={up ? '#52c41a' : '#bbb'} />
+        {/* Prometheus → Alertmanager */}
+        <path d={curve(pmX + 55, row0, amX - 55, row0)} fill="none" stroke="#eb2f96" strokeWidth={1.5} markerEnd="url(#ar)" />
+
+        {/* ===== Alertmanager ===== */}
+        <rect x={amX - 65} y={row0 - 22} width={130} height={44} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
+        <text x={amX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
+
+        {/* Alertmanager → Webhook */}
+        <path d={curve(amX + 65, row0, whX - 55, row0)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+
+        {/* ===== Webhook ===== */}
+        <rect x={whX - 55} y={row0 - 22} width={110} height={44} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
+        <text x={whX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
+        <circle cx={whX - 40} cy={row0 - 12} r={4} fill={dot} />
 
         {/* Webhook → 告警发送 */}
-        <path d={curve(whCx + 55, sendCy, sendCx - sendW / 2, sendCy)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+        <path d={curve(whX + 55, row0, sendX - sendW / 2, row0)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
 
-        {/* 告警发送 */}
-        <rect x={sendCx - sendW / 2} y={sendCy - 22} width={sendW} height={44} rx={10} fill="#f6ffed" stroke="#52c41a" strokeWidth={1.5} />
-        <text x={sendCx} y={sendCy} textAnchor="middle" fontSize={13} fill="#333" fontWeight={600}>告警发送</text>
+        {/* ===== 告警发送 ===== */}
+        <rect x={sendX - sendW / 2} y={row0 - 22} width={sendW} height={44} rx={10} fill="#f6ffed" stroke="#52c41a" strokeWidth={1.5} />
+        <text x={sendX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#333" fontWeight={600}>告警发送</text>
 
-        {/* 告警发送 → 3 sub branches */}
-        {[[emailY,'邮件',0], [larkY,'飞书',1], [ellY,'…',2]].map(([y, label, idx]) => (
-          <g key={`sub-${idx}`}>
-            <path d={curve(sendCx + sendW / 2, sendCy, subCx - 65, Number(y))} fill="none" stroke="#ddd" strokeWidth={1.5} />
-            <rect x={subCx - 65} y={Number(y) - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" strokeWidth={1} />
-            <text x={subCx} y={Number(y) + 4} textAnchor="middle" fontSize={12} fill="#555" fontWeight={500}>{label}</text>
-          </g>
-        ))}
+        {/* ===== 告警发送 → 3 branches + VM + Kafka ===== */}
+        {/* Branch 1: 邮件 */}
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <rect x={subX - 65} y={rEmail - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={subX} y={rEmail + 4} textAnchor="middle" fontSize={12} fill="#555">邮件</text>
+        <path d={curve(subX + 65, rEmail, endX, rEmail)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <rect x={endX} y={rEmail - 18} width={endW} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={endX + endW / 2} y={rEmail + 4} textAnchor="middle" fontSize={11} fill="#999">Exchange SMTP</text>
 
-        {/* Webhook → VM */}
-        <path d={curve(whCx + 55, sendCy + 18, sendCx - sendW / 2, vmY)} fill="none" stroke="#ddd" strokeWidth={1.5} />
-        <rect x={sendCx - sendW / 2} y={vmY - 18} width={sendW} height={36} rx={10} fill="#fff7e6" stroke="#fa8c16" strokeWidth={1} />
-        <text x={sendCx} y={vmY + 4} textAnchor="middle" fontSize={13} fill="#333" fontWeight={600}>VM 落盘</text>
-        <path d={curve(sendCx + sendW / 2, vmY, subCx - 65, vmY)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
-        <rect x={subCx - 65} y={vmY - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" strokeWidth={1} />
-        <text x={subCx} y={vmY + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
+        {/* Branch 2: 飞书 */}
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rLark)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <rect x={subX - 65} y={rLark - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={subX} y={rLark + 4} textAnchor="middle" fontSize={12} fill="#555">飞书</text>
+        <path d={curve(subX + 65, rLark, endX, rLark)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <rect x={endX} y={rLark - 18} width={endW} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={endX + endW / 2} y={rLark + 4} textAnchor="middle" fontSize={11} fill="#999">飞书 API</text>
 
-        {/* Webhook → Kafka */}
-        <path d={curve(whCx + 55, sendCy + 36, sendCx - sendW / 2, kafkaY)} fill="none" stroke="#ddd" strokeWidth={1.5} />
-        <rect x={sendCx - sendW / 2} y={kafkaY - 18} width={sendW} height={36} rx={10} fill="#f9f0ff" stroke="#722ed1" strokeWidth={1} />
-        <text x={sendCx} y={kafkaY + 4} textAnchor="middle" fontSize={13} fill="#333" fontWeight={600}>Kafka 推送</text>
-        <path d={curve(sendCx + sendW / 2, kafkaY, subCx - 65, kafkaY)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
-        <rect x={subCx - 65} y={kafkaY - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" strokeWidth={1} />
-        <text x={subCx} y={kafkaY + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
+        {/* Branch 3: … */}
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEll)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <rect x={subX - 65} y={rEll - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={subX} y={rEll + 4} textAnchor="middle" fontSize={12} fill="#555">…</text>
+        <path d={curve(subX + 65, rEll, endX, rEll)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <rect x={endX} y={rEll - 18} width={endW} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={endX + endW / 2} y={rEll + 4} textAnchor="middle" fontSize={11} fill="#999">预留扩展</text>
 
-        {/* Particles */}
-        {[[sendCy, 'main'], [emailY, 'sub0'], [larkY, 'sub1'], [ellY, 'sub2'], [vmY, 'vm'], [kafkaY, 'kf']].map(([y, key], i) => (
-          <circle key={key} r={4} fill="#1677ff" opacity={0.6}>
-            <animateMotion dur="3s" repeatCount="indefinite" begin={`${i * 0.3}s`} path={`${curve(sendCx + sendW / 2, Number(y), subCx - 65, Number(y))}`} />
-          </circle>
-        ))}
+        {/* VM 落盘 */}
+        <path d={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <rect x={sendX - sendW / 2} y={rVM - 18} width={sendW} height={36} rx={10} fill="#fff7e6" stroke="#fa8c16" strokeWidth={1} />
+        <text x={sendX} y={rVM + 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>VM 落盘</text>
+        <path d={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <rect x={subX - 65} y={rVM - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={subX} y={rVM + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
+
+        {/* Kafka 推送 */}
+        <path d={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <rect x={sendX - sendW / 2} y={rKafka - 18} width={sendW} height={36} rx={10} fill="#f9f0ff" stroke="#722ed1" strokeWidth={1} />
+        <text x={sendX} y={rKafka + 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>Kafka 推送</text>
+        <path d={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <rect x={subX - 65} y={rKafka - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
+        <text x={subX} y={rKafka + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
+
+        {/* ===== Particles (each follows its own exact path) ===== */}
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEmail)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rLark)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEll)}`} /></circle>
+        <circle r={4} fill="#fa8c16" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} ${curve(sendX + sendW / 2, rVM, subX - 65, rVM)}`} /></circle>
+        <circle r={4} fill="#722ed1" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} ${curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)}`} /></circle>
       </svg>
     </div>
   )
@@ -88,9 +117,8 @@ export default function WebhookEvents() {
 
   const nodes = health?.nodes || []
   const nodeNames = (i: number) => `webhook0${i + 1}`
-
   const stats = health?.nodes?.reduce((a, n) => {
-    if (n.stats) { Object.entries(n.stats).forEach(([k, v]) => { a[k] = (a[k] || 0) + (v as number) }) }
+    if (n.stats) Object.entries(n.stats).forEach(([k, v]) => { a[k] = (a[k] || 0) + (v as number) })
     return a
   }, {} as Record<string, number>) || {}
 
@@ -122,7 +150,7 @@ export default function WebhookEvents() {
         </Row>
       </Card>
 
-      <Card title="集群节点" size="small" style={{ marginBottom: 16 }}>
+      <Card title="集群节点" size="small">
         <Row gutter={16}>
           {nodes.map((n, i) => (
             <Col span={8} key={n.url}>
