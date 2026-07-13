@@ -61,7 +61,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
         {/* ===== 告警发送 → 3 branches + VM + Kafka ===== */}
         {/* Branch 1: 邮件 */}
-        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <rect x={subX - 65} y={rEmail - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
         <text x={subX} y={rEmail + 4} textAnchor="middle" fontSize={12} fill="#555">邮件</text>
         <path d={curve(subX + 65, rEmail, endX, rEmail)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
@@ -69,7 +69,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={endX + endW / 2} y={rEmail + 4} textAnchor="middle" fontSize={11} fill="#999">Exchange SMTP</text>
 
         {/* Branch 2: 飞书 */}
-        <path d={curve(sendX + sendW / 2, row0, subX - 65, rLark)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rLark)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <rect x={subX - 65} y={rLark - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
         <text x={subX} y={rLark + 4} textAnchor="middle" fontSize={12} fill="#555">飞书</text>
         <path d={curve(subX + 65, rLark, endX, rLark)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
@@ -77,7 +77,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={endX + endW / 2} y={rLark + 4} textAnchor="middle" fontSize={11} fill="#999">飞书 API</text>
 
         {/* Branch 3: … */}
-        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEll)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <path d={curve(sendX + sendW / 2, row0, subX - 65, rEll)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <rect x={subX - 65} y={rEll - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
         <text x={subX} y={rEll + 4} textAnchor="middle" fontSize={12} fill="#555">…</text>
         <path d={curve(subX + 65, rEll, endX, rEll)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
@@ -85,7 +85,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={endX + endW / 2} y={rEll + 4} textAnchor="middle" fontSize={11} fill="#999">预留扩展</text>
 
         {/* VM 落盘 */}
-        <path d={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <path d={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <rect x={sendX - sendW / 2} y={rVM - 18} width={sendW} height={36} rx={10} fill="#fff7e6" stroke="#fa8c16" strokeWidth={1} />
         <text x={sendX} y={rVM + 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>VM 落盘</text>
         <path d={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
@@ -93,7 +93,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={subX} y={rVM + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
 
         {/* Kafka 推送 */}
-        <path d={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} />
+        <path d={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <rect x={sendX - sendW / 2} y={rKafka - 18} width={sendW} height={36} rx={10} fill="#f9f0ff" stroke="#722ed1" strokeWidth={1} />
         <text x={sendX} y={rKafka + 4} textAnchor="middle" fontSize={12} fill="#333" fontWeight={600}>Kafka 推送</text>
         <path d={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
@@ -101,11 +101,11 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <text x={subX} y={rKafka + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
 
         {/* ===== Particles ===== */}
-        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEmail)}`} /></circle>
-        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rLark)}`} /></circle>
-        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEll)}`} /></circle>
-        <circle r={4} fill="#ddd" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} ${curve(sendX + sendW / 2, rVM, subX - 65, rVM)}`} /></circle>
-        <circle r={4} fill="#ddd" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} ${curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEmail)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rLark)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEll)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} ${curve(sendX + sendW / 2, rVM, subX - 65, rVM)}`} /></circle>
+        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} ${curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)}`} /></circle>
       </svg>
     </div>
   )
