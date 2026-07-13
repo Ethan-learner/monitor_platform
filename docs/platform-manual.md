@@ -247,4 +247,16 @@ Webhook 服务 (单独部署) 接收:
 2. **告警规则文件 SSH 写入** - 每次操作 SSH 连接, 性能较低
 3. **Doris 历史告警** - 仅展示已同步的告警, 延迟取决于 Flink job
 4. **iframe X-Frame-Options** - 后端代理层 strip, 已通过 `hideFrameHeaders` 处理
-5. **WebHook 接口契约** - 平台假设 webhook 服务提供 `/health` `/status` `/test` `/resend` 端点, 实际需与 `webhook_redis.py` 对齐
+5. **WebHook 接口契约** - 平台假设 webhook 服务提供 `/health` `/status` `/test` `/resend` 端点
+
+## 8. 后续优化项
+
+| 序号 | 项目 | 描述 | 状态 |
+|------|------|------|------|
+| 1 | 元数据库集成 | 构建 MySQL/PostgreSQL 行为日志表，记录告警推送明细（邮件/飞书/Voice） | 待实施 |
+| 2 | 推送记录明细 | Webhook 事件的"告警推送记录"卡片下方展示逐条推送明细（时间/通道/告警/状态） | 预留 UI |
+| 3 | 告警通知渠道扩展 | 在"…"分支处集成电话/短信等新通知渠道 | 待实施 |
+| 4 | Webhook 节点探活告警 | 节点宕机时自动发出平台告警通知 | 待实施 |
+| 5 | OIDC 单点登录 | 对接公司统一身份平台, 替换 dev mock 登录 | 待实施 |
+| 6 | 仪表板首页大屏 | 将总览、告警、拓扑整合为一个全屏大屏展示 | 待讨论 |
+| 7 | 国际化 i18n | 支持中英文切换 | 待讨论 |, 实际需与 `webhook_redis.py` 对齐

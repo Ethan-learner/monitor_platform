@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Statistic, Row, Col, Tag, Typography, Space, Button } from 'antd'
+import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
 import { ReloadOutlined, MailOutlined, SendOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -135,7 +135,7 @@ export default function WebhookEvents() {
       </Card>
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={16}>
+        <Row gutter={16} style={{ marginBottom: 12 }}>
           <Col span={12}>
             <Card size="small"><Row gutter={12}>
               <Col span={12}><Statistic title="邮件推送" prefix={<MailOutlined />} value={stats.email_sent || 0} suffix="条" valueStyle={{ color: '#1677ff', fontSize: 22 }} /></Col>
@@ -149,6 +149,22 @@ export default function WebhookEvents() {
             </Row></Card>
           </Col>
         </Row>
+        <Table
+          dataSource={[
+            { time: '—', channel: '—', alert: '—', status: '—', detail: '元数据库接入后展示推送明细' },
+          ]}
+          rowKey="time"
+          size="small"
+          pagination={false}
+          locale={{ emptyText: '元数据库接入后展示推送明细' }}
+          columns={[
+            { title: '时间', dataIndex: 'time', width: 150, align: 'center' },
+            { title: '通道', dataIndex: 'channel', width: 80, align: 'center', render: (s: string) => <Tag>{s}</Tag> },
+            { title: '告警', dataIndex: 'alert', width: 180 },
+            { title: '状态', dataIndex: 'status', width: 80, align: 'center', render: (s: string) => <Tag color={s === '成功' ? 'green' : 'red'}>{s}</Tag> },
+            { title: '详情', dataIndex: 'detail' },
+          ]}
+        />
       </Card>
 
       <Card title="集群节点" size="small">
