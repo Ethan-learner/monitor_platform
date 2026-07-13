@@ -38,7 +38,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         key: 'system', label: '系统监控', icon: 'PieChartOutlined', children: [
           { key: 'prometheus', label: 'Prometheus', native: true },
           { key: 'vmselect', label: 'VictoriaMetrics', url: '/vmselect/select/0/prometheus/vmui/#/?g0.range_input=30m&g0.end_input=2026-07-07T07%3A21%3A41&g0.relative_time=last_30_minutes&g0.tab=0', hideHeader: true },
-          { key: 'webhook-events', label: 'Webhook', native: true },
+          { key: 'webhook-events', label: 'Webhook 事件', native: true },
         ],
       },
       {
