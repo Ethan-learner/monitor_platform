@@ -102,7 +102,6 @@ function FlowTopo({ health }: { health: HealthData | null }) {
     </div>
   )
 }
-}
 
 export default function WebhookEvents() {
   const [health, setHealth] = useState<HealthData | null>(null)
