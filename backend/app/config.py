@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     doris_password: str = ""
     doris_database: str = "sdi"
 
+    # Webhook 告警分发服务
+    webhook_url: str = "http://172.16.10.27:8090"
+
     # SSH 连接（远程读取告警规则文件，部署在同一服务器时可留空）
     ssh_host: str = ""
     ssh_port: int = 22

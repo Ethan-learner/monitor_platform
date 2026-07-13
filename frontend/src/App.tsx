@@ -11,7 +11,7 @@ import NewRules from './pages/NewRules'
 import RulesList from './pages/RulesList'
 import AlertHistory from './pages/AlertHistory'
 import SilenceList from './pages/SilenceList'
-import SilenceNew from './pages/SilenceNew'
+import WebhookManage from './pages/WebhookManage'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -38,6 +38,7 @@ function DashboardRoute() {
     if (item.key === nativeMenuKeys.rulesList) return <RulesList />
     if (item.key === nativeMenuKeys.alertHistory) return <AlertHistory />
     if (item.key === 'alertmanager-silences') return <SilenceList />
+    if (item.key === 'webhook-manage') return <WebhookManage />
     if (item.key === 'prometheus') return <Prometheus />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
@@ -59,7 +60,6 @@ export default function App() {
           >
             <Route index element={<Overview />} />
             <Route path=":menuKey" element={<DashboardRoute />} />
-            <Route path="silence-new" element={<SilenceNew />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFound />} />
