@@ -31,21 +31,21 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   return (
     <div style={{ width: '100%', overflow: 'auto' }}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', margin: '0 auto' }}>
-        <defs><marker id="ar" viewBox="0 0 8 8" refX={7} refY={4} markerWidth={5} markerHeight={5} orient="auto"><path d="M0,1 L8,4 L0,7" fill="#1677ff" /></marker></defs>
+        <defs><marker id="ar" viewBox="0 0 8 8" refX={7} refY={4} markerWidth={5} markerHeight={5} orient="auto">            <path d="M0,1 L8,4 L0,7" fill="#1677ff" /></marker></defs>
 
         {/* ===== Prometheus ===== */}
         <rect x={pmX - 55} y={row0 - 22} width={110} height={44} rx={10} fill="#fafafa" stroke="#d9d9d9" strokeWidth={1.5} />
         <text x={pmX} y={row0 + 4} textAnchor="middle" fontSize={12} fill="#999" fontWeight={500}>Prometheus</text>
 
         {/* Prometheus → Alertmanager */}
-        <path d={curve(pmX + 55, row0, amX - 65, row0)} fill="none" stroke="#bbb" strokeWidth={1.5} markerEnd="url(#ar)" />
+        <path d={curve(pmX + 55, row0, amX - 65, row0)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
 
         {/* ===== Alertmanager ===== */}
         <rect x={amX - 65} y={row0 - 22} width={130} height={44} rx={10} fill="#f0f5ff" stroke="#2f54eb" strokeWidth={1.5} />
         <text x={amX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#2f54eb" fontWeight={600}>Alertmanager</text>
 
         {/* Alertmanager → Webhook */}
-        <path d={curve(amX + 65, row0, whX - 55, row0)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+        <path d={curve(amX + 65, row0, whX - 55, row0)} fill="none" stroke="#ddd" strokeWidth={2} markerEnd="url(#ar)" />
 
         {/* ===== Webhook ===== */}
         <rect x={whX - 55} y={row0 - 22} width={110} height={44} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
@@ -53,7 +53,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <circle cx={whX - 40} cy={row0 - 12} r={4} fill={dot} />
 
         {/* Webhook → 告警发送 */}
-        <path d={curve(whX + 55, row0, sendX - sendW / 2, row0)} fill="none" stroke="#1677ff" strokeWidth={2} markerEnd="url(#ar)" />
+        <path d={curve(whX + 55, row0, sendX - sendW / 2, row0)} fill="none" stroke="#ddd" strokeWidth={2} markerEnd="url(#ar)" />
 
         {/* ===== 告警发送 ===== */}
         <rect x={sendX - sendW / 2} y={row0 - 22} width={sendW} height={44} rx={10} fill="#f6ffed" stroke="#52c41a" strokeWidth={1.5} />
@@ -100,12 +100,12 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <rect x={subX - 65} y={rKafka - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
         <text x={subX} y={rKafka + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
 
-        {/* ===== Particles (each follows its own exact path) ===== */}
-        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEmail)}`} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rLark)}`} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEll)}`} /></circle>
-        <circle r={4} fill="#fa8c16" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} ${curve(sendX + sendW / 2, rVM, subX - 65, rVM)}`} /></circle>
-        <circle r={4} fill="#722ed1" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} ${curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)}`} /></circle>
+        {/* ===== Particles ===== */}
+        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEmail)}`} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rLark)}`} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.6}><animateMotion dur="2.5s" repeatCount="indefinite" begin="0s" path={`${curve(sendX + sendW / 2, row0, subX - 65, rEll)}`} /></circle>
+        <circle r={4} fill="#ddd" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} ${curve(sendX + sendW / 2, rVM, subX - 65, rVM)}`} /></circle>
+        <circle r={4} fill="#ddd" opacity={0.6}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={`${curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} ${curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)}`} /></circle>
       </svg>
     </div>
   )
@@ -145,7 +145,7 @@ export default function WebhookEvents() {
           </Col>
           <Col span={12}>
             <Card size="small"><Row gutter={12}>
-              <Col span={12}><Statistic title="飞书推送" prefix={<SendOutlined />} value={stats.lark_sent || 0} suffix="条" valueStyle={{ color: '#1677ff', fontSize: 22 }} /></Col>
+              <Col span={12}><Statistic title="飞书推送" prefix={<SendOutlined />} value={stats.lark_sent || 0} suffix="条" valueStyle={{ color: '#bbb', fontSize: 22 }} /></Col>
               <Col span={12}><Statistic title="飞书失败" value={stats.lark_failed || 0} suffix="条" valueStyle={{ color: '#ff4d4f', fontSize: 22 }} /></Col>
             </Row></Card>
           </Col>
