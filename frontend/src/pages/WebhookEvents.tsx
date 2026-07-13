@@ -19,11 +19,6 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   const subX = 920; const endX = 1080; const endW = 160
 
   // Y positions
-  const row0 = 140  // main line
-  const rEmail = 55; const rLark = 140; const rEll = 225
-  const rVM = 345; const rKafka = 480
-
-  // Y positions
   const row0 = 140  // main line: prometheus(center), webhook, 告警发送 center
   const rEmail = 55; const rLark = 140; const rEll = 225  // 告警发送 branches
   const rVM = 345; const rKafka = 480                     // VM / Kafka
