@@ -1,0 +1,2 @@
+.flow-line { stroke-dasharray: 6 12; animation: flowDash 0.8s linear infinite; }
+@keyframes flowDash { to { stroke-dashoffset: -18; } }
