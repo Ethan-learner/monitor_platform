@@ -27,14 +27,14 @@ async def health() -> dict:
 
 @router.get("/status")
 async def status() -> dict:
-    """获取 webhook 服务状态 (Redis/Kafka/线程池等)"""
+    """从 webhook 服务获取 /health 存活状态"""
     start = time.monotonic()
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(f"{settings.webhook_url}/status")
+        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
+            r = await client.get(f"{settings.webhook_url}/health")
             latency = int((time.monotonic() - start) * 1000)
             if r.status_code < 500:
-                return {"status": "up", "latencyMs": latency, "data": r.json()}
+                return {"latencyMs": latency, **r.json()}
             raise HTTPException(status_code=502, detail="webhook_unreachable")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"webhook_error: {e}")

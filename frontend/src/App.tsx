@@ -11,6 +11,7 @@ import NewRules from './pages/NewRules'
 import RulesList from './pages/RulesList'
 import AlertHistory from './pages/AlertHistory'
 import SilenceList from './pages/SilenceList'
+import WebhookEvents from './pages/WebhookEvents'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -37,6 +38,7 @@ function DashboardRoute() {
     if (item.key === nativeMenuKeys.rulesList) return <RulesList />
     if (item.key === nativeMenuKeys.alertHistory) return <AlertHistory />
     if (item.key === 'alertmanager-silences') return <SilenceList />
+    if (item.key === 'webhook-events') return <WebhookEvents />
     if (item.key === 'prometheus') return <Prometheus />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
