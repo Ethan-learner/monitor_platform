@@ -1,3 +1,4 @@
+import asyncio
 import time
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -8,36 +9,52 @@ from app.config import settings
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
 
-@router.get("/health")
-async def health() -> dict:
-    """检查 webhook 服务存活"""
+def _node_list():
+    return [u.strip() for u in settings.webhook_nodes.split(",") if u.strip()]
+
+
+async def _probe_node(url: str) -> dict:
     start = time.monotonic()
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(f"{settings.webhook_url}/health")
-            latency = int((time.monotonic() - start) * 1000)
+        async with httpx.AsyncClient(timeout=5.0, verify=False) as c:
+            r = await c.get(f"{url}/health")
+            data = r.json() if r.status_code < 500 else {}
             return {
-                "status": "up" if r.status_code < 500 else "down",
-                "latencyMs": latency,
-                "code": r.status_code,
+                "url": url,
+                "up": r.status_code < 500,
+                "latency_ms": int((time.monotonic() - start) * 1000),
+                "redis_ok": data.get("redis_ok", False),
+                "kafka_ok": data.get("kafka_ok", False),
+                "mail_ok": data.get("mail_ok", False),
+                "lark_ok": data.get("lark_ok", False),
+                "vm_ok": data.get("vm_ok", False),
+                "stats": data.get("stats", {}),
+                "timestamp": data.get("timestamp", ""),
             }
     except Exception:
-        return {"status": "down", "latencyMs": None, "code": None}
+        return {"url": url, "up": False, "latency_ms": None}
+
+
+@router.get("/health")
+async def health() -> dict:
+    start = time.monotonic()
+    nodes = _node_list()
+    tasks = [_probe_node(u) for u in nodes]
+    results = await asyncio.gather(*tasks)
+    any_up = any(r["up"] for r in results)
+    return {
+        "status": "up" if any_up else "down",
+        "latency_ms": int((time.monotonic() - start) * 1000),
+        "nodes": results,
+    }
 
 
 @router.get("/status")
 async def status() -> dict:
-    """从 webhook 服务获取 /health 存活状态"""
-    start = time.monotonic()
-    try:
-        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
-            r = await client.get(f"{settings.webhook_url}/health")
-            latency = int((time.monotonic() - start) * 1000)
-            if r.status_code < 500:
-                return {"latencyMs": latency, **r.json()}
-            raise HTTPException(status_code=502, detail="webhook_unreachable")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"webhook_error: {e}")
+    results = await asyncio.gather(*[_probe_node(u) for u in _node_list()])
+    # Return the first healthy node's full data, plus all nodes
+    primary = next((r for r in results if r["up"]), results[0] if results else {})
+    return {**primary, "nodes": results}
 
 
 class TestAlert(BaseModel):
@@ -48,17 +65,15 @@ class TestAlert(BaseModel):
 
 @router.post("/test")
 async def test_alert(body: TestAlert) -> dict:
-    """向 webhook 发送测试告警"""
-    start = time.monotonic()
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(f"{settings.webhook_url}/test", json=body.dict())
-            latency = int((time.monotonic() - start) * 1000)
-            if r.status_code < 400:
-                return {"status": "sent", "latencyMs": latency, "data": r.json()}
-            raise HTTPException(status_code=502, detail="webhook_rejected")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"webhook_error: {e}")
+    for url in _node_list():
+        try:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as c:
+                r = await c.post(f"{url}/test", json=body.dict())
+                if r.status_code < 400:
+                    return {"status": "sent", "node": url}
+        except Exception:
+            continue
+    raise HTTPException(status_code=502, detail="all webhook nodes unreachable")
 
 
 class ResendAlert(BaseModel):
@@ -68,14 +83,12 @@ class ResendAlert(BaseModel):
 
 @router.post("/resend")
 async def resend_alert(body: ResendAlert) -> dict:
-    """重发指定告警"""
-    start = time.monotonic()
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(f"{settings.webhook_url}/resend", json=body.dict())
-            latency = int((time.monotonic() - start) * 1000)
-            if r.status_code < 400:
-                return {"status": "resent", "latencyMs": latency, "data": r.json()}
-            raise HTTPException(status_code=502, detail="resend_failed")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"webhook_error: {e}")
+    for url in _node_list():
+        try:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as c:
+                r = await c.post(f"{url}/resend", json=body.dict())
+                if r.status_code < 400:
+                    return {"status": "resent", "node": url}
+        except Exception:
+            continue
+    raise HTTPException(status_code=502, detail="all webhook nodes unreachable")
