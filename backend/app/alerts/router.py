@@ -231,15 +231,18 @@ async def list_alert_records(
             cur = conn.cursor()
             cur.execute(f"SELECT COUNT(*) FROM alert_records {where}", params)
             total = cur.fetchone()[0]
-            cur.execute(f"SELECT id, alert_name, instance, severity, status, department, project, env, service, summary, starts_at, ends_at FROM alert_records {where} ORDER BY starts_at DESC LIMIT %s OFFSET %s", params + [limit, offset])
+            cur.execute(f"SELECT id, alert_name, instance, severity, status, department, project, env, service, job, criticality, owner, resource_category, resource_type, region, summary, starts_at, ends_at FROM alert_records {where} ORDER BY starts_at DESC LIMIT %s OFFSET %s", params + [limit, offset])
             rows = cur.fetchall()
             cur.close()
             return {
                 "total": total,
                 "data": [
                     {"id": r[0], "alertName": r[1], "instance": r[2], "severity": r[3], "status": r[4],
-                     "department": r[5], "project": r[6], "env": r[7], "service": r[8], "summary": r[9],
-                     "startsAt": str(r[10]) if r[10] else "", "endsAt": str(r[11]) if r[11] else ""}
+                     "department": r[5], "project": r[6], "env": r[7], "service": r[8],
+                     "job": r[9] or "", "criticality": r[10] or "", "owner": r[11] or "",
+                     "resourceCategory": r[12] or "", "resourceType": r[13] or "", "region": r[14] or "",
+                     "summary": r[15] or "",
+                     "startsAt": str(r[16]) if r[16] else "", "endsAt": str(r[17]) if r[17] else ""}
                     for r in rows
                 ],
             }
