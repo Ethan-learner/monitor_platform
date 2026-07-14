@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.audit import log_audit
 from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["alerts"])
@@ -61,6 +62,9 @@ async def create_silence(body: dict) -> dict:
         async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=body)
             resp.raise_for_status()
+            log_audit(body.get("createdBy", "unknown"), "silences", "create",
+                       f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
+                       f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
             return resp.json()
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="alertmanager_unreachable")
@@ -72,6 +76,7 @@ async def expire_silence(sid: str) -> dict:
         async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.delete(f"{settings.alertmanager_url}/api/v2/silence/{sid}")
             if resp.status_code < 300:
+                log_audit("system", "silences", "expire", f"sid={sid}")
                 return {"status": "expired"}
             raise HTTPException(status_code=502, detail="expire_failed")
     except (httpx.HTTPError, httpx.ConnectError):

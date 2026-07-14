@@ -8,6 +8,7 @@ import paramiko
 import yaml
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.audit import log_audit
 from app.config import settings
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
@@ -276,6 +277,7 @@ async def update_rule(body: dict) -> dict:
         raise HTTPException(status_code=404, detail="rule not found")
 
     _write_file(filename, yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    log_audit(body.get("deletedBy", "system"), "rules", "update", f"{new_name} in {filename}")
     return {"status": "updated"}
 
 
@@ -349,6 +351,7 @@ async def delete_rule(body: dict) -> dict:
         disabled = {"deleted_rules": []}
     disabled["deleted_rules"].append(deleted_entry)
     _write_file("_disabled.yml", yaml.dump(disabled, default_flow_style=False, allow_unicode=True))
+    log_audit(body.get("deletedBy", "system"), "rules", "delete", f"{rule_name} from {filename}", body.get("reason", ""))
 
     return {"status": "deleted", "rule": rule_name}
 
