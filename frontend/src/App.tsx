@@ -13,7 +13,6 @@ import AlertHistory from './pages/AlertHistory'
 import SilenceList from './pages/SilenceList'
 import SilenceNew from './pages/SilenceNew'
 import WebhookEvents from './pages/WebhookEvents'
-import RecipientConfig from './pages/RecipientConfig'
 import StrategyConfig from './pages/StrategyConfig'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
@@ -42,7 +41,6 @@ function DashboardRoute() {
     if (item.key === nativeMenuKeys.alertHistory) return <AlertHistory />
     if (item.key === 'alertmanager-silences') return <SilenceList />
     if (item.key === 'webhook-events') return <WebhookEvents />
-    if (item.key === 'recipient-config') return <RecipientConfig />
     if (item.key === 'strategy-config') return <StrategyConfig />
     if (item.key === 'prometheus') return <Prometheus />
   }
