@@ -147,17 +147,17 @@ export default function AlertHistory() {
           onShowSizeChange: handleShowSizeChange,
         }}
         columns={[
-          { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true },
+          { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true, align: 'center' },
           { title: '级别', dataIndex: 'severity', width: 70, align: 'center', render: (s: string) => <Tag color={sevColor[s] || 'default'}>{s}</Tag> },
-          { title: '实例', dataIndex: 'instance', width: 200, ellipsis: true },
+          { title: '实例', dataIndex: 'instance', width: 200, ellipsis: true, align: 'center' },
           { title: '开始时间', dataIndex: 'startsAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
           { title: '结束时间', dataIndex: 'endsAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
           { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s || '-'}</Tag> },
-          { title: '部门', dataIndex: 'department', width: 90, ellipsis: true },
-          { title: '项目', dataIndex: 'project', width: 80, ellipsis: true },
+          { title: '部门', dataIndex: 'department', width: 90, ellipsis: true, align: 'center' },
+          { title: '项目', dataIndex: 'project', width: 80, ellipsis: true, align: 'center' },
           { title: '环境', dataIndex: 'env', width: 60, align: 'center' },
-          { title: '服务', dataIndex: 'service', width: 120, ellipsis: true },
-          { title: '描述', dataIndex: 'summary', ellipsis: true, width: 100 },
+          { title: '服务', dataIndex: 'service', width: 120, ellipsis: true, align: 'center' },
+          { title: '描述', dataIndex: 'summary', ellipsis: true, width: 100, align: 'center' },
         ]}
       />
     </div>
