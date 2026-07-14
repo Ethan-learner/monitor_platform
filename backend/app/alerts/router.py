@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.audit import log_audit
 from app.config import settings
+from app.db import get_db
 
 router = APIRouter(prefix="/api", tags=["alerts"])
 
@@ -62,10 +63,27 @@ async def create_silence(body: dict) -> dict:
         async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=body)
             resp.raise_for_status()
+            result = resp.json()
+            # 写入 audit_log
             log_audit(body.get("createdBy", "unknown"), "silences", "create",
                        f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
                        f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
-            return resp.json()
+            # 写入 silence_history
+            try:
+                m = body.get("matchers", [{}])[0]
+                starts = body.get("startsAt", "")
+                ends = body.get("endsAt", "")
+                if starts: starts = starts.replace("T", " ").replace("Z", "")[:19]
+                if ends: ends = ends.replace("T", " ").replace("Z", "")[:19]
+                with get_db(readonly=False) as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "INSERT INTO silence_history (silence_id, operator, action, matcher_name, matcher_value, starts_at, ends_at, comment) VALUES (%s,%s,'create',%s,%s,%s,%s,%s)",
+                        (result.get("silenceID", ""), body.get("createdBy", "unknown"),
+                         m.get("name", ""), m.get("value", ""),
+                         starts, ends, body.get("comment", "")))
+            except Exception: pass
+            return result
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="alertmanager_unreachable")
 
@@ -77,6 +95,11 @@ async def expire_silence(sid: str) -> dict:
             resp = await client.delete(f"{settings.alertmanager_url}/api/v2/silence/{sid}")
             if resp.status_code < 300:
                 log_audit("system", "silences", "expire", f"sid={sid}")
+                try:
+                    with get_db(readonly=False) as conn:
+                        cur = conn.cursor()
+                        cur.execute("INSERT INTO silence_history (silence_id, operator, action) VALUES (%s,'system','expire')", (sid,))
+                except Exception: pass
                 return {"status": "expired"}
             raise HTTPException(status_code=502, detail="expire_failed")
     except (httpx.HTTPError, httpx.ConnectError):

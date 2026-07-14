@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # MySQL 元数据库
     mysql_write_host: str = "172.16.10.99"
     mysql_write_port: int = 3308
-    mysql_read_host: str = ""
+    mysql_read_host: str = "172.16.10.99"
     mysql_read_port: int = 3309
     mysql_user: str = "monitor"
     mysql_password: str = "123456"
