@@ -248,3 +248,64 @@ async def list_alert_records(
             }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+# ========== 接收人配置 CRUD ==========
+
+@router.get("/alerts/recipients")
+async def list_recipients() -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, rule_name, severity, channel, recipients, enabled FROM alert_recipients ORDER BY id")
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {"id": r[0], "ruleName": r[1] or "", "severity": r[2] or "", "channel": r[3], "recipients": r[4], "enabled": r[5]}
+                for r in rows
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+@router.post("/alerts/recipients")
+async def create_recipient(body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO alert_recipients (rule_name, severity, channel, recipients) VALUES (%s,%s,%s,%s)",
+                (body.get("ruleName", "default"), body.get("severity", ""), body["channel"], str(body["recipients"]).replace("'", '"')),
+            )
+            rid = cur.lastrowid
+            cur.close()
+            return {"id": rid, "status": "created"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/alerts/recipients/{rid}")
+async def update_recipient(rid: int, body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE alert_recipients SET rule_name=%s, severity=%s, channel=%s, recipients=%s, enabled=%s WHERE id=%s",
+                (body.get("ruleName", "default"), body.get("severity", ""), body["channel"], str(body["recipients"]).replace("'", '"'), body.get("enabled", 1), rid),
+            )
+            cur.close()
+            return {"status": "updated"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/alerts/recipients/{rid}")
+async def delete_recipient(rid: int) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_recipients SET enabled=0 WHERE id=%s", (rid,))
+            cur.close()
+            return {"status": "disabled"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
