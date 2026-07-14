@@ -86,7 +86,30 @@ CREATE TABLE IF NOT EXISTS alert_rules (
     INDEX idx_file_name (file_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警规则元数据';
 
--- 6. 平台配置 (KV)
+-- 7. 告警记录表
+CREATE TABLE IF NOT EXISTS alert_records (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    alert_name VARCHAR(255) NOT NULL COMMENT '告警名称',
+    instance VARCHAR(255) COMMENT '实例',
+    severity VARCHAR(20) COMMENT '级别: critical/warning/info',
+    status VARCHAR(20) COMMENT '状态: firing/resolved',
+    department VARCHAR(100) COMMENT '部门',
+    project VARCHAR(100) COMMENT '项目',
+    env VARCHAR(50) COMMENT '环境',
+    service VARCHAR(100) COMMENT '服务',
+    summary TEXT COMMENT '告警摘要',
+    labels JSON COMMENT '原始标签',
+    starts_at DATETIME COMMENT '开始时间',
+    ends_at DATETIME COMMENT '结束时间',
+    fingerprint VARCHAR(100) COMMENT '去重指纹',
+    source VARCHAR(50) COMMENT '来源: prometheus/alertmanager',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_alert_name (alert_name),
+    INDEX idx_status (status),
+    INDEX idx_severity (severity),
+    INDEX idx_starts_at (starts_at),
+    INDEX idx_fingerprint (fingerprint)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警记录表'; (KV)
 CREATE TABLE IF NOT EXISTS platform_config (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     config_key VARCHAR(100) NOT NULL UNIQUE COMMENT '配置键',
