@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
-import { ReloadOutlined, MailOutlined, SendOutlined } from '@ant-design/icons'
+import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 import { cacheGet, cacheSet } from '../lib/cache'
 
@@ -166,20 +166,6 @@ export default function WebhookEvents() {
       </Card>
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={16} style={{ marginBottom: 12 }}>
-          <Col span={12}>
-            <Card size="small"><Row gutter={12}>
-              <Col span={12}><Statistic title="邮件推送" prefix={<MailOutlined />} value={stats.email_sent || 0} suffix="条" valueStyle={{ color: '#1677ff', fontSize: 22 }} /></Col>
-              <Col span={12}><Statistic title="邮件失败" value={stats.email_failed || 0} suffix="条" valueStyle={{ color: '#ff4d4f', fontSize: 22 }} /></Col>
-            </Row></Card>
-          </Col>
-          <Col span={12}>
-            <Card size="small"><Row gutter={12}>
-              <Col span={12}><Statistic title="飞书推送" prefix={<SendOutlined />} value={stats.lark_sent || 0} suffix="条" valueStyle={{ color: '#1677ff', fontSize: 22 }} /></Col>
-              <Col span={12}><Statistic title="飞书失败" value={stats.lark_failed || 0} suffix="条" valueStyle={{ color: '#ff4d4f', fontSize: 22 }} /></Col>
-            </Row></Card>
-          </Col>
-        </Row>
         <Table
           dataSource={groupedLog.length > 0 ? groupedLog : [{ time: '', alert: '', instance: '', reason: '', email: '', lark: '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }]}
           rowKey={(r, i) => r.time + i}
