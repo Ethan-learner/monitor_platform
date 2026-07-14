@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
 import { ReloadOutlined, MailOutlined, SendOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
@@ -6,7 +6,7 @@ import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
-interface PushRecord { alertName: string; instance: string; channel: string; status: string; summary: string; createdAt: string }
+interface PushRecord { alertName: string; instance: string; channel: string; status: string; summary: string; recipient: string; alertReason: string; createdAt: string }
 
 // ... FlowTopo remains unchanged ...
 
@@ -74,11 +74,11 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <rect x={subX - 65} y={rVM - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
         <text x={subX} y={rVM + 4} textAnchor="middle" fontSize={11} fill="#999">VictoriaMetrics</text>
 
-        {/* Kafka 推送 */}
+        {/* 系统写入 */}
         <rect x={sendX - sendW / 2} y={rKafka - 18} width={sendW} height={36} rx={10} fill="#f9f0ff" stroke="#722ed1" strokeWidth={1.5} />
-        <text x={sendX} y={rKafka + 4} textAnchor="middle" fontSize={12} fill="#722ed1" fontWeight={600}>Kafka 推送</text>
+        <text x={sendX} y={rKafka + 4} textAnchor="middle" fontSize={12} fill="#722ed1" fontWeight={600}>系统写入</text>
         <rect x={subX - 65} y={rKafka - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
-        <text x={subX} y={rKafka + 4} textAnchor="middle" fontSize={11} fill="#999">Kafka → Doris</text>
+        <text x={subX} y={rKafka + 4} textAnchor="middle" fontSize={11} fill="#999">MySql</text>
 
         {/* ===== Connection lines ===== */}
         {/* Webhook → 告警发送 */}
@@ -90,7 +90,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         {/* Webhook → VM 落盘 → VictoriaMetrics */}
         <path d={curve(whX + 55, row0 + 18, sendX - sendW / 2, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <path d={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
-        {/* Webhook → Kafka 推送 → Kafka → Doris */}
+        {/* Webhook → 系统写入 → MySql */}
         <path d={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
         <path d={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} fill="none" stroke="#ddd" strokeWidth={1.5} markerEnd="url(#ar)" />
 
@@ -119,7 +119,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
         <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
         <circle r={4} fill="#fa8c16" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, rVM, subX - 65, rVM)} /></circle>
 
-        {/* Webhook → Kafka 推送 → Kafka → Doris (purple, same begin) */}
+        {/* Webhook → 系统写入 → MySql (purple, same begin) */}
         <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
         <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0 + 36, sendX - sendW / 2, rKafka)} /></circle>
         <circle r={4} fill="#722ed1" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, rKafka, subX - 65, rKafka)} /></circle>
@@ -142,6 +142,17 @@ export default function WebhookEvents() {
     if (n.stats) Object.entries(n.stats).forEach(([k, v]) => { a[k] = (a[k] || 0) + (v as number) })
     return a
   }, {} as Record<string, number>) || {}
+
+  const groupedLog = useMemo(() => {
+    const map: Record<string, { time: string; alert: string; instance: string; reason: string; email: string; emailOk: boolean; lark: string; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
+    pushLog.forEach((r) => {
+      const key = `${r.alertName}|${r.instance}`
+      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, reason: r.alertReason || r.summary || '', email: '', emailOk: false, lark: '', larkOk: false, emailRecipient: '', larkRecipient: '' }
+      if (r.channel === 'email') { map[key].email = r.status; map[key].emailOk = r.status === 'success'; map[key].emailRecipient = r.recipient || '' }
+      if (r.channel === 'lark') { map[key].lark = r.status; map[key].larkOk = r.status === 'success'; map[key].larkRecipient = r.recipient || '' }
+    })
+    return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
+  }, [pushLog])
 
   return (
     <div style={{ padding: 16 }}>
@@ -170,17 +181,33 @@ export default function WebhookEvents() {
           </Col>
         </Row>
         <Table
-          dataSource={pushLog.length > 0 ? pushLog : [{ alertName: '', instance: '', channel: '', status: '', summary: '', createdAt: '' }]}
-          rowKey={(r, i) => r.createdAt + i}
+          dataSource={groupedLog.length > 0 ? groupedLog : [{ time: '', alert: '', instance: '', reason: '', email: '', lark: '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }]}
+          rowKey={(r, i) => r.time + i}
           size="small"
           pagination={false}
           locale={{ emptyText: 'Webhook 服务未写入元数据库，待 webhook 集成 MySQL 后展示' }}
           columns={[
-            { title: '时间', dataIndex: 'createdAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: '通道', dataIndex: 'channel', width: 80, align: 'center', render: (s: string) => s ? <Tag>{s}</Tag> : '—' },
-            { title: '告警', dataIndex: 'alertName', width: 180, render: (s: string) => s || '—' },
-            { title: '状态', dataIndex: 'status', width: 80, align: 'center', render: (s: string) => s ? <Tag color={s === 'success' ? 'green' : 'red'}>{s}</Tag> : '—' },
+            { title: '时间', dataIndex: 'time', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: '告警名称', dataIndex: 'alert', width: 160, render: (s: string) => s || '—' },
+            {
+              title: '通道 / 状态', width: 200,
+              render: (_: any, r: typeof groupedLog[0]) => (
+                <div style={{ lineHeight: 1.8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Tag color={r.emailOk ? 'green' : r.email ? 'red' : 'default'} style={{ margin: 0 }}>邮件</Tag>
+                    <span style={{ color: r.emailOk ? '#52c41a' : r.email ? '#ff4d4f' : '#999', fontSize: 12 }}>{r.email ? (r.emailOk ? '成功' : '失败') : '—'}</span>
+                    {r.emailRecipient && <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{r.emailRecipient}</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Tag color={r.larkOk ? 'green' : r.lark ? 'red' : 'default'} style={{ margin: 0 }}>飞书</Tag>
+                    <span style={{ color: r.larkOk ? '#52c41a' : r.lark ? '#ff4d4f' : '#999', fontSize: 12 }}>{r.lark ? (r.larkOk ? '成功' : '失败') : '—'}</span>
+                    {r.larkRecipient && <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{r.larkRecipient}</span>}
+                  </div>
+                </div>
+              ),
+            },
             { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
+            { title: '告警原因', dataIndex: 'reason', ellipsis: true },
           ]}
         />
       </Card>
