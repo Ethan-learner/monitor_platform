@@ -46,7 +46,7 @@ export default function AlertHistory() {
       if (currentFilters.status) params.status = currentFilters.status
       if (currentFilters.severity) params.severity = currentFilters.severity
 
-      const { data: d } = await api.get('/alerts/history', { params })
+      const { data: d } = await api.get('/alerts/records', { params })
       setData(d.data)
       setTotal(d.total)
     } catch {} finally { setLoading(false) }

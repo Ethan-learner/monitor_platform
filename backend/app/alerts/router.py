@@ -10,6 +10,8 @@ from app.db import get_db
 
 router = APIRouter(prefix="/api", tags=["alerts"])
 
+router = APIRouter(prefix="/api", tags=["alerts"])
+
 _BEIJING_TZ = timezone(timedelta(hours=8))
 
 
@@ -191,3 +193,49 @@ async def delete_alert_history(alertname: str) -> dict:
         raise HTTPException(status_code=502, detail=f"vmselect_unreachable: {e}")
 
     return {"status": "deleted", "alertname": alertname}
+
+
+@router.get("/alerts/records")
+async def list_alert_records(
+    limit: int = Query(20, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    alertname: str = Query(""),
+    instance: str = Query(""),
+    status: str = Query(""),
+    severity: str = Query(""),
+) -> dict:
+    """从 MySQL alert_records 表读取告警记录"""
+    where = "WHERE 1=1"
+    params = []
+    if alertname:
+        where += " AND alert_name LIKE %s"
+        params.append(f"%{alertname}%")
+    if instance:
+        where += " AND instance LIKE %s"
+        params.append(f"%{instance}%")
+    if status:
+        where += " AND status = %s"
+        params.append(status)
+    if severity:
+        where += " AND severity = %s"
+        params.append(severity)
+
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute(f"SELECT COUNT(*) FROM alert_records {where}", params)
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT id, alert_name, instance, severity, status, department, project, env, service, summary, starts_at, ends_at FROM alert_records {where} ORDER BY starts_at DESC LIMIT %s OFFSET %s", params + [limit, offset])
+            rows = cur.fetchall()
+            cur.close()
+            return {
+                "total": total,
+                "data": [
+                    {"id": r[0], "alertName": r[1], "instance": r[2], "severity": r[3], "status": r[4],
+                     "department": r[5], "project": r[6], "env": r[7], "service": r[8], "summary": r[9],
+                     "startsAt": str(r[10]) if r[10] else "", "endsAt": str(r[11]) if r[11] else ""}
+                    for r in rows
+                ],
+            }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
