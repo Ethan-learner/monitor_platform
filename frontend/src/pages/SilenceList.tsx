@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, DatePicker, Select, message, Popconfirm } from 'antd'
 import { ReloadOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { fetchSilences, expireSilence, createSilence, type Silence } from '../lib/rules'
 import { cacheGet, cacheSet } from '../lib/cache'
 
@@ -92,7 +93,7 @@ export default function SilenceList() {
           <Form.Item label="标签名" name="matcherName"><Input placeholder="alertname" /></Form.Item>
           <Form.Item label="匹配值" name="matcherValue" rules={[{ required: true, message: '必填' }]}><Input placeholder="InstanceDown" /></Form.Item>
           <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }]}>
-            <RangePicker showTime style={{ width: '100%' }} />
+            <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
           </Form.Item>
           <Form.Item label="创建人" name="createdBy"><Input /></Form.Item>
           <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="维护窗口" /></Form.Item>

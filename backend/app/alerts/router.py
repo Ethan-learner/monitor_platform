@@ -79,20 +79,17 @@ async def create_silence(body: dict) -> dict:
             log_audit(body.get("createdBy", "unknown"), "silences", "create",
                        f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
                        f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
-            # 写入 silence_history
+            # 写入 silence_records (upsert)
             try:
                 m = body.get("matchers", [{}])[0]
-                starts = body.get("startsAt", "")
-                ends = body.get("endsAt", "")
-                if starts: starts = starts.replace("T", " ").replace("Z", "")[:19]
-                if ends: ends = ends.replace("T", " ").replace("Z", "")[:19]
+                starts = body.get("startsAt", "").replace("T", " ").replace("Z", "")[:19]
+                ends = body.get("endsAt", "").replace("T", " ").replace("Z", "")[:19]
                 with get_db(readonly=False) as conn:
                     cur = conn.cursor()
                     cur.execute(
-                        "INSERT INTO silence_history (silence_id, operator, action, matcher_name, matcher_value, starts_at, ends_at, comment) VALUES (%s,%s,'create',%s,%s,%s,%s,%s)",
+                        "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,'active') ON DUPLICATE KEY UPDATE status='active', starts_at=VALUES(starts_at), ends_at=VALUES(ends_at)",
                         (result.get("silenceID", ""), body.get("createdBy", "unknown"),
-                         m.get("name", ""), m.get("value", ""),
-                         starts, ends, body.get("comment", "")))
+                         m.get("name", ""), m.get("value", ""), starts, ends, body.get("comment", "")))
             except Exception: pass
             return result
     except (httpx.HTTPError, httpx.ConnectError):
@@ -109,7 +106,7 @@ async def expire_silence(sid: str) -> dict:
                 try:
                     with get_db(readonly=False) as conn:
                         cur = conn.cursor()
-                        cur.execute("INSERT INTO silence_history (silence_id, operator, action) VALUES (%s,'system','expire')", (sid,))
+                        cur.execute("UPDATE silence_records SET status='expired' WHERE silence_id=%s", (sid,))
                 except Exception: pass
                 return {"status": "expired"}
             raise HTTPException(status_code=502, detail="expire_failed")
