@@ -6,6 +6,11 @@ import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
+interface PushRecord { alertName: string; instance: string; channel: string; status: string; summary: string; createdAt: string }
+
+// ... FlowTopo remains unchanged ...
+
+
 interface NodeInfo { url: string; up: boolean; latency_ms: number | null; stats?: Record<string, number> }
 interface HealthData { status: string; nodes?: NodeInfo[]; redis_ok?: boolean; timestamp?: string }
 
@@ -127,7 +132,8 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 export default function WebhookEvents() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [loading, setLoading] = useState(false)
-  const load = async () => { setLoading(true); try { const cached = cacheGet('webhook:health'); if (cached) setHealth(cached); const { data } = await api.get('/webhook/health'); setHealth(data); cacheSet('webhook:health', data) } catch { setHealth(null) }; setLoading(false) }
+  const [pushLog, setPushLog] = useState<PushRecord[]>([])
+  const load = async () => { setLoading(true); try { const cached = cacheGet('webhook:health'); if (cached) setHealth(cached); const [{ data: h }, { data: p }] = await Promise.all([api.get('/webhook/health'), api.get('/webhook/push-log', { params: { limit: 20 } })]); setHealth(h); setPushLog(p || []); cacheSet('webhook:health', h) } catch { setHealth(null); setPushLog([]) }; setLoading(false) }
   useEffect(() => { load() }, [])
 
   const nodes = health?.nodes || []
@@ -164,17 +170,17 @@ export default function WebhookEvents() {
           </Col>
         </Row>
         <Table
-          dataSource={[{ time: '—', channel: '—', alert: '—', status: '—', detail: '元数据库接入后展示推送明细' }]}
-          rowKey="time"
+          dataSource={pushLog.length > 0 ? pushLog : [{ alertName: '', instance: '', channel: '', status: '', summary: '', createdAt: '' }]}
+          rowKey={(r, i) => r.createdAt + i}
           size="small"
           pagination={false}
-          locale={{ emptyText: '元数据库接入后展示推送明细' }}
+          locale={{ emptyText: 'Webhook 服务未写入元数据库，待 webhook 集成 MySQL 后展示' }}
           columns={[
-            { title: '时间', dataIndex: 'time', width: 150, align: 'center' },
-            { title: '通道', dataIndex: 'channel', width: 80, align: 'center', render: (s: string) => <Tag>{s}</Tag> },
-            { title: '告警', dataIndex: 'alert', width: 180 },
-            { title: '状态', dataIndex: 'status', width: 80, align: 'center', render: (s: string) => <Tag color={s === '成功' ? 'green' : 'red'}>{s}</Tag> },
-            { title: '详情', dataIndex: 'detail' },
+            { title: '时间', dataIndex: 'createdAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: '通道', dataIndex: 'channel', width: 80, align: 'center', render: (s: string) => s ? <Tag>{s}</Tag> : '—' },
+            { title: '告警', dataIndex: 'alertName', width: 180, render: (s: string) => s || '—' },
+            { title: '状态', dataIndex: 'status', width: 80, align: 'center', render: (s: string) => s ? <Tag color={s === 'success' ? 'green' : 'red'}>{s}</Tag> : '—' },
+            { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
           ]}
         />
       </Card>

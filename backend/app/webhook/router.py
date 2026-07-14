@@ -1,10 +1,11 @@
 import asyncio
 import time
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from app.config import settings
+from app.db import get_db
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
@@ -92,3 +93,23 @@ async def resend_alert(body: ResendAlert) -> dict:
         except Exception:
             continue
     raise HTTPException(status_code=502, detail="all webhook nodes unreachable")
+
+
+@router.get("/push-log")
+async def list_push_log(limit: int = Query(20, ge=1, le=100)) -> list:
+    """读取最近 N 条 Webhook 推送记录"""
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT alert_name, instance, channel, status, summary, created_at FROM webhook_push_log ORDER BY created_at DESC LIMIT %s",
+                (limit,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {"alertName": r[0], "instance": r[1], "channel": r[2], "status": r[3], "summary": r[4], "createdAt": str(r[5])}
+                for r in rows
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
