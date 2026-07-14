@@ -144,12 +144,14 @@ export default function WebhookEvents() {
   }, {} as Record<string, number>) || {}
 
   const groupedLog = useMemo(() => {
-    const map: Record<string, { time: string; alert: string; instance: string; reason: string; email: string; emailOk: boolean; lark: string; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
+    const map: Record<string, { time: string; alert: string; instance: string; reason: string; emailOk: boolean; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
     pushLog.forEach((r) => {
       const key = `${r.alertName}|${r.instance}`
-      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, reason: r.alertReason || r.summary || '', email: '', emailOk: false, lark: '', larkOk: false, emailRecipient: '', larkRecipient: '' }
-      if (r.channel === 'email') { map[key].email = r.status; map[key].emailOk = r.status === 'success'; map[key].emailRecipient = r.recipient || '' }
-      if (r.channel === 'lark') { map[key].lark = r.status; map[key].larkOk = r.status === 'success'; map[key].larkRecipient = r.recipient || '' }
+      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, reason: r.alertReason || r.summary || '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
+      const ok = r.status === 1 || r.status === '1' || r.status === 'success'
+      if (r.channel === 'email') { map[key].emailOk = ok; map[key].emailRecipient = r.recipient || '' }
+      if (r.channel === 'lark') { map[key].larkOk = ok; map[key].larkRecipient = r.recipient || '' }
+      if (r.createdAt > map[key].time) map[key].time = r.createdAt
     })
     return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
   }, [pushLog])
@@ -167,33 +169,36 @@ export default function WebhookEvents() {
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
         <Table
-          dataSource={groupedLog.length > 0 ? groupedLog : [{ time: '', alert: '', instance: '', reason: '', email: '', lark: '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }]}
+          dataSource={groupedLog.length > 0 ? groupedLog : [{ time: '', alert: '', instance: '', reason: '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }]}
           rowKey={(r, i) => r.time + i}
-          size="small"
+          size="middle"
           pagination={false}
-          locale={{ emptyText: 'Webhook 服务未写入元数据库，待 webhook 集成 MySQL 后展示' }}
+          locale={{ emptyText: '暂无推送记录' }}
           columns={[
             { title: '时间', dataIndex: 'time', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
             { title: '告警名称', dataIndex: 'alert', width: 160, render: (s: string) => s || '—' },
+            { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
             {
-              title: '通道 / 状态', width: 200,
+              title: '邮件', width: 160,
               render: (_: any, r: typeof groupedLog[0]) => (
-                <div style={{ lineHeight: 1.8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Tag color={r.emailOk ? 'green' : r.email ? 'red' : 'default'} style={{ margin: 0 }}>邮件</Tag>
-                    <span style={{ color: r.emailOk ? '#52c41a' : r.email ? '#ff4d4f' : '#999', fontSize: 12 }}>{r.email ? (r.emailOk ? '成功' : '失败') : '—'}</span>
-                    {r.emailRecipient && <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{r.emailRecipient}</span>}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Tag color={r.larkOk ? 'green' : r.lark ? 'red' : 'default'} style={{ margin: 0 }}>飞书</Tag>
-                    <span style={{ color: r.larkOk ? '#52c41a' : r.lark ? '#ff4d4f' : '#999', fontSize: 12 }}>{r.lark ? (r.larkOk ? '成功' : '失败') : '—'}</span>
-                    {r.larkRecipient && <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{r.larkRecipient}</span>}
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Tag color={r.emailOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.emailOk ? '成功' : '失败'}</Tag>
+                  {r.emailRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.emailRecipient}</span>}
+                  {!r.emailRecipient && <span style={{ fontSize: 12, color: '#ccc' }}>—</span>}
                 </div>
               ),
             },
-            { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
-            { title: '告警原因', dataIndex: 'reason', ellipsis: true },
+            {
+              title: '飞书', width: 160,
+              render: (_: any, r: typeof groupedLog[0]) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Tag color={r.larkOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.larkOk ? '成功' : '失败'}</Tag>
+                  {r.larkRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.larkRecipient}</span>}
+                  {!r.larkRecipient && <span style={{ fontSize: 12, color: '#ccc' }}>—</span>}
+                </div>
+              ),
+            },
+            { title: '原因', dataIndex: 'reason', ellipsis: true, width: 200 },
           ]}
         />
       </Card>
