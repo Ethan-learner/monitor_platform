@@ -89,7 +89,7 @@ export default function NewRules() {
       <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: '应用告警', severity: 'warning' }}>
         <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
         <Form.Item label="通知策略" name="strategy_id">
-          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled).map((s: any) => ({ label: s.label || s.name, value: s.id }))} />
+          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))} />
         </Form.Item>
         <Form.Item label="自定义接收人" name="custom_notify" help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
           <Input placeholder="critical:email:a@x.com,lark:id1" />

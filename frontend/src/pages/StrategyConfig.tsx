@@ -64,7 +64,7 @@ export default function StrategyConfig() {
       </Space>
 
       <Table<Strategy>
-        rowKey="id" dataSource={data} size="middle" pagination={false} bordered
+        rowKey="id" dataSource={data.filter(d => d.enabled !== -1)} size="middle" pagination={false} bordered
         columns={[
           { title: '名称', dataIndex: 'label', width: 150, render: (s: string, r) => <span><strong>{s || r.name}</strong></span> },
           { title: '标识', dataIndex: 'name', width: 130, render: (s: string) => <code>{s}</code> },
