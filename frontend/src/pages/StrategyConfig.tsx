@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
 const { Title } = Typography
@@ -71,11 +71,18 @@ export default function StrategyConfig() {
           { title: '说明', dataIndex: 'description', ellipsis: true },
           { title: 'critical', width: 160, render: (_, r) => <span style={{ fontSize: 12, color: r.config?.critical?.email?.length ? '#cf1322' : '#999' }}>{getCfgStr(r.config, 'critical') || '—'}</span> },
           { title: 'warning', width: 160, render: (_, r) => <span style={{ fontSize: 12, color: r.config?.warning?.email?.length ? '#d48806' : '#999' }}>{getCfgStr(r.config, 'warning') || '—'}</span> },
-          { title: '状态', width: 70, align: 'center', render: (_, r) => <Tag color={r.enabled ? 'green' : 'red'}>{r.enabled ? '启用' : '禁用'}</Tag> },
-          { title: '操作', width: 100, align: 'center', render: (_, r) => (
+          { title: '状态', width: 70, align: 'center', render: (_, r) => {
+            if (r.enabled === 1) return <Tag color="green">启用</Tag>
+            if (r.enabled === 0) return <Tag color="orange">禁用</Tag>
+            return <Tag color="red">已删除</Tag>
+          }},
+          { title: '操作', width: 140, align: 'center', render: (_, r) => (
             <Space>
+              <Popconfirm title="确认禁用该策略？" onConfirm={async () => { await api.put(`/alerts/strategies/${r.id}/disable`, { enabled: 0 }); load() }} disabled={r.enabled !== 1}>
+                <Button size="small" type="text" icon={<StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#ddd' }} />} />
+              </Popconfirm>
               <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(r)} />
-              <Popconfirm title="确认禁用？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.id}`); load() }}>
+              <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.id}`); load() }}>
                 <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
               </Popconfirm>
             </Space>

@@ -355,6 +355,17 @@ async def update_strategy(sid: int, body: dict) -> dict:
 async def disable_strategy(sid: int) -> dict:
     with get_db(readonly=False) as conn:
         cur = conn.cursor()
-        cur.execute("UPDATE alert_strategies SET enabled=0 WHERE id=%s", (sid,))
+        cur.execute("UPDATE alert_strategies SET enabled=-1 WHERE id=%s", (sid,))
         cur.close()
-        return {"status": "disabled"}
+        return {"status": "deleted"}
+
+
+@router.put("/alerts/strategies/{sid}/disable")
+async def toggle_strategy(sid: int, body: dict) -> dict:
+    """禁用/启用策略: enabled=0 禁用, enabled=1 启用"""
+    enabled = body.get("enabled", 0)
+    with get_db(readonly=False) as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE alert_strategies SET enabled=%s WHERE id=%s", (enabled, sid))
+        cur.close()
+        return {"status": "toggled", "enabled": enabled}
