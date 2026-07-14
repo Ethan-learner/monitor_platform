@@ -18,6 +18,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   const sendX = 660; const sendW = 120
   const subX = 920; const endX = 1080; const endW = 160
 
+
   // Y positions
   const row0 = 140
   const rEmail = 55; const rLark = 140; const rEll = 225
@@ -47,7 +48,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
         {/* ===== Webhook ===== */}
         <rect x={whX - 55} y={row0 - 22} width={110} height={44} rx={10} fill="#e6f7ff" stroke="#1677ff" strokeWidth={1.5} />
-        <text x={whX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>Webhook</text>
+        <text x={whX} y={row0 + 4} textAnchor="middle" fontSize={13} fill="#1677ff" fontWeight={600}>告警触发</text>
         <circle cx={whX - 40} cy={row0 - 12} r={4} fill={dot} />
 
         {/* ===== 告警发送 ===== */}
@@ -56,11 +57,11 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
         {/* ===== Branches ===== */}
         <rect x={subX - 65} y={rEmail - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
-        <text x={subX} y={rEmail + 4} textAnchor="middle" fontSize={12} fill="#52c41a" fontWeight={500}>邮件</text>
+        <text x={subX} y={rEmail + 4} textAnchor="middle" fontSize={12} fill="#999" fontWeight={500}>邮件</text>
         <rect x={subX - 65} y={rLark - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
-        <text x={subX} y={rLark + 4} textAnchor="middle" fontSize={12} fill="#52c41a" fontWeight={500}>飞书</text>
+        <text x={subX} y={rLark + 4} textAnchor="middle" fontSize={12} fill="#999" fontWeight={500}>飞书</text>
         <rect x={subX - 65} y={rEll - 18} width={130} height={36} rx={8} fill="#fafafa" stroke="#e8e8e8" />
-        <text x={subX} y={rEll + 4} textAnchor="middle" fontSize={12} fill="#52c41a" fontWeight={500}>…</text>
+        <text x={subX} y={rEll + 4} textAnchor="middle" fontSize={12} fill="#999" fontWeight={500}>…</text>
 
         {/* VM 落盘 */}
         <rect x={sendX - sendW / 2} y={rVM - 18} width={sendW} height={36} rx={10} fill="#fff7e6" stroke="#fa8c16" strokeWidth={1.5} />
@@ -90,14 +91,14 @@ function FlowTopo({ health }: { health: HealthData | null }) {
 
         {/* ===== Particles - 2 per path, alternating, same source = same begin ===== */}
         {/* Webhook → 告警发送 → 3 branches (blue, same begin) */}
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEll)} /></circle>
-        <circle r={4} fill="#1677ff" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEll)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(whX + 55, row0, sendX - sendW / 2, row0)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rLark)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEll)} /></circle>
+        <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="3s" path={curve(sendX + sendW / 2, row0, subX - 65, rEll)} /></circle>
 
         {/* 告警发送 → 邮件/飞书/… (green, same begin) */}
         <circle r={4} fill="#52c41a" opacity={0.7}><animateMotion dur="3s" repeatCount="indefinite" begin="0s" path={curve(sendX + sendW / 2, row0, subX - 65, rEmail)} /></circle>

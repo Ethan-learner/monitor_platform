@@ -25,8 +25,6 @@ class Settings(BaseSettings):
     # 既有组件地址
     alertmanager_url: str = "http://172.16.10.27:9093"
     grafana_url: str = "https://172.16.10.99/grafana"
-    grafana_username: str = ""
-    grafana_password: str = ""
     pmm_url: str = "https://172.16.10.99"
     glowroot_url: str = "http://172.16.10.27:4000"
     prometheus_url: str = "https://172.16.10.99/prometheus"
@@ -51,7 +49,7 @@ class Settings(BaseSettings):
     doris_password: str = ""
     doris_database: str = "sdi"
 
-    # Webhook 告警分发服务
+    # Webhook 告警分发服务（3节点集群：27/28/29）
     webhook_url: str = "http://172.16.10.27:8090"
     webhook_nodes: str = "http://172.16.10.27:8090,http://172.16.10.28:8090,http://172.16.10.29:8090"
 
@@ -60,6 +58,15 @@ class Settings(BaseSettings):
     ssh_port: int = 22
     ssh_user: str = ""
     ssh_password: str = ""
+
+    # MySQL 元数据库
+    mysql_write_host: str = "172.16.10.99"
+    mysql_write_port: int = 3308
+    mysql_read_host: str = "172.16.10.99"
+    mysql_read_port: int = 3309
+    mysql_user: str = "monitor"
+    mysql_password: str = "123456"
+    mysql_database: str = "platform"
 
 
 settings = Settings()
