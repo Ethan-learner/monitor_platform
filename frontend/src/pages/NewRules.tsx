@@ -8,6 +8,7 @@ import { cacheGet, cacheSet } from '../lib/cache'
 const { Title } = Typography
 const CATEGORY_COLORS: Record<string, string> = { '应用告警': '#1677ff', '数据库告警': '#722ed1', '服务器告警': '#52c41a', '平台组件告警': '#fa8c16', '性能告警': '#eb2f96' }
 const CATEGORY_PREFIX: Record<string, string> = { '应用告警': 'app_', '数据库告警': 'db_', '服务器告警': 'host_', '平台组件告警': 'component_', '性能告警': 'perf_' }
+const FORM_ITEM_STYLE = { marginBottom: 10 }
 
 export default function NewRules() {
   const [rules, setRules] = useState<ParsedRule[]>([]); const [loading, setLoading] = useState(false)
@@ -57,9 +58,15 @@ export default function NewRules() {
   const handleEdit = async (values: any) => {
     if (!editTarget) return
     try {
-      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary })
+      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id, custom_notify: values.custom_notify || '' })
       await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
+  }
+
+  const getStrategyName = (sid: string | number) => {
+    if (!sid) return '-'
+    const s = strategies.find((x: any) => String(x.id) === String(sid))
+    return s ? (s.label || s.name) : '-'
   }
 
   return (<div style={{ padding: 16 }}>
@@ -71,14 +78,18 @@ export default function NewRules() {
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'name', width: 180, render: (s: string, r: any) => <span>{s} {r.status === 0 && <Tag color="orange" style={{ marginLeft: 4 }}>禁用</Tag>}</span> },
+          { title: '名称', dataIndex: 'name', width: 180 },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
-          { title: '持续', dataIndex: 'for', width: 70, align: 'center' },
+          { title: '持续', dataIndex: 'for', width: 60, align: 'center' },
+          { title: '策略', width: 100, render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
           { title: '描述', dataIndex: 'summary', ellipsis: true },
-          { title: '操作', width: 140, align: 'center', render: (_, r: any) => (<Space>
-            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, summary: r.summary }) }} />
+          { title: '状态', width: 70, align: 'center', render: (_: any, r: any) => (
+            <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
+          )},
+          { title: '操作', width: 130, align: 'center', render: (_: any, r: any) => (<Space>
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary, strategy_id: r.strategy_id, custom_notify: r.custom_notify }) }} />
             <Button size="small" type="text" onClick={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
-              <StopOutlined style={{ color: r.status === 0 ? '#999' : '#fa8c16', transform: r.status === 0 ? 'rotate(180deg)' : 'none' }} />
+              <StopOutlined style={{ color: r.status === 0 ? '#ddd' : '#fa8c16' }} />
             </Button>
             <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
@@ -90,12 +101,22 @@ export default function NewRules() {
 
     <Modal title="创建告警规则" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={600}>
       <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: '应用告警', severity: 'warning' }}>
-        <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
-        <Form.Item label="通知策略" name="strategy_id">
+        <Form.Item label="分类" name="category" rules={[{ required: true }]} style={FORM_ITEM_STYLE}>
+          <Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} />
+        </Form.Item>
+        <Form.Item label="告警名称" name="name" rules={[{ required: true }]} style={FORM_ITEM_STYLE}><Input /></Form.Item>
+        <Form.Item label="表达式" name="expr" rules={[{ required: true }]} style={FORM_ITEM_STYLE}>
+          <Input.TextArea rows={2} />
+        </Form.Item>
+        <div style={{ marginBottom: 12 }}>
+          <Button size="small" onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
+        </div>
+        <Form.Item label="持续时间" name="for" style={FORM_ITEM_STYLE}><Input placeholder="1m" /></Form.Item>
+        <Form.Item label="通知策略" name="strategy_id" style={FORM_ITEM_STYLE}>
           <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))}
             onChange={(val) => {
               if (val) {
-                const s = strategies.find((s: any) => s.id === val)
+                const s = strategies.find((x: any) => x.id === val)
                 if (s?.config) {
                   const sevs = Object.keys(s.config).filter(k => s.config[k] && Object.keys(s.config[k]).length > 0)
                   form.setFieldsValue({ severity: sevs[0] || 'warning' })
@@ -103,38 +124,46 @@ export default function NewRules() {
               }
             }} />
         </Form.Item>
-        <Form.Item label="自定义接收人" name="custom_notify" help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
+        <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE} help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
           <Input placeholder="critical:email:a@x.com,lark:id1" />
         </Form.Item>
-        <Form.Item label="级别" name="severity" initialValue="warning">
+        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
           <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
-        <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
-          <Input.TextArea rows={2} />
-        </Form.Item>
-        <div style={{ marginTop: -12, marginBottom: 24 }}>
-          <Button size="small" onClick={() => handlePreview(form.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
-        </div>
-        <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
-        <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
-        <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
+        <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
       </Form>
     </Modal>
 
     <Modal title="编辑告警规则" open={!!editTarget} onCancel={() => setEditTarget(null)} footer={null} width={600}>
       <Form form={editForm} layout="vertical" onFinish={handleEdit}>
-        <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
+        <Form.Item label="告警名称" name="name" rules={[{ required: true }]} style={FORM_ITEM_STYLE}><Input /></Form.Item>
+        <Form.Item label="表达式" name="expr" rules={[{ required: true }]} style={FORM_ITEM_STYLE}>
           <Input.TextArea rows={2} />
         </Form.Item>
-        <div style={{ marginTop: -12, marginBottom: 24 }}>
+        <div style={{ marginBottom: 12 }}>
           <Button size="small" onClick={() => handlePreview(editForm.getFieldValue('expr'))} loading={previewLoading}>预览</Button>
         </div>
-        <Form.Item label="持续时间" name="for"><Input placeholder="1m" /></Form.Item>
-        <Form.Item label="级别" name="severity"><Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} /></Form.Item>
-        <Form.Item label="描述" name="summary"><Input.TextArea rows={2} /></Form.Item>
+        <Form.Item label="持续时间" name="for" style={FORM_ITEM_STYLE}><Input placeholder="1m" /></Form.Item>
+        <Form.Item label="通知策略" name="strategy_id" style={FORM_ITEM_STYLE}>
+          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))}
+            onChange={(val) => {
+              if (val) {
+                const se = strategies.find((x: any) => x.id === val)
+                if (se?.config) {
+                  const sevs = Object.keys(se.config).filter(k => se.config[k] && Object.keys(se.config[k]).length > 0)
+                  editForm.setFieldsValue({ severity: sevs[0] || 'warning' })
+                }
+              }
+            }} />
+        </Form.Item>
+        <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE} help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
+          <Input placeholder="critical:email:a@x.com,lark:id1" />
+        </Form.Item>
+        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
+          <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
+        </Form.Item>
+        <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
       </Form>
     </Modal>
