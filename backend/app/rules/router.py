@@ -90,7 +90,7 @@ async def list_parsed_rules() -> List[dict]:
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id, rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify, created_at FROM alert_rules WHERE status=1 ORDER BY id")
+            cur.execute("SELECT id, rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify, created_at FROM alert_rules WHERE status != -1 ORDER BY id")
             rows = cur.fetchall()
             cur.close()
             return [
@@ -302,9 +302,12 @@ async def disable_rule(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE alert_rules SET status=0 WHERE rule_name=%s AND status=1", (rule_name,))
+            cur.execute("SELECT status FROM alert_rules WHERE rule_name=%s", (rule_name,))
+            row = cur.fetchone()
+            new_status = 0 if (row and row[0] == 1) else 1
+            cur.execute("UPDATE alert_rules SET status=%s WHERE rule_name=%s", (new_status, rule_name))
             cur.close()
-            return {"status": "disabled", "rule": rule_name}
+            return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

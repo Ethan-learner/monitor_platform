@@ -71,15 +71,15 @@ export default function NewRules() {
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'name', width: 200 },
+          { title: '名称', dataIndex: 'name', width: 180, render: (s: string, r: any) => <span>{s} {r.status === 0 && <Tag color="orange" style={{ marginLeft: 4 }}>禁用</Tag>}</span> },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
-          { title: '持续', dataIndex: 'for', width: 80, align: 'center' },
+          { title: '持续', dataIndex: 'for', width: 70, align: 'center' },
           { title: '描述', dataIndex: 'summary', ellipsis: true },
-          { title: '操作', width: 140, align: 'center', render: (_, r) => (<Space>
+          { title: '操作', width: 140, align: 'center', render: (_, r: any) => (<Space>
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, summary: r.summary }) }} />
-            <Popconfirm title="确认禁用？" onConfirm={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
-              <Button size="small" type="text" icon={<StopOutlined style={{ color: '#fa8c16' }} />} />
-            </Popconfirm>
+            <Button size="small" type="text" onClick={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
+              <StopOutlined style={{ color: r.status === 0 ? '#999' : '#fa8c16', transform: r.status === 0 ? 'rotate(180deg)' : 'none' }} />
+            </Button>
             <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
