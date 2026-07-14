@@ -309,3 +309,52 @@ async def delete_recipient(rid: int) -> dict:
             return {"status": "disabled"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ========== 通知策略 CRUD ==========
+
+@router.get("/alerts/strategies")
+async def list_strategies() -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, name, label, description, config, enabled FROM alert_strategies ORDER BY id")
+            rows = cur.fetchall()
+            cur.close()
+            return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3], "config": r[4], "enabled": r[5]} for r in rows]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+@router.post("/alerts/strategies")
+async def create_strategy(body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO alert_strategies (name, label, description, config) VALUES (%s,%s,%s,%s)",
+                        (body["name"], body.get("label", ""), body.get("description", ""), str(body["config"]).replace("'", '"')))
+            return {"id": cur.lastrowid, "status": "created"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/alerts/strategies/{sid}")
+async def update_strategy(sid: int, body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_strategies SET label=%s, description=%s, config=%s, enabled=%s WHERE id=%s",
+                        (body.get("label", ""), body.get("description", ""), str(body["config"]).replace("'", '"'), body.get("enabled", 1), sid))
+            cur.close()
+            return {"status": "updated"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/alerts/strategies/{sid}")
+async def disable_strategy(sid: int) -> dict:
+    with get_db(readonly=False) as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE alert_strategies SET enabled=0 WHERE id=%s", (sid,))
+        cur.close()
+        return {"status": "disabled"}
