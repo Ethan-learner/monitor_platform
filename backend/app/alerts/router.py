@@ -62,10 +62,16 @@ async def get_silence(sid: str) -> dict:
 @router.post("/alerts/silences")
 async def create_silence(body: dict) -> dict:
     try:
-        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
-            resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=body)
-            resp.raise_for_status()
-            result = resp.json()
+            async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
+                # 修复日期格式：去掉毫秒
+                clean_body = dict(body)
+                for f in ['startsAt', 'endsAt']:
+                    if f in clean_body and clean_body[f]:
+                        clean_body[f] = clean_body[f].replace("T", " ").replace("Z", "")[:19].replace(" ", "T") + "Z"
+                resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=clean_body)
+                if resp.status_code >= 300:
+                    raise HTTPException(status_code=502, detail=f"alertmanager_error: {resp.status_code} {resp.text}")
+                result = resp.json()
             # 写入 audit_log
             log_audit(body.get("createdBy", "unknown"), "silences", "create",
                        f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
