@@ -10,8 +10,26 @@ interface Strategy { id: number; name: string; label: string; description: strin
 const SEV_LEVELS = ['critical', 'warning', 'info'] as const
 type SevLevel = typeof SEV_LEVELS[number]
 const SEV_LABELS: Record<SevLevel, string> = { critical: '严重 critical', warning: '警告 warning', info: '信息 info' }
+const SEV_SHORT: Record<string, string> = { critical: '严重', warning: '警告', info: '信息' }
 const SEV_COLORS: Record<SevLevel, string> = { critical: '#cf1322', warning: '#d48806', info: '#1677ff' }
 const FMT = { marginBottom: 14 }
+
+const getHighestLevel = (cfg: Record<string, Record<string, string[]>>) => {
+  return SEV_LEVELS.find(l => cfg[l] && Object.keys(cfg[l]).length > 0)
+}
+const getNotifySummary = (cfg: Record<string, Record<string, string[]>>) => {
+  const emailAll = new Set<string>()
+  const larkAll = new Set<string>()
+  for (const sev of SEV_LEVELS) {
+    const ch = cfg[sev] || {}
+    if (ch.email) ch.email.forEach((e: string) => emailAll.add(e))
+    if (ch.lark) ch.lark.forEach((l: string) => larkAll.add(l))
+  }
+  const parts: string[] = []
+  if (emailAll.size > 0) parts.push(`邮件: ${[...emailAll].join(',')}`)
+  if (larkAll.size > 0) parts.push(`飞书: ${[...larkAll].join(',')}`)
+  return parts.length > 0 ? parts.join(' | ') : '—'
+}
 
 export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
@@ -54,8 +72,8 @@ export default function StrategyConfig() {
   const handleEdit = (r: Strategy) => {
     setEditing(r)
     form.setFieldsValue({ name: r.name, label: r.label, description: r.description })
-    const highest = SEV_LEVELS.find(l => r.config[l] && Object.keys(r.config[l]).length > 0)
-    setMaxLevel((highest || 'critical') as SevLevel)
+    const highest = getHighestLevel(r.config) || 'critical'
+    setMaxLevel(highest)
     setCfg({
       critical: getCfgStr(r.config, 'critical'),
       warning: getCfgStr(r.config, 'warning'),
@@ -83,10 +101,13 @@ export default function StrategyConfig() {
         rowKey="id" dataSource={data.filter(d => d.enabled !== -1)} size="middle" pagination={false} bordered
         columns={[
           { title: '名称', dataIndex: 'label', width: 150, align: 'center', render: (s: string, r) => <span><strong>{s || r.name}</strong></span> },
-          { title: '标识', dataIndex: 'name', width: 130, align: 'center', render: (s: string) => <code>{s}</code> },
+          { title: '标识', dataIndex: 'name', width: 120, align: 'center', render: (s: string) => <code>{s}</code> },
           { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center' },
-          { title: 'critical', width: 160, align: 'center', render: (_, r) => <span style={{ fontSize: 12, color: r.config?.critical?.email?.length ? '#cf1322' : '#999' }}>{getCfgStr(r.config, 'critical') || '—'}</span> },
-          { title: 'warning', width: 160, align: 'center', render: (_, r) => <span style={{ fontSize: 12, color: r.config?.warning?.email?.length ? '#d48806' : '#999' }}>{getCfgStr(r.config, 'warning') || '—'}</span> },
+          { title: '告警级别', width: 120, align: 'center', render: (_: any, r: Strategy) => {
+            const hl = getHighestLevel(r.config)
+            return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
+          }},
+          { title: '通知策略', width: 240, align: 'center', render: (_: any, r: Strategy) => <span style={{ fontSize: 12 }}>{getNotifySummary(r.config)}</span> },
           { title: '状态', width: 70, align: 'center', render: (_, r) => {
             if (r.enabled === 1) return <Tag color="green">启用</Tag>
             if (r.enabled === 0) return <Tag color="orange">禁用</Tag>

@@ -114,8 +114,8 @@ export default function NewRules() {
               if (val) {
                 const s = strategies.find((x: any) => x.id === val)
                 if (s?.config) {
-                  const sevs = Object.keys(s.config).filter(k => s.config[k] && Object.keys(s.config[k]).length > 0)
-                  form.setFieldsValue({ severity: sevs[0] || 'warning' })
+                  const levels = (['critical', 'warning', 'info'] as const).filter(k => s.config[k] && Object.keys(s.config[k]).length > 0)
+                  form.setFieldsValue({ severity: levels[0] || 'warning' })
                 }
               }
             }} />
@@ -147,8 +147,8 @@ export default function NewRules() {
               if (val) {
                 const se = strategies.find((x: any) => x.id === val)
                 if (se?.config) {
-                  const sevs = Object.keys(se.config).filter(k => se.config[k] && Object.keys(se.config[k]).length > 0)
-                  editForm.setFieldsValue({ severity: sevs[0] || 'warning' })
+                  const levels = (['critical', 'warning', 'info'] as const).filter(k => se.config[k] && Object.keys(se.config[k]).length > 0)
+                  editForm.setFieldsValue({ severity: levels[0] || 'warning' })
                 }
               }
             }} />
