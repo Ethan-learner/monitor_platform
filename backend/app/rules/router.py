@@ -285,14 +285,26 @@ def _write_file(filename: str, content: str) -> None:
 
 @router.post("/delete")
 async def delete_rule(body: dict) -> dict:
-    """软删除一条告警规则（MySQL）"""
     rule_name = body.get("ruleName", "")
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE alert_rules SET status=0 WHERE rule_name=%s", (rule_name,))
+            cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s", (rule_name,))
             cur.close()
             return {"status": "deleted", "rule": rule_name}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/disable")
+async def disable_rule(body: dict) -> dict:
+    rule_name = body.get("ruleName", "")
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_rules SET status=0 WHERE rule_name=%s AND status=1", (rule_name,))
+            cur.close()
+            return {"status": "disabled", "rule": rule_name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

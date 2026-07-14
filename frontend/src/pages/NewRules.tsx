@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
-import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, StopOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
 import { api } from '../lib/api'
 import { cacheGet, cacheSet } from '../lib/cache'
@@ -74,9 +74,12 @@ export default function NewRules() {
           { title: '名称', dataIndex: 'name', width: 200 },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
           { title: '持续', dataIndex: 'for', width: 80, align: 'center' },
-          { title: '文件', dataIndex: 'file', width: 220, ellipsis: true }, { title: '描述', dataIndex: 'summary', ellipsis: true },
-          { title: '操作', width: 120, align: 'center', render: (_, r) => (<Space>
+          { title: '描述', dataIndex: 'summary', ellipsis: true },
+          { title: '操作', width: 140, align: 'center', render: (_, r) => (<Space>
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, summary: r.summary }) }} />
+            <Popconfirm title="确认禁用？" onConfirm={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
+              <Button size="small" type="text" icon={<StopOutlined style={{ color: '#fa8c16' }} />} />
+            </Popconfirm>
             <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
@@ -89,10 +92,22 @@ export default function NewRules() {
       <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: '应用告警', severity: 'warning' }}>
         <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
         <Form.Item label="通知策略" name="strategy_id">
-          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))} />
+          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))}
+            onChange={(val) => {
+              if (val) {
+                const s = strategies.find((s: any) => s.id === val)
+                if (s?.config) {
+                  const sevs = Object.keys(s.config).filter(k => s.config[k] && Object.keys(s.config[k]).length > 0)
+                  form.setFieldsValue({ severity: sevs[0] || 'warning' })
+                }
+              }
+            }} />
         </Form.Item>
         <Form.Item label="自定义接收人" name="custom_notify" help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
           <Input placeholder="critical:email:a@x.com,lark:id1" />
+        </Form.Item>
+        <Form.Item label="级别" name="severity" initialValue="warning">
+          <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
