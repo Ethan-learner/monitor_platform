@@ -231,7 +231,7 @@ async def list_alert_records(
             cur = conn.cursor()
             cur.execute(f"SELECT COUNT(*) FROM alert_records {where}", params)
             total = cur.fetchone()[0]
-            cur.execute(f"SELECT id, alert_name, instance, severity, status, department, project, env, service, job, criticality, owner, resource_category, resource_type, region, summary, starts_at, ends_at FROM alert_records {where} ORDER BY starts_at DESC LIMIT %s OFFSET %s", params + [limit, offset])
+            cur.execute(f"SELECT id, alert_name, instance, severity, status, department, project, env, service, job, criticality, owner, resource_category, resource_type, region, summary, starts_at, ends_at FROM alert_records {where} ORDER BY starts_at DESC, status DESC LIMIT %s OFFSET %s", params + [limit, offset])
             rows = cur.fetchall()
             cur.close()
             return {
