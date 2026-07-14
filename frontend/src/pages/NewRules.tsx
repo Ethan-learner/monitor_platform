@@ -17,9 +17,10 @@ export default function NewRules() {
   const [deleteReason, setDeleteReason] = useState('')
   const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [strategies, setStrategies] = useState<any[]>([])
 
   const load = async () => { setLoading(true); try { const cached = cacheGet('rules:parsed'); if (cached) setRules(cached); const data = await fetchParsedRules(); setRules(data); cacheSet('rules:parsed', data) } catch {} finally { setLoading(false) } }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); api.get('/alerts/strategies').then(r => setStrategies(r.data || [])).catch(() => {}) }, [])
 
   const grouped = useMemo(() => { const m: Record<string, ParsedRule[]> = {}; rules.forEach(r => { (m[r.category] = m[r.category] || []).push(r) }); return m }, [rules])
 
@@ -87,6 +88,9 @@ export default function NewRules() {
     <Modal title="创建告警规则" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={600}>
       <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: '应用告警', severity: 'warning' }}>
         <Form.Item label="分类" name="category" rules={[{ required: true }]}><Select options={Object.keys(CATEGORY_PREFIX).map(c => ({ label: c, value: c }))} /></Form.Item>
+        <Form.Item label="通知策略" name="strategy_id">
+          <Select allowClear placeholder="选策略或下方自定义接收人" options={strategies.filter((s: any) => s.enabled).map((s: any) => ({ label: s.label || s.name, value: s.id }))} />
+        </Form.Item>
         <Form.Item label="告警名称" name="name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="表达式" name="expr" rules={[{ required: true }]}>
           <Input.TextArea rows={2} />

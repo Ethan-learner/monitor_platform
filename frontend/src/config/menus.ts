@@ -33,6 +33,7 @@ export const roleMenus: Record<string, RoleConfig> = {
           { key: 'alertmanager-silences', label: 'Silences', native: true },
           { key: 'alert-history', label: '历史告警', native: true },
           { key: 'recipient-config', label: '接收人配置', native: true },
+          { key: 'strategy-config', label: '通知策略', native: true },
         ],
       },
       {
