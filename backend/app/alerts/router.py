@@ -70,7 +70,10 @@ async def create_silence(body: dict) -> dict:
                         clean_body[f] = clean_body[f].replace("T", " ").replace("Z", "")[:19].replace(" ", "T") + "Z"
                 resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=clean_body)
                 if resp.status_code >= 300:
-                    raise HTTPException(status_code=502, detail=f"alertmanager_error: {resp.status_code} {resp.text}")
+                    detail = resp.text
+                    if resp.status_code == 400:
+                        raise HTTPException(status_code=400, detail=detail)
+                    raise HTTPException(status_code=502, detail=f"alertmanager_error: {resp.status_code} {detail}")
                 result = resp.json()
             # 写入 audit_log
             log_audit(body.get("createdBy", "unknown"), "silences", "create",
