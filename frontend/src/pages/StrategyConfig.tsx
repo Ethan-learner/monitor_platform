@@ -78,9 +78,12 @@ export default function StrategyConfig() {
           }},
           { title: '操作', width: 140, align: 'center', render: (_, r) => (
             <Space>
-              <Popconfirm title="确认禁用该策略？" onConfirm={async () => { await api.put(`/alerts/strategies/${r.id}/disable`, { enabled: 0 }); load() }} disabled={r.enabled !== 1}>
-                <Button size="small" type="text" icon={<StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#ddd' }} />} />
-              </Popconfirm>
+              <Button size="small" type="text" onClick={async () => {
+                const newEnabled = r.enabled === 1 ? 0 : 1
+                await api.put(`/alerts/strategies/${r.id}/disable`, { enabled: newEnabled }); load()
+              }}>
+                <StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#999', transform: r.enabled === 1 ? 'none' : 'rotate(180deg)' }} />
+              </Button>
               <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(r)} />
               <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.id}`); load() }}>
                 <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
