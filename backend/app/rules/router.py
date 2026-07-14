@@ -228,9 +228,9 @@ async def reload_prometheus() -> dict:
     try:
         async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             resp = await client.post(f"{settings.prometheus_url}/-/reload")
-            if resp.status_code < 500:
+            if resp.status_code < 300:
                 return {"status": "ok"}
-            raise HTTPException(status_code=502, detail="reload failed")
+            return {"status": "warning", "detail": resp.text[:200]}
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="prometheus_unreachable")
 
