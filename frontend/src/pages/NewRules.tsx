@@ -13,9 +13,7 @@ const FORM_ITEM_STYLE = { marginBottom: 10 }
 export default function NewRules() {
   const [rules, setRules] = useState<ParsedRule[]>([]); const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false); const [form] = Form.useForm(); const [submitting, setSubmitting] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<ParsedRule | null>(null)
   const [editTarget, setEditTarget] = useState<ParsedRule | null>(null); const [editForm] = Form.useForm()
-  const [deleteReason, setDeleteReason] = useState('')
   const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [strategies, setStrategies] = useState<any[]>([])
@@ -46,12 +44,10 @@ export default function NewRules() {
     } catch { message.error('创建失败') } finally { setSubmitting(false) }
   }
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
+  const handleDelete = async (ruleName: string) => {
     try {
-      await api.post('/rules/delete', { filename: deleteTarget.file, ruleName: deleteTarget.name, groupName: deleteTarget.group, reason: deleteReason, deletedBy: 'admin' })
-      await reloadPrometheus(); message.success('规则已删除（移至 _disabled.yml）')
-      setDeleteTarget(null); setDeleteReason(''); load()
+      await api.post('/rules/delete', { ruleName })
+      await reloadPrometheus(); message.success('规则已删除'); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '删除失败') }
   }
 
@@ -91,7 +87,7 @@ export default function NewRules() {
             <Button size="small" type="text" onClick={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
               <StopOutlined style={{ color: r.status === 0 ? '#ddd' : '#fa8c16' }} />
             </Button>
-            <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
+            <Popconfirm title="确认删除该规则？" onConfirm={() => handleDelete(r.name)} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>
           </Space>)},
@@ -168,10 +164,6 @@ export default function NewRules() {
       </Form>
     </Modal>
 
-    <Modal title="确认删除" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDelete} okText="确认删除" okButtonProps={{ danger: true }}>
-      <p>规则: <strong>{deleteTarget?.name}</strong></p><p>文件: {deleteTarget?.file}</p>
-      <Input.TextArea rows={2} placeholder="删除原因（可选）" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} style={{ marginTop: 8 }} />
-    </Modal>
     <Modal title="查询预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} footer={null} width={700}>
       <pre style={{ fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f6f8fa', padding: 12, borderRadius: 4 }}>{previewResult}</pre>
     </Modal>
