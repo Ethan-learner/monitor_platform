@@ -85,23 +85,21 @@ def _parse_yaml(content: str, filename: str) -> List[dict]:
 
 @router.get("/parsed")
 async def list_parsed_rules() -> List[dict]:
-    """读取全部 YAML 告警规则文件，解析每条规则按分类返回"""
-    local_dir = Path(settings.alerts_dir)
-    if local_dir.is_dir():
-        all_rules = []
-        for f in sorted(local_dir.glob("*.yml")):
-            try:
-                all_rules.extend(_parse_yaml(f.read_text(encoding="utf-8"), f.name))
-            except Exception:
-                continue
-        return all_rules
-    if settings.ssh_host:
-        files = _list_files_ssh()
-        all_rules = []
-        for f in files:
-            all_rules.extend(f.get("rules", []))
-        return all_rules
-    raise HTTPException(status_code=404, detail="alerts dir not found and no ssh configured")
+    """读取 MySQL alert_rules 表"""
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify, created_at FROM alert_rules WHERE status=1 ORDER BY id")
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {"name": r[1], "expr": r[3], "for": r[5] or "", "severity": r[4] or "", "summary": r[6] or "",
+                 "group": r[7] or "", "file": r[7] or "", "category": r[2] or "其他",
+                 "strategy_id": r[9], "custom_notify": r[10]}
+                for r in rows
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
 
 @router.get("/preview")
@@ -200,27 +198,25 @@ async def get_rule_file(filename: str) -> dict:
 
 @router.post("/files/{filename}")
 async def save_rule_file(filename: str, body: dict) -> dict:
+    """通过 MySQL 保存告警规则"""
     content = body.get("content", "")
+    category = body.get("category", "")
+    operator = body.get("operator", "admin")
+    strategy_id = body.get("strategy_id")
+    custom_notify = body.get("custom_notify", "")
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
-    local = Path(settings.alerts_dir) / filename
-    if local.parent.is_dir():
-        local.write_text(content, encoding="utf-8")
-        return {"status": "saved", "filename": filename}
-    if settings.ssh_host:
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            sftp = ssh.open_sftp()
-            fpath = f"{settings.alerts_dir}/{filename}"
-            with sftp.open(fpath, "w") as f:
-                f.write(content.encode("utf-8"))
-            sftp.close(); ssh.close()
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO alert_rules (rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (filename.replace(".yml", "").replace("_", " "), category, content, "warning", "", "", filename, operator, strategy_id, custom_notify),
+            )
+            cur.close()
             return {"status": "saved", "filename": filename}
-        except Exception as e:
-            raise HTTPException(status_code=502, detail=f"ssh_save_failed: {e}")
-    raise HTTPException(status_code=404, detail="cannot save: no target")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/reload")
@@ -237,48 +233,22 @@ async def reload_prometheus() -> dict:
 
 @router.post("/update")
 async def update_rule(body: dict) -> dict:
-    """修改一条告警规则的名称/表达式/持续时间/级别/描述"""
-    filename = body.get("filename", "")
-    group_name = body.get("groupName", "")
+    """MySQL 更新告警规则"""
     old_name = body.get("oldRuleName", "")
     new_name = body.get("newName", "")
     expr = body.get("expr", "")
     duration = body.get("for", "")
     severity = body.get("severity", "warning")
     summary = body.get("summary", "")
-
-    content = _read_file(filename)
-    data = yaml.safe_load(content)
-    if not data or "groups" not in data:
-        raise HTTPException(status_code=400, detail="invalid rules file")
-
-    found = False
-    for group in data["groups"]:
-        if group.get("name") != group_name:
-            continue
-        for rule in group.get("rules", []):
-            if rule.get("alert") == old_name:
-                rule["alert"] = new_name
-                rule["expr"] = expr
-                if duration:
-                    rule["for"] = duration
-                elif "for" in rule:
-                    del rule["for"]
-                if "labels" not in rule:
-                    rule["labels"] = {}
-                rule["labels"]["severity"] = severity
-                if "annotations" not in rule:
-                    rule["annotations"] = {}
-                rule["annotations"]["summary"] = summary
-                found = True
-                break
-
-    if not found:
-        raise HTTPException(status_code=404, detail="rule not found")
-
-    _write_file(filename, yaml.dump(data, default_flow_style=False, allow_unicode=True))
-    log_audit(body.get("deletedBy", "system"), "rules", "update", f"{new_name} in {filename}")
-    return {"status": "updated"}
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s WHERE rule_name=%s",
+                        (new_name, expr, duration, severity, summary, old_name))
+            cur.close()
+            return {"status": "updated"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _write_file(filename: str, content: str) -> None:
@@ -305,55 +275,16 @@ def _write_file(filename: str, content: str) -> None:
 
 @router.post("/delete")
 async def delete_rule(body: dict) -> dict:
-    """软删除一条告警规则：从原文件移除，追加到 _disabled.yml"""
-    filename = body.get("filename", "")
+    """软删除一条告警规则（MySQL）"""
     rule_name = body.get("ruleName", "")
-    group_name = body.get("groupName", "")
-    reason = body.get("reason", "")
-    deleted_by = body.get("deletedBy", "unknown")
-    now = datetime.now(timezone.utc).isoformat()
-
-    # 读取原文件
-    content = _read_file(filename)
-    data = yaml.safe_load(content)
-    if not data or "groups" not in data:
-        raise HTTPException(status_code=400, detail="invalid rules file")
-
-    removed_rule = None
-    new_groups = []
-    for group in data["groups"]:
-        if group.get("name") == group_name:
-            new_rules = [r for r in group.get("rules", []) if r.get("alert") != rule_name]
-            if len(new_rules) < len(group["rules"]):
-                removed_rule = next(r for r in group["rules"] if r.get("alert") == rule_name)
-            if new_rules:
-                new_groups.append({**group, "rules": new_rules})
-        else:
-            new_groups.append(group)
-
-    if not removed_rule:
-        raise HTTPException(status_code=404, detail="rule not found")
-
-    # 写回原文件
-    data["groups"] = new_groups
-    _write_file(filename, yaml.dump(data, default_flow_style=False, allow_unicode=True))
-
-    # 追加到 _disabled.yml
-    deleted_entry = {
-        "metadata": {"deleted_at": now, "deleted_by": deleted_by, "reason": reason},
-        "original_file": filename,
-        "original_group": group_name,
-        "rule": dict(removed_rule),
-    }
     try:
-        disabled = yaml.safe_load(_read_file("_disabled.yml")) or {"deleted_rules": []}
-    except Exception:
-        disabled = {"deleted_rules": []}
-    disabled["deleted_rules"].append(deleted_entry)
-    _write_file("_disabled.yml", yaml.dump(disabled, default_flow_style=False, allow_unicode=True))
-    log_audit(body.get("deletedBy", "system"), "rules", "delete", f"{rule_name} from {filename}", body.get("reason", ""))
-
-    return {"status": "deleted", "rule": rule_name}
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_rules SET status=0 WHERE rule_name=%s", (rule_name,))
+            cur.close()
+            return {"status": "deleted", "rule": rule_name}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _read_file(filename: str) -> str:
