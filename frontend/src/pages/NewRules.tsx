@@ -74,11 +74,11 @@ export default function NewRules() {
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'name', width: 180 },
-          { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
+          { title: '名称', dataIndex: 'name', width: 180, align: 'center' },
+          { title: '表达式', dataIndex: 'expr', ellipsis: true, align: 'center', render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
           { title: '持续', dataIndex: 'for', width: 60, align: 'center' },
           { title: '策略', width: 120, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
-          { title: '描述', dataIndex: 'summary', ellipsis: true },
+          { title: '描述', dataIndex: 'summary', ellipsis: true, align: 'center' },
           { title: '状态', width: 70, align: 'center', render: (_: any, r: any) => (
             <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
           )},
