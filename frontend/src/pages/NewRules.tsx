@@ -81,7 +81,7 @@ export default function NewRules() {
           { title: '名称', dataIndex: 'name', width: 180 },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
           { title: '持续', dataIndex: 'for', width: 60, align: 'center' },
-          { title: '策略', width: 100, render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
+          { title: '策略', width: 120, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
           { title: '描述', dataIndex: 'summary', ellipsis: true },
           { title: '状态', width: 70, align: 'center', render: (_: any, r: any) => (
             <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>

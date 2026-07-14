@@ -90,13 +90,13 @@ async def list_parsed_rules() -> List[dict]:
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id, rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify, created_at FROM alert_rules WHERE status != -1 ORDER BY id")
+            cur.execute("SELECT id, rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify, created_at, status FROM alert_rules WHERE status != -1 ORDER BY id")
             rows = cur.fetchall()
             cur.close()
             return [
                 {"name": r[1], "expr": r[3], "for": r[5] or "", "severity": r[4] or "", "summary": r[6] or "",
                  "group": r[7] or "", "file": r[7] or "", "category": r[2] or "其他",
-                 "strategy_id": r[9], "custom_notify": r[10]}
+                 "strategy_id": r[9], "custom_notify": r[10], "status": r[12]}
                 for r in rows
             ]
     except Exception as e:
