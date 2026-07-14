@@ -150,7 +150,7 @@ export default function AlertHistory() {
           { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true },
           { title: '级别', dataIndex: 'severity', width: 70, align: 'center', render: (s: string) => <Tag color={sevColor[s] || 'default'}>{s}</Tag> },
           { title: '实例', dataIndex: 'instance', width: 200, ellipsis: true },
-          { title: '时间', dataIndex: 'alertTime', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
+          { title: '时间', dataIndex: 'startsAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '-' },
           { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s || '-'}</Tag> },
           { title: '部门', dataIndex: 'department', width: 90, ellipsis: true },
           { title: '项目', dataIndex: 'project', width: 80, ellipsis: true },
