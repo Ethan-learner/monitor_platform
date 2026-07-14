@@ -73,10 +73,10 @@ export default function NewRules() {
         columns={[
           { title: '名称', dataIndex: 'name', width: 200 },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
-          { title: '持续', dataIndex: 'for', width: 80, align: 'center' }, { title: '级别', dataIndex: 'severity', width: 80, align: 'center', render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s}</Tag> },
+          { title: '持续', dataIndex: 'for', width: 80, align: 'center' },
           { title: '文件', dataIndex: 'file', width: 220, ellipsis: true }, { title: '描述', dataIndex: 'summary', ellipsis: true },
           { title: '操作', width: 120, align: 'center', render: (_, r) => (<Space>
-            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary }) }} />
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, summary: r.summary }) }} />
             <Popconfirm title="确认删除该规则？" onConfirm={() => { setDeleteTarget(r); setDeleteReason('') }} okText="确认删除" cancelText="取消">
               <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
             </Popconfirm>

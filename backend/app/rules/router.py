@@ -198,21 +198,30 @@ async def get_rule_file(filename: str) -> dict:
 
 @router.post("/files/{filename}")
 async def save_rule_file(filename: str, body: dict) -> dict:
-    """通过 MySQL 保存告警规则"""
+    """MySQL 保存告警规则"""
     content = body.get("content", "")
-    category = body.get("category", "")
+    category = body.get("category", "其他")
     operator = body.get("operator", "admin")
     strategy_id = body.get("strategy_id")
     custom_notify = body.get("custom_notify", "")
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
     try:
+        data = yaml.safe_load(content)
+        if not data or "groups" not in data:
+            raise HTTPException(status_code=400, detail="invalid yaml")
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO alert_rules (rule_name, category, expr, severity, duration, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (filename.replace(".yml", "").replace("_", " "), category, content, "warning", "", "", filename, operator, strategy_id, custom_notify),
-            )
+            for group in data["groups"]:
+                for rule in group.get("rules", []):
+                    cur.execute(
+                        "INSERT INTO alert_rules (rule_name, category, expr, duration, severity, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (rule.get("alert", ""), category,
+                         rule.get("expr", ""), rule.get("for", ""),
+                         (rule.get("labels") or {}).get("severity", "warning"),
+                         (rule.get("annotations") or {}).get("summary", ""),
+                         filename, operator, strategy_id or None, custom_notify or None),
+                    )
             cur.close()
             return {"status": "saved", "filename": filename}
     except Exception as e:
