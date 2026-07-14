@@ -11,7 +11,7 @@ const SEV_LEVELS = ['critical', 'warning', 'info'] as const
 type SevLevel = typeof SEV_LEVELS[number]
 const SEV_LABELS: Record<SevLevel, string> = { critical: '严重 critical', warning: '警告 warning', info: '信息 info' }
 const SEV_COLORS: Record<SevLevel, string> = { critical: '#cf1322', warning: '#d48806', info: '#1677ff' }
-const FMT = { marginBottom: 10 }
+const FMT = { marginBottom: 14 }
 
 export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
@@ -116,14 +116,14 @@ export default function StrategyConfig() {
 
       <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={620}>
         <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]} style={FMT}><Input placeholder="ops_critical" /></Form.Item>
-          <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="运维紧急通知" /></Form.Item>
-          <Form.Item label="说明" name="description" style={FMT}><Input placeholder="用于生产环境 critical 告警" /></Form.Item>
-          <Form.Item label="覆盖级别" style={FMT}>
+          <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
+          <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
+          <Form.Item label="说明" name="description" style={FMT}><Input placeholder="" /></Form.Item>
+          <Form.Item label="覆盖级别" style={{ marginBottom: 18 }}>
             <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={SEV_LEVELS.map(l => ({ label: SEV_LABELS[l as SevLevel], value: l }))} />
           </Form.Item>
           {visibleLevels(maxLevel).map(sev => (
-              <Form.Item key={sev} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={FMT}>
+            <Form.Item key={sev} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
               <Input placeholder="email:a@x.com; lark:id1" value={cfg[sev]} onChange={e => setCfg(p => ({ ...p, [sev]: e.target.value }))} />
             </Form.Item>
           ))}
