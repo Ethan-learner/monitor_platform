@@ -79,6 +79,11 @@ export default function StrategyConfig() {
           { title: '操作', width: 140, align: 'center', render: (_, r) => (
             <Space>
               <Button size="small" type="text" onClick={async () => {
+                if (r.enabled === 1) {
+                  const { data: refs } = await api.get(`/alerts/strategies/${r.id}/refs`)
+                  const msg = refs.count > 0 ? `有 ${refs.count} 条规则正在使用此策略，禁用后这些规则将无法推送通知，确认禁用？` : '确认禁用该策略？'
+                  if (!confirm(msg)) return
+                }
                 const newEnabled = r.enabled === 1 ? 0 : 1
                 await api.put(`/alerts/strategies/${r.id}/disable`, { enabled: newEnabled }); load()
               }}>

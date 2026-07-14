@@ -360,6 +360,17 @@ async def disable_strategy(sid: int) -> dict:
         return {"status": "deleted"}
 
 
+@router.get("/alerts/strategies/{sid}/refs")
+async def strategy_refs(sid: int) -> dict:
+    """返回引用了该策略的规则数量"""
+    with get_db(readonly=True) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM alert_rules WHERE strategy_id=%s", (sid,))
+        count = cur.fetchone()[0]
+        cur.close()
+        return {"count": count, "sid": sid}
+
+
 @router.put("/alerts/strategies/{sid}/disable")
 async def toggle_strategy(sid: int, body: dict) -> dict:
     """禁用/启用策略: enabled=0 禁用, enabled=1 启用"""
