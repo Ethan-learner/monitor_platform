@@ -92,7 +92,14 @@ export default function SilenceList() {
         <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ createdBy: 'admin', matcherName: 'alertname' }}>
           <Form.Item label="标签名" name="matcherName"><Input placeholder="alertname" /></Form.Item>
           <Form.Item label="匹配值" name="matcherValue" rules={[{ required: true, message: '必填' }]}><Input placeholder="InstanceDown" /></Form.Item>
-          <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }]}>
+          <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (value && value[0] && value[1] && !value[1].isAfter(value[0])) {
+                return Promise.reject('结束时间必须大于开始时间')
+              }
+              return Promise.resolve()
+            },
+          })]}>
             <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
           </Form.Item>
           <Form.Item label="创建人" name="createdBy"><Input /></Form.Item>

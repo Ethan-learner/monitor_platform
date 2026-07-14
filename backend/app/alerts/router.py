@@ -87,7 +87,7 @@ async def create_silence(body: dict) -> dict:
                 with get_db(readonly=False) as conn:
                     cur = conn.cursor()
                     cur.execute(
-                        "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,'active') ON DUPLICATE KEY UPDATE status='active', starts_at=VALUES(starts_at), ends_at=VALUES(ends_at)",
+                        "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,1) ON DUPLICATE KEY UPDATE status=1, starts_at=VALUES(starts_at), ends_at=VALUES(ends_at)",
                         (result.get("silenceID", ""), body.get("createdBy", "unknown"),
                          m.get("name", ""), m.get("value", ""), starts, ends, body.get("comment", "")))
             except Exception: pass
@@ -106,7 +106,7 @@ async def expire_silence(sid: str) -> dict:
                 try:
                     with get_db(readonly=False) as conn:
                         cur = conn.cursor()
-                        cur.execute("UPDATE silence_records SET status='expired' WHERE silence_id=%s", (sid,))
+                        cur.execute("UPDATE silence_records SET status=0 WHERE silence_id=%s", (sid,))
                 except Exception: pass
                 return {"status": "expired"}
             raise HTTPException(status_code=502, detail="expire_failed")
