@@ -1,4 +1,5 @@
 import httpx
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -321,7 +322,7 @@ async def list_strategies() -> list:
             cur.execute("SELECT id, name, label, description, config, enabled FROM alert_strategies ORDER BY id")
             rows = cur.fetchall()
             cur.close()
-            return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3], "config": r[4], "enabled": r[5]} for r in rows]
+            return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3], "config": json.loads(r[4]) if isinstance(r[4], str) else r[4], "enabled": r[5]} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
@@ -332,7 +333,7 @@ async def create_strategy(body: dict) -> dict:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
             cur.execute("INSERT INTO alert_strategies (name, label, description, config) VALUES (%s,%s,%s,%s)",
-                        (body["name"], body.get("label", ""), body.get("description", ""), str(body["config"]).replace("'", '"')))
+                        (body["name"], body.get("label", ""), body.get("description", ""), json.dumps(body["config"])))
             return {"id": cur.lastrowid, "status": "created"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -344,7 +345,7 @@ async def update_strategy(sid: int, body: dict) -> dict:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
             cur.execute("UPDATE alert_strategies SET label=%s, description=%s, config=%s, enabled=%s WHERE id=%s",
-                        (body.get("label", ""), body.get("description", ""), str(body["config"]).replace("'", '"'), body.get("enabled", 1), sid))
+                        (body.get("label", ""), body.get("description", ""), json.dumps(body["config"]), body.get("enabled", 1), sid))
             cur.close()
             return {"status": "updated"}
     except Exception as e:
