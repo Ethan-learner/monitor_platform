@@ -30,7 +30,7 @@ export default function StrategyConfig() {
     return Object.entries(ch).map(([k, v]) => `${k}:${(v as string[]).join(',')}`).join('; ')
   }
 
-  const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(0, SEV_LEVELS.indexOf(level) + 1)
+  const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
 
   const handleSave = async (values: any) => {
     const buildCh = (s: string) => {
@@ -123,7 +123,7 @@ export default function StrategyConfig() {
             <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={SEV_LEVELS.map(l => ({ label: SEV_LABELS[l as SevLevel], value: l }))} />
           </Form.Item>
           {visibleLevels(maxLevel).map(sev => (
-            <Form.Item key={sev} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} help="格式: email:a@x.com; lark:id1" style={FMT}>
+              <Form.Item key={sev} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={FMT}>
               <Input placeholder="email:a@x.com; lark:id1" value={cfg[sev]} onChange={e => setCfg(p => ({ ...p, [sev]: e.target.value }))} />
             </Form.Item>
           ))}
