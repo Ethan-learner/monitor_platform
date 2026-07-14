@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.audit import log_audit
 from app.config import settings
+from app.db import get_db
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
 

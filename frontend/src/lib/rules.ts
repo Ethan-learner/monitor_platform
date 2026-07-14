@@ -36,8 +36,8 @@ export async function fetchRuleFiles(): Promise<RuleFile[]> {
   return data
 }
 
-export async function saveRuleFile(filename: string, content: string): Promise<void> {
-  await api.post(`/rules/files/${filename}`, { content })
+export async function saveRuleFile(filename: string, content: string, extra: Record<string, any> = {}): Promise<void> {
+  await api.post(`/rules/files/${filename}`, { content, ...extra })
 }
 
 export async function reloadPrometheus(): Promise<void> {

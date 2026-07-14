@@ -41,7 +41,7 @@ export default function NewRules() {
       const prefix = CATEGORY_PREFIX[values.category] || 'other_'
       const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
       const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
-      await saveRuleFile(fn, yaml); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); load()
+      await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); load()
     } catch { message.error('创建失败') } finally { setSubmitting(false) }
   }
 
