@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message } from 'antd'
+import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message, Card } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -16,9 +16,15 @@ export default function StrategyConfig() {
   const [cfgCritical, setCfgCritical] = useState('')
   const [cfgWarning, setCfgWarning] = useState('')
   const [cfgInfo, setCfgInfo] = useState('')
+  const [globals, setGlobals] = useState<any[]>([])
+  const [globalModal, setGlobalModal] = useState(false)
+  const [globalEditing, setGlobalEditing] = useState<any>(null)
+  const [globalForm] = Form.useForm()
+  const [globalRecipientInput, setGlobalRecipientInput] = useState('')
 
   const load = async () => { setLoading(true); try { setData((await api.get('/alerts/strategies')).data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
+  useEffect(() => { api.get('/alerts/recipients').then(r => setGlobals(r.data || [])).catch(() => {}) }, [])
 
   const getCfgStr = (cfg: any, sev: string) => {
     const ch = cfg?.[sev] || {}
@@ -83,7 +89,7 @@ export default function StrategyConfig() {
         ]}
       />
 
-      <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={600}>
+      <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={650}>
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]}><Input placeholder="ops_critical" /></Form.Item>
           <Form.Item label="显示名" name="label" rules={[{ required: true }]}><Input placeholder="运维紧急通知" /></Form.Item>
@@ -98,6 +104,46 @@ export default function StrategyConfig() {
             <Input value={cfgInfo} onChange={e => setCfgInfo(e.target.value)} />
           </Form.Item>
           <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
+        </Form>
+      </Modal>
+
+      <Card title="全局默认接收人" size="small" style={{ marginTop: 16 }} extra={
+        <Button type="link" icon={<PlusOutlined />} onClick={() => { setGlobalEditing(null); globalForm.resetFields(); setGlobalRecipientInput(''); setGlobalModal(true) }}>添加</Button>
+      }>
+        <Table
+          rowKey="id" dataSource={globals} size="small" pagination={false}
+          columns={[
+            { title: '级别', dataIndex: 'severity', width: 80, align: 'center', render: (s: string) => <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s || '全部'}</Tag> },
+            { title: '通道', dataIndex: 'channel', width: 70, align: 'center', render: (s: string) => <Tag>{s}</Tag> },
+            { title: '接收人', dataIndex: 'recipients', render: (s: string) => {
+              try { return JSON.parse(s).map((r: string, i: number) => <Tag key={i} style={{ margin: 2 }}>{r}</Tag>) }
+              catch { return <span>{s}</span> }
+            }},
+            { title: '操作', width: 80, align: 'center', render: (_, r) => (
+              <Space>
+                <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setGlobalEditing(r); globalForm.setFieldsValue({ severity: r.severity, channel: r.channel }); setGlobalRecipientInput(JSON.parse(r.recipients || '[]').join(', ')); setGlobalModal(true) }} />
+                <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/recipients/${r.id}`); setGlobals(globals.filter(g => g.id !== r.id)) }}>
+                  <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
+                </Popconfirm>
+              </Space>
+            )},
+          ]}
+          locale={{ emptyText: '暂无全局默认配置，策略未匹配时会尝试使用全局配置' }}
+        />
+      </Card>
+      <Modal title={globalEditing ? '编辑全局默认' : '添加全局默认'} open={globalModal} onCancel={() => setGlobalModal(false)} footer={null} width={400}>
+        <Form form={globalForm} layout="vertical" onFinish={async (values: any) => {
+          const body = { ...values, recipients: globalRecipientInput.split(/[,;，；]+/).map((s: string) => s.trim()).filter(Boolean) }
+          try {
+            if (globalEditing) { await api.put(`/alerts/recipients/${globalEditing.id}`, body) }
+            else { await api.post('/alerts/recipients', body) }
+            setGlobalModal(false); const r = await api.get('/alerts/recipients'); setGlobals(r.data || [])
+          } catch { message.error('保存失败') }
+        }}>
+          <Form.Item label="级别" name="severity"><Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }, { label: '全部', value: '' }]} /></Form.Item>
+          <Form.Item label="通道" name="channel" rules={[{ required: true }]}><Select options={[{ label: '邮件 email', value: 'email' }, { label: '飞书 lark', value: 'lark' }, { label: '电话 phone', value: 'phone' }]} /></Form.Item>
+          <Form.Item label="接收人 (逗号分隔)"><Input.TextArea rows={2} value={globalRecipientInput} onChange={e => setGlobalRecipientInput(e.target.value)} /></Form.Item>
+          <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setGlobalModal(false)}>取消</Button></Space>
         </Form>
       </Modal>
     </div>
