@@ -134,16 +134,9 @@ async def list_active_categorized() -> List[dict]:
             for a in alerts:
                 labels = a.get("labels") or {}
                 annots = a.get("annotations") or {}
-                fingerprint = a.get("fingerprint", "")
-                state = a.get("state", "firing")
-                alert_name = labels.get("alertname", "")
-                instance = labels.get("instance", "")
-                severity = labels.get("severity", "")
-                if not alert_name:
-                    continue
+                fingerprint = str(labels.get("alertname","")) + "|" + str(labels.get("instance","")) + "|" + str(labels.get("severity",""))
                 cur.execute(
-                    "SELECT id FROM alert_records WHERE fingerprint=%s AND alert_name=%s AND instance=%s AND severity=%s",
-                    (fingerprint, alert_name, instance, severity))
+                    "SELECT id FROM alert_records WHERE fingerprint=%s", (fingerprint,))
                 existing = cur.fetchone()
                 if existing:
                     if state == "resolved":
