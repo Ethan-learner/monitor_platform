@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
@@ -17,17 +17,15 @@ const FMT = { marginBottom: 14 }
 const getHighestLevel = (cfg: Record<string, Record<string, string[]>>) => {
   return SEV_LEVELS.find(l => cfg[l] && Object.keys(cfg[l]).length > 0)
 }
-const getNotifySummary = (cfg: Record<string, Record<string, string[]>>) => {
-  const lines: string[] = []
-  for (const sev of SEV_LEVELS) {
-    const ch = cfg[sev] || {}
-    const parts: string[] = []
-    if (ch.email && ch.email.length > 0) parts.push(`邮件:${ch.email.join(',')}`)
-    if (ch.lark && ch.lark.length > 0) parts.push(`飞书:${ch.lark.join(',')}`)
-    if (parts.length > 0) lines.push(`${SEV_SHORT[sev]}: ${parts.join(' | ')}`)
-  }
-  return lines.length > 0 ? lines.join('; ') : '—'
+const sevNotifiyStr = (cfg: Record<string, Record<string, string[]>>, sev: SevLevel) => {
+  const ch = cfg[sev] || {}
+  const parts: string[] = []
+  if (ch.email && ch.email.length > 0) parts.push(`邮件:${ch.email.join(',')}`)
+  if (ch.lark && ch.lark.length > 0) parts.push(`飞书:${ch.lark.join(',')}`)
+  return parts.length > 0 ? parts.join(' | ') : '—'
 }
+
+interface FlatRow { key: string; sid: number; name: string; label: string; description: string; enabled: number; config: Record<string, Record<string, string[]>>; sev: SevLevel; rowSpan: number }
 
 export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
@@ -46,6 +44,18 @@ export default function StrategyConfig() {
   }
 
   const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
+
+  const flatData = useMemo(() => {
+    const rows: FlatRow[] = []
+    for (const d of data.filter(x => x.enabled !== -1)) {
+      const hl = getHighestLevel(d.config) || 'critical'
+      const levels = visibleLevels(hl)
+      levels.forEach((sev, i) => {
+        rows.push({ key: `${d.id}_${sev}`, sid: d.id, name: d.name, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0 })
+      })
+    }
+    return rows
+  }, [data])
 
   const saveConfig = async () => {
     const vals = form.getFieldsValue()
@@ -98,37 +108,41 @@ export default function StrategyConfig() {
         </Space>
       </Space>
 
-      <Table<Strategy>
-        rowKey="id" dataSource={data.filter(d => d.enabled !== -1)} size="middle" pagination={false} bordered
+      <Table<FlatRow>
+        rowKey="key" dataSource={flatData} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'label', width: 150, align: 'center', render: (s: string, r) => <span><strong>{s || r.name}</strong></span> },
-          { title: '标识', dataIndex: 'name', width: 120, align: 'center', render: (s: string) => <code>{s}</code> },
-          { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center' },
-          { title: '告警级别', width: 120, align: 'center', render: (_: any, r: Strategy) => {
+          { title: '名称', dataIndex: 'label', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string, r) => <span><strong>{s || r.name}</strong></span> },
+          { title: '标识', dataIndex: 'name', width: 120, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string) => <code>{s}</code> },
+          { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
+          { title: '告警级别', width: 80, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
             const hl = getHighestLevel(r.config)
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
-          { title: '通知策略', width: 300, align: 'center', render: (_: any, r: Strategy) => <span style={{ fontSize: 12 }}>{getNotifySummary(r.config)}</span> },
-          { title: '状态', width: 70, align: 'center', render: (_, r) => {
+          { title: '通知策略', width: 280, align: 'center', render: (_: any, r: FlatRow) => (
+            <span style={{ fontSize: 12 }}><Tag color={SEV_COLORS[r.sev]} style={{ marginRight: 4 }}>{SEV_SHORT[r.sev]}</Tag>{sevNotifiyStr(r.config, r.sev)}</span>
+          )},
+          { title: '状态', width: 60, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_, r) => {
             if (r.enabled === 1) return <Tag color="green">启用</Tag>
             if (r.enabled === 0) return <Tag color="orange">禁用</Tag>
             return <Tag color="red">已删除</Tag>
           }},
-          { title: '操作', width: 140, align: 'center', render: (_, r) => (
+          { title: '操作', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => (
             <Space>
-              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(r)} />
+              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(data.find(d => d.id === r.sid)!)} />
               <Button size="small" type="text" onClick={async () => {
-                if (r.enabled === 1) {
-                  const { data: refs } = await api.get(`/alerts/strategies/${r.id}/refs`)
+                const s = data.find(d => d.id === r.sid)
+                if (!s) return
+                if (s.enabled === 1) {
+                  const { data: refs } = await api.get(`/alerts/strategies/${s.id}/refs`)
                   const msg = refs.count > 0 ? `有 ${refs.count} 条规则正在使用此策略，禁用后这些规则将无法推送通知，确认禁用？` : '确认禁用该策略？'
                   if (!confirm(msg)) return
                 }
-                const newEnabled = r.enabled === 1 ? 0 : 1
-                await api.put(`/alerts/strategies/${r.id}/disable`, { enabled: newEnabled }); load()
+                const newEnabled = s.enabled === 1 ? 0 : 1
+                await api.put(`/alerts/strategies/${s.id}/disable`, { enabled: newEnabled }); load()
               }}>
                 <StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#999', transform: r.enabled === 1 ? 'none' : 'rotate(180deg)' }} />
               </Button>
-              <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.id}`); load() }}>
+              <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.sid}`); load() }}>
                 <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
               </Popconfirm>
             </Space>
