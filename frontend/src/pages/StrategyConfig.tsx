@@ -77,14 +77,12 @@ export default function StrategyConfig() {
     setEditing(r)
     const highest = getHighestLevel(r.config) || 'critical'
     setMaxLevel(highest)
-    setTimeout(() => {
-      form.setFieldsValue({
-        name: r.name, label: r.label, description: r.description,
-        cfg_critical: getCfgStr(r.config, 'critical'),
-        cfg_warning: getCfgStr(r.config, 'warning'),
-        cfg_info: getCfgStr(r.config, 'info'),
-      })
-    }, 50)
+    form.setFieldsValue({
+      name: r.name, label: r.label, description: r.description,
+      cfg_critical: getCfgStr(r.config, 'critical'),
+      cfg_warning: getCfgStr(r.config, 'warning'),
+      cfg_info: getCfgStr(r.config, 'info'),
+    })
     setModalOpen(true)
   }
 
@@ -148,8 +146,8 @@ export default function StrategyConfig() {
           <Form.Item label="覆盖级别" style={{ marginBottom: 18 }}>
             <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={SEV_LEVELS.map(l => ({ label: SEV_LABELS[l as SevLevel], value: l }))} />
           </Form.Item>
-          {visibleLevels(maxLevel).map(sev => (
-            <Form.Item key={sev} name={`cfg_${sev}`} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
+          {SEV_LEVELS.map(sev => (
+            <Form.Item key={sev} name={`cfg_${sev}`} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14, display: visibleLevels(maxLevel).includes(sev) ? 'block' : 'none' }}>
               <Input placeholder="email:a@x.com; lark:id1" />
             </Form.Item>
           ))}
