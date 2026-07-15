@@ -353,10 +353,10 @@ def _write_file(filename: str, content: str) -> None:
     raise HTTPException(status_code=404, detail="cannot write: no target")
 
 
-def _move_to_disabled(filename: str) -> None:
-    """将规则文件移至 alerts_disabled 目录（加时间戳后缀避免覆盖）"""
+def _move_to_disabled(filename: str) -> str:
+    """将规则文件移至 alerts_disabled 目录（加时间戳后缀避免覆盖），返回新文件名"""
     if ".." in filename or "/" in filename:
-        return
+        return filename
     try:
         if settings.ssh_host:
             ssh = paramiko.SSHClient()
@@ -377,8 +377,10 @@ def _move_to_disabled(filename: str) -> None:
             except IOError:
                 pass
             sftp.close(); ssh.close()
+            return dst_name
     except Exception:
         pass
+    return filename
 
 
 def _move_to_active(filename: str) -> None:
@@ -418,9 +420,13 @@ async def delete_rule(body: dict) -> dict:
             cur = conn.cursor()
             cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s", (rule_name,))
             cur.close()
-        # 移动文件到 disabled 目录
+        # 移动文件到 disabled 目录，同步更新文件名
         if file_name:
-            _move_to_disabled(file_name)
+            dst = _move_to_disabled(file_name)
+            with get_db(readonly=False) as conn:
+                cur = conn.cursor()
+                cur.execute("UPDATE alert_rules SET file_name=%s WHERE rule_name=%s AND status=-1", (dst, rule_name))
+                cur.close()
         log_audit("system", "rules", "delete", f"rule={rule_name} file={file_name}")
         return {"status": "deleted", "rule": rule_name}
     except Exception as e:
@@ -433,21 +439,23 @@ async def disable_rule(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT status, file_name FROM alert_rules WHERE rule_name=%s", (rule_name,))
+            cur.execute("SELECT status, file_name, id FROM alert_rules WHERE rule_name=%s AND status != -1", (rule_name,))
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="rule_not_found")
-            cur_status = row[0]
-            file_name = row[1] or ""
+            cur_status, file_name, rid = row
             new_status = 0 if cur_status == 1 else 1
-            cur.execute("UPDATE alert_rules SET status=%s WHERE rule_name=%s", (new_status, rule_name))
-            cur.close()
-        # 移动文件
-        if file_name:
-            if new_status == 0:
-                _move_to_disabled(file_name)
-            else:
+            new_file = file_name
+            # 禁用：移动文件到 disabled 目录
+            if new_status == 0 and file_name:
+                new_file = _move_to_disabled(file_name)
+            # 启用：移回文件（从时间戳文件名恢复）
+            if new_status == 1 and file_name:
                 _move_to_active(file_name)
+                # 恢复原始文件名
+                new_file = file_name.rsplit("_", 1)[0] + ".yml" if "_" in file_name else file_name
+            cur.execute("UPDATE alert_rules SET status=%s, file_name=%s WHERE id=%s", (new_status, new_file, rid))
+            cur.close()
         return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
     except HTTPException:
         raise
