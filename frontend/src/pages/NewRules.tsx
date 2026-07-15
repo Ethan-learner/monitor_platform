@@ -19,6 +19,9 @@ export default function NewRules() {
   const [previewResult, setPreviewResult] = useState<string | null>(null); const [previewLoading, setPreviewLoading] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [strategies, setStrategies] = useState<any[]>([])
+  const [noStrategyModal, setNoStrategyModal] = useState(false)
+  const [customMode, setCustomMode] = useState(false)
+  const [editCustomMode, setEditCustomMode] = useState(false)
 
   const load = async () => { setLoading(true); try { const cached = cacheGet('rules:parsed'); if (cached) setRules(cached); const data = await fetchParsedRules(); setRules(data); cacheSet('rules:parsed', data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load(); api.get('/alerts/strategies').then(r => setStrategies(r.data || [])).catch(() => {}) }, [])
@@ -42,7 +45,7 @@ export default function NewRules() {
       const prefix = CATEGORY_PREFIX[values.category] || 'other_'
       const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
       const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
-      await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); load()
+      await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); setCustomMode(false); load()
     } catch { message.error('创建失败') } finally { setSubmitting(false) }
   }
 
@@ -56,8 +59,8 @@ export default function NewRules() {
   const handleEdit = async (values: any) => {
     if (!editTarget) return
     try {
-      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id, custom_notify: values.custom_notify || '' })
-      await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); load()
+      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' })
+      await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
   }
 
@@ -88,8 +91,18 @@ export default function NewRules() {
             <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
           )},
           { title: '操作', width: 130, align: 'center', render: (_: any, r: any) => (<Space>
-            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => { setEditTarget(r); editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary, strategy_id: r.strategy_id, custom_notify: r.custom_notify }) }} />
-            <Button size="small" type="text" onClick={() => api.post('/rules/disable', { ruleName: r.name }).then(load)}>
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => {
+              setEditTarget(r)
+              setEditCustomMode(!r.strategy_id && !!r.custom_notify)
+              editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary, strategy_id: r.strategy_id || '__custom__', custom_notify: r.custom_notify })
+            }} />
+            <Button size="small" type="text" onClick={async () => {
+              if (r.status !== 0) { api.post('/rules/disable', { ruleName: r.name }).then(load); return }
+              if (r.strategy_id) {
+                try { await api.get(`/alerts/strategies/${r.strategy_id}`); api.post('/rules/disable', { ruleName: r.name }).then(load) }
+                catch { setNoStrategyModal(true) }
+              } else { api.post('/rules/disable', { ruleName: r.name }).then(load) }
+            }}>
               <StopOutlined style={{ color: r.status === 0 ? '#ddd' : '#fa8c16' }} />
             </Button>
             <Popconfirm title="确认删除该规则？" onConfirm={() => handleDelete(r.name)} okText="确认删除" cancelText="取消">
@@ -114,20 +127,25 @@ export default function NewRules() {
         </div>
         <Form.Item label="持续时间" name="for" style={FORM_ITEM_STYLE}><Input placeholder="1m" /></Form.Item>
         <Form.Item label="通知策略" name="strategy_id" style={FORM_ITEM_STYLE}>
-          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))}
+          <Select allowClear placeholder="选策略模板（可选）"
+            options={[...strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id })), { label: '自定义', value: '__custom__' }]}
             onChange={(val) => {
-              if (val) {
+              setCustomMode(val === '__custom__')
+              if (val && val !== '__custom__') {
                 const s = strategies.find((x: any) => x.id === val)
                 if (s?.config) {
                   const levels = (['critical', 'warning', 'info'] as const).filter(k => s.config[k] && Object.keys(s.config[k]).length > 0)
-                  form.setFieldsValue({ severity: levels[0] || 'warning' })
+                  form.setFieldsValue({ severity: levels[0] || 'warning', custom_notify: undefined })
                 }
               }
+              if (val === '__custom__') { form.setFieldsValue({ severity: 'warning' }) }
             }} />
         </Form.Item>
-        <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE} help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
-          <Input placeholder="critical:email:a@x.com,lark:id1" />
-        </Form.Item>
+        {customMode && (
+          <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
+            <Input placeholder="critical:email:a@x.com,lark:id1; warning:email:b@x.com" />
+          </Form.Item>
+        )}
         <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
           <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
@@ -147,20 +165,26 @@ export default function NewRules() {
         </div>
         <Form.Item label="持续时间" name="for" style={FORM_ITEM_STYLE}><Input placeholder="1m" /></Form.Item>
         <Form.Item label="通知策略" name="strategy_id" style={FORM_ITEM_STYLE}>
-          <Select allowClear placeholder="选策略模板（可选）" options={strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id }))}
+          <Select allowClear placeholder="选策略模板（可选）"
+            options={[...strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id })), { label: '自定义', value: '__custom__' }]}
             onChange={(val) => {
-              if (val) {
+              setEditCustomMode(val === '__custom__')
+              if (val && val !== '__custom__') {
                 const se = strategies.find((x: any) => x.id === val)
                 if (se?.config) {
                   const levels = (['critical', 'warning', 'info'] as const).filter(k => se.config[k] && Object.keys(se.config[k]).length > 0)
-                  editForm.setFieldsValue({ severity: levels[0] || 'warning' })
+                  editForm.setFieldsValue({ severity: levels[0] || 'warning', custom_notify: undefined })
                 }
               }
+              if (val === '__custom__') { editForm.setFieldsValue({ severity: 'warning' }) }
             }} />
         </Form.Item>
-        <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE} help="格式: critical:email:a@x.com,lark:id1; warning:email:b@x.com（不填则用策略）">
-          <Input placeholder="critical:email:a@x.com,lark:id1" />
-        </Form.Item>
+        {editCustomMode && (
+          <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
+            <Input placeholder="critical:email:a@x.com,lark:id1; warning:email:b@x.com" />
+          </Form.Item>
+        )}
+        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
         <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
           <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
@@ -171,6 +195,9 @@ export default function NewRules() {
 
     <Modal title="查询预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} footer={null} width={700}>
       <pre style={{ fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f6f8fa', padding: 12, borderRadius: 4 }}>{previewResult}</pre>
+    </Modal>
+    <Modal title="无法启用" open={noStrategyModal} onCancel={() => setNoStrategyModal(false)} footer={null}>
+      <p>引用的策略不存在，请先修改规则的策略配置。</p>
     </Modal>
   </div>)
 }

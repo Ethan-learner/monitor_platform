@@ -358,9 +358,24 @@ async def update_strategy(sid: int, body: dict) -> dict:
 async def disable_strategy(sid: int) -> dict:
     with get_db(readonly=False) as conn:
         cur = conn.cursor()
+        # 禁用关联规则
+        cur.execute("UPDATE alert_rules SET status=0 WHERE strategy_id=%s AND status=1", (sid,))
         cur.execute("UPDATE alert_strategies SET enabled=-1 WHERE id=%s", (sid,))
         cur.close()
         return {"status": "deleted"}
+
+
+@router.get("/alerts/strategies/{sid}")
+async def get_strategy(sid: int):
+    """获取单个策略（用于检查存在性）"""
+    with get_db(readonly=True) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, label, enabled FROM alert_strategies WHERE id=%s AND enabled != -1", (sid,))
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="strategy_not_found")
+        return {"id": row[0], "name": row[1], "label": row[2], "enabled": row[3]}
 
 
 @router.get("/alerts/strategies/{sid}/refs")

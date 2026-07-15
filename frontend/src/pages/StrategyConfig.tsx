@@ -31,7 +31,8 @@ export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<Strategy | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Strategy | null>(null)
+  const [deleteRefs, setDeleteRefs] = useState(0)
   const [form] = Form.useForm()
   const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
 
@@ -98,6 +99,15 @@ export default function StrategyConfig() {
     setEditing(null); form.resetFields(); setMaxLevel('critical'); setModalOpen(true)
   }
 
+  const handleDeleteStrategy = async () => {
+    if (!deleteTarget) return
+    try {
+      await api.delete(`/alerts/strategies/${deleteTarget.id}`)
+      message.success(deleteRefs > 0 ? `策略已删除，${deleteRefs} 条规则已禁用` : '策略已删除')
+      setDeleteTarget(null); load()
+    } catch { message.error('删除失败') }
+  }
+
   return (
     <div style={{ padding: 16 }}>
       <Space style={{ marginBottom: 12, justifyContent: 'space-between', width: '100%' }}>
@@ -142,9 +152,12 @@ export default function StrategyConfig() {
               }}>
                 <StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#999', transform: r.enabled === 1 ? 'none' : 'rotate(180deg)' }} />
               </Button>
-              <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.sid}`); load() }}>
-                <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
-              </Popconfirm>
+              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} onClick={async () => {
+                const s = data.find(d => d.id === r.sid)
+                if (!s) return
+                const { data: refs } = await api.get(`/alerts/strategies/${s.id}/refs`)
+                setDeleteTarget(s); setDeleteRefs(refs.count || 0)
+              }} />
             </Space>
           )},
         ]}
@@ -165,6 +178,10 @@ export default function StrategyConfig() {
           ))}
           <Space><Button type="primary" onClick={saveConfig}>保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
         </Form>
+      </Modal>
+      <Modal title="确认删除策略" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDeleteStrategy} okText="确认删除" okButtonProps={{ danger: true }}>
+        <p>策略: <strong>{deleteTarget?.label || deleteTarget?.name}</strong></p>
+        {deleteRefs > 0 ? <p style={{ color: '#cf1322' }}>有 {deleteRefs} 条规则引用了此策略，删除后将自动禁用这些规则。</p> : <p>确认删除该策略？</p>}
       </Modal>
     </div>
   )
