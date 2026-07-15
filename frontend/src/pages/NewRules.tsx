@@ -8,6 +8,8 @@ import { cacheGet, cacheSet } from '../lib/cache'
 const { Title } = Typography
 const CATEGORY_COLORS: Record<string, string> = { '应用告警': '#1677ff', '数据库告警': '#722ed1', '服务器告警': '#52c41a', '平台组件告警': '#fa8c16', '性能告警': '#eb2f96' }
 const CATEGORY_PREFIX: Record<string, string> = { '应用告警': 'app_', '数据库告警': 'db_', '服务器告警': 'host_', '平台组件告警': 'component_', '性能告警': 'perf_' }
+const SEV_COLORS: Record<string, string> = { critical: '#cf1322', warning: '#d48806', info: '#1677ff' }
+const SEV_LABELS: Record<string, string> = { critical: '严重', warning: '警告', info: '信息' }
 const FORM_ITEM_STYLE = { marginBottom: 10 }
 
 export default function NewRules() {
@@ -78,6 +80,9 @@ export default function NewRules() {
           { title: '表达式', dataIndex: 'expr', ellipsis: true, align: 'center', render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
           { title: '持续', dataIndex: 'for', width: 60, align: 'center' },
           { title: '策略', width: 120, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
+          { title: '告警级别', width: 70, align: 'center', render: (_: any, r: any) => (
+            <Tag color={SEV_COLORS[r.severity] || '#999'}>{SEV_LABELS[r.severity] || r.severity || '—'}</Tag>
+          )},
           { title: '描述', dataIndex: 'summary', ellipsis: true, align: 'center' },
           { title: '状态', width: 70, align: 'center', render: (_: any, r: any) => (
             <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
