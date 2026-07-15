@@ -18,17 +18,15 @@ const getHighestLevel = (cfg: Record<string, Record<string, string[]>>) => {
   return SEV_LEVELS.find(l => cfg[l] && Object.keys(cfg[l]).length > 0)
 }
 const getNotifySummary = (cfg: Record<string, Record<string, string[]>>) => {
-  const emailAll = new Set<string>()
-  const larkAll = new Set<string>()
+  const lines: string[] = []
   for (const sev of SEV_LEVELS) {
     const ch = cfg[sev] || {}
-    if (ch.email) ch.email.forEach((e: string) => emailAll.add(e))
-    if (ch.lark) ch.lark.forEach((l: string) => larkAll.add(l))
+    const parts: string[] = []
+    if (ch.email && ch.email.length > 0) parts.push(`邮件:${ch.email.join(',')}`)
+    if (ch.lark && ch.lark.length > 0) parts.push(`飞书:${ch.lark.join(',')}`)
+    if (parts.length > 0) lines.push(`${SEV_SHORT[sev]}: ${parts.join(' | ')}`)
   }
-  const parts: string[] = []
-  if (emailAll.size > 0) parts.push(`邮件: ${[...emailAll].join(',')}`)
-  if (larkAll.size > 0) parts.push(`飞书: ${[...larkAll].join(',')}`)
-  return parts.length > 0 ? parts.join(' | ') : '—'
+  return lines.length > 0 ? lines.join('; ') : '—'
 }
 
 export default function StrategyConfig() {
@@ -110,7 +108,7 @@ export default function StrategyConfig() {
             const hl = getHighestLevel(r.config)
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
-          { title: '通知策略', width: 240, align: 'center', render: (_: any, r: Strategy) => <span style={{ fontSize: 12 }}>{getNotifySummary(r.config)}</span> },
+          { title: '通知策略', width: 300, align: 'center', render: (_: any, r: Strategy) => <span style={{ fontSize: 12 }}>{getNotifySummary(r.config)}</span> },
           { title: '状态', width: 70, align: 'center', render: (_, r) => {
             if (r.enabled === 1) return <Tag color="green">启用</Tag>
             if (r.enabled === 0) return <Tag color="orange">禁用</Tag>
