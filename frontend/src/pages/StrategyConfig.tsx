@@ -50,7 +50,8 @@ export default function StrategyConfig() {
   const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
 
   const saveConfig = async () => {
-    try { var vals = await form.validateFields() } catch { return }
+    const vals = form.getFieldsValue()
+    if (!vals.name || !vals.label) { message.warning('请填写标识 (英文) 和显示名'); return }
     try {
       const buildCh = (s: string) => {
         const ch: Record<string, string[]> = {}
