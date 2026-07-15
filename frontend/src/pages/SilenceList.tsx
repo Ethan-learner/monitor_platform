@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, DatePicker, Select, message, Popconfirm } from 'antd'
-import { ReloadOutlined, PlusOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons'
+import { ReloadOutlined, DeleteOutlined, PlusOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { fetchSilences, expireSilence, createSilence, type Silence } from '../lib/rules'
+import { api } from '../lib/api'
 import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
@@ -32,7 +33,10 @@ export default function SilenceList() {
     catch { message.error('操作失败') }
   }
 
-  const handleReset = async (values: any) => {
+  const handleDelete = async (id: string) => {
+    try { await api.post(`/alerts/silences/${id}/delete`); message.success('已删除'); load() }
+    catch { message.error('操作失败') }
+  }
     if (!resetTarget) return
     setSubmitting(true)
     try {
@@ -111,7 +115,7 @@ export default function SilenceList() {
             isExpired(r) ? <Tag color="orange">已过期</Tag> : <Tag color="green">活跃</Tag>
           )},
           { title: '备注', dataIndex: 'comment', ellipsis: true, align: 'center' },
-          { title: '操作', width: 120, align: 'center', render: (_, r) => {
+          { title: '操作', width: 170, align: 'center', render: (_, r) => {
             const expired = isExpired(r)
             return (
               <Space>
@@ -120,6 +124,9 @@ export default function SilenceList() {
                 </Popconfirm>
                 <Button size="small" type="text" icon={<UndoOutlined style={{ color: expired ? '#1677ff' : '#ddd' }} />}
                   onClick={() => { if (expired) openReset(r) }} disabled={!expired} />
+                <Popconfirm title="确认删除该静默？" onConfirm={() => handleDelete(r.id)} okText="确认删除" cancelText="取消">
+                  <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
+                </Popconfirm>
               </Space>
             )
           }},
