@@ -78,7 +78,7 @@ async def create_silence(body: dict) -> dict:
                     if f in clean_body and clean_body[f]:
                         v = clean_body[f]
                         if ' ' in v and 'T' not in v:
-                            clean_body[f] = v.replace(' ', 'T') + ':00'
+                            clean_body[f] = v.replace(' ', 'T') + '+08:00'
                 resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=clean_body)
                 if resp.status_code >= 300:
                     detail = resp.text
