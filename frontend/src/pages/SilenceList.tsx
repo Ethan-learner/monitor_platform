@@ -37,6 +37,8 @@ export default function SilenceList() {
     try { await api.post(`/alerts/silences/${id}/delete`); message.success('已删除'); load() }
     catch { message.error('操作失败') }
   }
+
+  const handleReset = async (values: any) => {
     if (!resetTarget) return
     setSubmitting(true)
     try {
