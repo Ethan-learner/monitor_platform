@@ -42,8 +42,9 @@ export default function RulesList() {
   useEffect(() => { load() }, [])
 
   const grouped = useMemo(() => {
+    const sorted = [...alerts].sort((a, b) => new Date(b.activeAt).getTime() - new Date(a.activeAt).getTime())
     const map: Record<string, ActiveAlert[]> = {}
-    alerts.forEach((a) => { (map[a.category] = map[a.category] || []).push(a) })
+    sorted.forEach((a) => { (map[a.category] = map[a.category] || []).push(a) })
     return map
   }, [alerts])
 
