@@ -51,7 +51,7 @@ export default function StrategyConfig() {
   const flatData = useMemo(() => {
     const rows: FlatRow[] = []
     for (const d of data.filter(x => x.enabled !== -1)) {
-      const hl = getHighestLevel(d.config) || 'critical'
+      const hl = getHighestLevel(d.config) || 'info'
       const levels = visibleLevels(hl)
       levels.forEach((sev, i) => {
         rows.push({ key: `${d.id}_${sev}`, sid: d.id, name: d.name, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0 })
@@ -60,8 +60,7 @@ export default function StrategyConfig() {
     return rows
   }, [data])
 
-  const saveConfig = async () => {
-    const vals = form.getFieldsValue()
+  const saveConfig = async (vals: any) => {
     if (!vals.name || !vals.label) { message.warning('请填写标识 (英文) 和显示名'); return }
     try {
       const buildCh = (s: string) => {
@@ -89,7 +88,7 @@ export default function StrategyConfig() {
 
   const handleEdit = (r: Strategy) => {
     setEditing(r)
-    const highest = getHighestLevel(r.config) || 'critical'
+    const highest = getHighestLevel(r.config) || 'info'
     setMaxLevel(highest)
     form.setFieldsValue({
       name: r.name, label: r.label, description: r.description,
@@ -169,7 +168,7 @@ export default function StrategyConfig() {
       />
 
       <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={620}>
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" onFinish={saveConfig}>
           <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="说明" name="description" style={FMT}><Input placeholder="" /></Form.Item>
@@ -181,7 +180,8 @@ export default function StrategyConfig() {
               <Input placeholder="email:a@x.com; lark:id1" />
             </Form.Item>
           ))}
-          <Space><Button type="primary" onClick={saveConfig}>保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
+          <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>保存</Button>
+          <Button onClick={() => setModalOpen(false)}>取消</Button>
         </Form>
       </Modal>
       <Modal title="提示" open={dupModal} onCancel={() => setDupModal(false)} footer={null}>
