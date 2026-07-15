@@ -62,6 +62,7 @@ export interface Silence {
   endsAt: string
   matchers: Array<{ name: string; value: string; isRegex: boolean }>
   status: { state: string }
+  db_status?: number
 }
 
 export async function fetchSilences(): Promise<Silence[]> {
@@ -82,4 +83,19 @@ export async function createSilence(body: {
 }): Promise<{ silenceID: string }> {
   const { data } = await api.post('/alerts/silences', body)
   return data
+}
+
+export async function updateSilence(id: string, body: {
+  matchers: Array<{ name: string; value: string; isRegex: boolean }>
+  startsAt: string
+  endsAt: string
+  createdBy: string
+  comment: string
+}): Promise<{ new_sid: string }> {
+  const { data } = await api.put(`/alerts/silences/${id}`, body)
+  return data
+}
+
+export async function deleteSilence(id: string): Promise<void> {
+  await api.post(`/alerts/silences/${id}/delete`)
 }

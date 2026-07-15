@@ -45,7 +45,22 @@ async def list_silences() -> list:
         async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.get(f"{settings.alertmanager_url}/api/v2/silences")
             resp.raise_for_status()
-            return resp.json()
+            am_data = resp.json()
+        # 合并 DB 状态
+        db_status = {}
+        try:
+            with get_db(readonly=True) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT silence_id, status FROM silence_records WHERE status != -1")
+                for row in cur.fetchall():
+                    db_status[row[0]] = row[1]
+                cur.close()
+        except Exception:
+            pass
+        for item in am_data:
+            sid = item.get("id", "")
+            item["db_status"] = db_status.get(sid, 1)
+        return am_data
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="alertmanager_unreachable")
 
@@ -112,6 +127,58 @@ async def expire_silence(sid: str) -> dict:
                 except Exception: pass
                 return {"status": "expired"}
             raise HTTPException(status_code=502, detail="expire_failed")
+    except (httpx.HTTPError, httpx.ConnectError):
+        raise HTTPException(status_code=502, detail="alertmanager_unreachable")
+
+
+@router.post("/alerts/silences/{sid}/delete")
+async def delete_silence(sid: str) -> dict:
+    """平台删除：Alertmanager 过期 + DB status=-1"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
+            await client.delete(f"{settings.alertmanager_url}/api/v2/silence/{sid}")
+        log_audit("system", "silences", "delete", f"sid={sid}")
+        try:
+            with get_db(readonly=False) as conn:
+                cur = conn.cursor()
+                cur.execute("UPDATE silence_records SET status=-1 WHERE silence_id=%s", (sid,))
+        except Exception: pass
+        return {"status": "deleted"}
+    except (httpx.HTTPError, httpx.ConnectError):
+        raise HTTPException(status_code=502, detail="alertmanager_unreachable")
+
+
+@router.put("/alerts/silences/{sid}")
+async def update_silence(sid: str, body: dict) -> dict:
+    """编辑静默：过期旧 → 创建新，更新 DB"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
+            # 1. 过期旧静默
+            await client.delete(f"{settings.alertmanager_url}/api/v2/silence/{sid}")
+            # 2. 创建新静默
+            clean_body = dict(body)
+            for f in ['startsAt', 'endsAt']:
+                if f in clean_body and clean_body[f]:
+                    clean_body[f] = clean_body[f].replace("T", " ").replace("Z", "")[:19].replace(" ", "T") + "Z"
+            resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=clean_body)
+            if resp.status_code >= 300:
+                raise HTTPException(status_code=502, detail=f"create_failed: {resp.text}")
+            result = resp.json()
+            new_sid = result.get("silenceID", "")
+        # 3. 更新 DB：旧记录置负数，新记录写入
+        try:
+            m = body.get("matchers", [{}])[0]
+            starts = body.get("startsAt", "").replace("T", " ").replace("Z", "")[:19]
+            ends = body.get("endsAt", "").replace("T", " ").replace("Z", "")[:19]
+            with get_db(readonly=False) as conn:
+                cur = conn.cursor()
+                cur.execute("UPDATE silence_records SET status=-1 WHERE silence_id=%s", (sid,))
+                cur.execute(
+                    "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,1)",
+                    (new_sid, body.get("createdBy", "unknown"), m.get("name", ""), m.get("value", ""), starts, ends, body.get("comment", "")))
+        except Exception: pass
+        log_audit(body.get("createdBy", "unknown"), "silences", "update", f"old={sid} new={new_sid}")
+        return {"status": "updated", "old_sid": sid, "new_sid": new_sid}
     except (httpx.HTTPError, httpx.ConnectError):
         raise HTTPException(status_code=502, detail="alertmanager_unreachable")
 
