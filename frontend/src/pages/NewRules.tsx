@@ -8,6 +8,7 @@ import { cacheGet, cacheSet } from '../lib/cache'
 const { Title } = Typography
 const CATEGORY_COLORS: Record<string, string> = { '应用告警': '#1677ff', '数据库告警': '#722ed1', '服务器告警': '#52c41a', '平台组件告警': '#fa8c16', '性能告警': '#eb2f96' }
 const CATEGORY_PREFIX: Record<string, string> = { '应用告警': 'app_', '数据库告警': 'db_', '服务器告警': 'host_', '平台组件告警': 'component_', '性能告警': 'perf_' }
+const CATEGORY_ORDER = ['服务器告警', '数据库告警', '平台组件告警', '应用告警', '性能告警']
 const SEV_COLORS: Record<string, string> = { critical: '#cf1322', warning: '#d48806', info: '#1677ff' }
 const SEV_LABELS: Record<string, string> = { critical: '严重', warning: '警告', info: '信息' }
 const FORM_ITEM_STYLE = { marginBottom: 10 }
@@ -76,9 +77,9 @@ export default function NewRules() {
       <Title level={5} style={{ margin: 0 }}>告警规则 ({rules.length})</Title>
       <Space><Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>创建规则</Button><Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button></Space>
     </Space>
-    {Object.entries(grouped).map(([cat, items]) => (<div key={cat} style={{ marginBottom: 16 }}>
-      <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{items.length}</Tag></Space>
-      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={items} size="middle" pagination={false} bordered
+    {CATEGORY_ORDER.filter(cat => grouped[cat]).map((cat) => (<div key={cat} style={{ marginBottom: 16 }}>
+      <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{grouped[cat].length}</Tag></Space>
+      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={grouped[cat]} size="middle" pagination={false} bordered
         columns={[
           { title: '名称', dataIndex: 'name', width: 180, align: 'center' },
           { title: '表达式', dataIndex: 'expr', ellipsis: true, align: 'center', render: (e: string) => <code style={{ fontSize: 11 }}>{e}</code> },
