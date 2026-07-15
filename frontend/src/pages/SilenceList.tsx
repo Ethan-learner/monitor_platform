@@ -18,7 +18,6 @@ export default function SilenceList() {
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<Silence | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<Silence | null>(null)
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
   const [matchers, setMatchers] = useState<Matcher[]>([emptyMatcher()])
@@ -39,14 +38,7 @@ export default function SilenceList() {
     catch { message.error('操作失败') }
   }
 
-  const handleDelete = async () => {
-    if (!deleteConfirm) return
-    try { await api.post(`/alerts/silences/${deleteConfirm.id}/delete`); message.success('已删除'); setDeleteConfirm(null); load() }
-    catch { message.error('操作失败') }
-  }
-
   const handleReset = async (values: any) => {
-    if (!resetTarget) return
     const [start, end] = values.timeRange || []
     if (!end || end.isBefore(dayjs())) { message.warning('结束时间不能小于当前时间'); return }
     setSubmitting(true)
@@ -187,8 +179,11 @@ export default function SilenceList() {
                 </Popconfirm>
                 <Button size="small" type="text" icon={<UndoOutlined style={{ color: expired ? '#1677ff' : '#ddd' }} />}
                   onClick={() => { if (expired) openReset(r) }} disabled={!expired} />
-                <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />}
-                  onClick={() => { if (!expired) { message.warning('请先过期规则，再执行删除操作'); return } setDeleteConfirm(r) }} />
+                <Popconfirm title="确认删除该静默？" onConfirm={() => { api.post(`/alerts/silences/${r.id}/delete`).then(() => { message.success('已删除'); load() }).catch(() => message.error('操作失败')) }} okText="确认删除" cancelText="取消"
+                  onCancel={() => {}} disabled={!expired}>
+                  <Button size="small" type="text" onClick={(e) => { if (!expired) { e.stopPropagation(); message.warning('请先过期再删除') } }}
+                    icon={<DeleteOutlined style={{ color: expired ? '#999' : '#ddd' }} />} />
+                </Popconfirm>
               </Space>
             )
           }},
@@ -196,9 +191,6 @@ export default function SilenceList() {
       />
       {createModal}
       {resetModal}
-      <Modal title="确认删除" open={!!deleteConfirm} onCancel={() => setDeleteConfirm(null)} onOk={handleDelete} okText="确认删除" okButtonProps={{ danger: true }}>
-        <p>确认删除该静默记录？删除后将不在平台展示。</p>
-      </Modal>
     </div>
   )
 }
