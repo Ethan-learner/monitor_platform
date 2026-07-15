@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { cacheGet, cacheSet } from '../lib/cache'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 const CATEGORY_COLORS: Record<string, string> = {
   '应用告警': '#1677ff',
@@ -15,6 +15,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   '平台组件告警': '#fa8c16',
   '性能告警': '#eb2f96',
 }
+
+const CATEGORY_ORDER = ['服务器告警', '数据库告警', '平台组件告警', '应用告警', '性能告警']
+
+const lbl = (key: keyof ActiveAlert, title: string, w?: number) => ({
+  title, dataIndex: key, width: w, ellipsis: true, align: 'center' as const,
+  render: (v: string) => v || <Text type="secondary">—</Text>,
+})
 
 export default function RulesList() {
   const [alerts, setAlerts] = useState<ActiveAlert[]>([])
@@ -36,9 +43,7 @@ export default function RulesList() {
 
   const grouped = useMemo(() => {
     const map: Record<string, ActiveAlert[]> = {}
-    alerts.forEach((a) => {
-      (map[a.category] = map[a.category] || []).push(a)
-    })
+    alerts.forEach((a) => { (map[a.category] = map[a.category] || []).push(a) })
     return map
   }, [alerts])
 
@@ -54,40 +59,39 @@ export default function RulesList() {
         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
       </Space>
 
-      {Object.entries(grouped).map(([cat, items]) => (
+      {CATEGORY_ORDER.filter(cat => grouped[cat]).map((cat) => (
         <div key={cat} style={{ marginBottom: 16 }}>
           <Space style={{ marginBottom: 8 }}>
             <Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} />
             <strong>{cat}</strong>
-            <Tag color={items.some(a => a.severity === 'critical') ? 'red' : items.length > 0 ? 'orange' : 'default'}>{items.length}</Tag>
+            <Tag color={grouped[cat].some(a => a.severity === 'critical') ? 'red' : 'orange'}>{grouped[cat].length}</Tag>
           </Space>
           <Table<ActiveAlert>
             rowKey={(r, i) => r.name + r.instance + i}
-            dataSource={items}
-            size="middle" bordered
+            dataSource={grouped[cat]}
+            bordered
             pagination={false}
+            scroll={{ x: 1200 }}
             columns={[
-              {
-                title: '告警级别', dataIndex: 'severity', width: 70, align: 'center',
-                render: (s: string) => <Tag color={severityColor[s] || 'default'}>{s || '-'}</Tag>,
-              },
-              { title: '告警名称', dataIndex: 'name', width: 200, align: 'center' },
-              { title: '实例', dataIndex: 'instance', width: 180, align: 'center' },
-              { title: 'Job', dataIndex: 'job', width: 140, align: 'center' },
-              {
-                title: '状态', dataIndex: 'state', width: 70, align: 'center',
-                render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s}</Tag>,
-              },
-              { title: '描述', dataIndex: 'summary', ellipsis: true, width: 120, align: 'center' },
-              {
-                title: '', width: 40,
+              { title: '告警级别', dataIndex: 'severity', width: 80, align: 'center',
+                render: (s: string) => <Tag color={severityColor[s] || 'default'}>{s || '—'}</Tag> },
+              { title: '告警名称', dataIndex: 'name', width: 180 },
+              lbl('instance', '实例', 180),
+              lbl('service', '服务'),
+              lbl('region', '地区'),
+              lbl('department', '部门'),
+              lbl('project', '项目'),
+              lbl('env', '环境'),
+              { title: '状态', dataIndex: 'state', width: 70, align: 'center',
+                render: (s: string) => <Tag color={s === 'firing' ? 'red' : 'green'}>{s}</Tag> },
+              { title: '描述', dataIndex: 'summary', ellipsis: true },
+              { title: '操作', key: 'action', width: 80, align: 'center',
                 render: (_: any, r: ActiveAlert) => (
                   <Tooltip title="静默处理">
                     <Button size="small" type="text" icon={<BellOutlined style={{ color: '#fa8c16' }} />}
-                      onClick={() => navigate('/dashboard/silence-new', { state: { alertName: r.name, alertLabels: { alertname: r.name, instance: r.instance, job: r.job }, createdBy: user?.displayName || user?.username || '' } })} />
+                      onClick={() => navigate('/dashboard/silence-new', { state: { alertName: r.name, alertLabels: { alertname: r.name, instance: r.instance, job: r.job, service: r.service } } })} />
                   </Tooltip>
-                ),
-              },
+                ) },
             ]}
           />
         </div>

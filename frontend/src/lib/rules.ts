@@ -13,6 +13,11 @@ export interface ActiveAlert {
   severity: string
   instance: string
   job: string
+  service: string
+  region: string
+  department: string
+  project: string
+  env: string
   summary: string
   state: string
   activeAt: string
