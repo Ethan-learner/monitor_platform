@@ -14,6 +14,7 @@ export default function SilenceList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
+  const [filterCreator, setFilterCreator] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -45,7 +46,12 @@ export default function SilenceList() {
     } catch { message.error('创建失败') } finally { setSubmitting(false) }
   }
 
-  const active = useMemo(() => silences.filter(s => s.status?.state === 'active'), [silences])
+  const active = useMemo(() => {
+    let list = silences.filter(s => s.status?.state === 'active')
+    if (filterCreator) list = list.filter(s => s.createdBy === filterCreator)
+    return list
+  }, [silences, filterCreator])
+  const creators = useMemo(() => [...new Set(silences.map(s => s.createdBy))], [silences])
 
   return (
     <div style={{ padding: 16 }}>
@@ -55,6 +61,10 @@ export default function SilenceList() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>创建静默</Button>
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
         </Space>
+      </Space>
+      <Space style={{ marginBottom: 12 }}>
+        <Select placeholder="创建人" allowClear style={{ width: 140 }} value={filterCreator || undefined} onChange={v => setFilterCreator(v || '')}
+          options={creators.map(c => ({ label: c, value: c }))} />
       </Space>
       <Table<Silence>
         rowKey="id" dataSource={active} pagination={false} bordered
@@ -67,12 +77,12 @@ export default function SilenceList() {
           { title: '备注', dataIndex: 'comment', ellipsis: true, align: 'center' },
           { title: '操作', width: 160, align: 'center', render: (_, r) => (
             <Space>
-              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} disabled title="暂不支持编辑" />
-              <Popconfirm title="确认删除该静默？" onConfirm={() => handleExpire(r.id)} okText="确认删除" cancelText="取消">
-                <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
-              </Popconfirm>
+              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} disabled title="Alertmanager 暂不支持编辑" />
               <Popconfirm title="确认过期该静默？" onConfirm={() => handleExpire(r.id)} okText="确认" cancelText="取消">
                 <Button size="small" type="text" icon={<StopOutlined style={{ color: '#fa8c16' }} />} />
+              </Popconfirm>
+              <Popconfirm title="确认删除该静默？" onConfirm={() => handleExpire(r.id)} okText="确认删除" cancelText="取消">
+                <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
               </Popconfirm>
             </Space>
           )},
