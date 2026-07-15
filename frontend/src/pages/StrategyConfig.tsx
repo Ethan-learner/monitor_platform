@@ -129,7 +129,6 @@ export default function StrategyConfig() {
         rowKey="key" dataSource={flatData} size="middle" pagination={false} bordered
         columns={[
           { title: '名称', dataIndex: 'label', width: 120, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string) => <span><strong>{s}</strong></span> },
-          { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
           { title: '创建时间', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => <span style={{ fontSize: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span> },
           { title: '告警级别', width: 70, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
             const hl = getHighestLevel(r.config)
@@ -138,6 +137,7 @@ export default function StrategyConfig() {
           { title: '通知策略', width: 280, align: 'center', render: (_: any, r: FlatRow) => (
             <span style={{ fontSize: 12 }}><Tag color={SEV_COLORS[r.sev]} style={{ marginRight: 4 }}>{SEV_SHORT[r.sev]}</Tag>{sevNotifiyStr(r.config, r.sev)}</span>
           )},
+          { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
           { title: '状态', width: 60, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_, r) => {
             if (r.enabled === 1) return <Tag color="green">启用</Tag>
             if (r.enabled === 0) return <Tag color="orange">禁用</Tag>
