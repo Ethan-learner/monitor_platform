@@ -67,7 +67,8 @@ export default function NewRules() {
   const getStrategyName = (sid: string | number) => {
     if (!sid) return '-'
     const s = strategies.find((x: any) => String(x.id) === String(sid))
-    return s ? (s.label || s.name) : '-'
+    if (!s) return '-'
+    return s.enabled === -1 ? <span style={{ color: '#cf1322' }}>{s.label || s.name}（已删除）</span> : (s.label || s.name)
   }
 
   return (<div style={{ padding: 16 }}>
@@ -147,7 +148,7 @@ export default function NewRules() {
           </Form.Item>
         )}
         <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
-          <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
+                    <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
         <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
@@ -166,7 +167,14 @@ export default function NewRules() {
         <Form.Item label="持续时间" name="for" style={FORM_ITEM_STYLE}><Input placeholder="1m" /></Form.Item>
         <Form.Item label="通知策略" name="strategy_id" style={FORM_ITEM_STYLE}>
           <Select allowClear placeholder="选策略模板（可选）"
-            options={[...strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id })), { label: '自定义', value: '__custom__' }]}
+            options={(() => {
+              const opts = [...strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id })), { label: '自定义', value: '__custom__' }]
+              if (editTarget?.strategy_id) {
+                const ds = strategies.find((s: any) => String(s.id) === String(editTarget.strategy_id))
+                if (ds && ds.enabled === -1) opts.unshift({ label: `${ds.label || ds.name}（已删除）`, value: ds.id, disabled: true })
+              }
+              return opts
+            })()}
             onChange={(val) => {
               setEditCustomMode(val === '__custom__')
               if (val && val !== '__custom__') {
@@ -185,7 +193,7 @@ export default function NewRules() {
           </Form.Item>
         )}
         <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
-          <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
+                    <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
         <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
