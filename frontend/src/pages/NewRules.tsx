@@ -83,7 +83,7 @@ export default function NewRules() {
         expandable={{
           expandIconColumnIndex: 0,
           expandedRowRender: (r) => (
-            <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+            <div style={{ padding: '8px 12px 8px 40px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
               <div><strong>告警表达式:</strong> <code style={{ fontSize: 12 }}>{r.expr}</code></div>
               <div><strong>持续:</strong> {r.for || '—'}</div>
               <div><strong>描述:</strong> {r.summary || '—'}</div>
