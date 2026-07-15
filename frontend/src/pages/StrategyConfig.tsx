@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message } from 'antd'
+import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, message } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
 const { Title } = Typography
 
-interface Strategy { id: number; name: string; label: string; description: string; config: Record<string, Record<string, string[]>>; enabled: number }
+interface Strategy { id: number; name: string; label: string; description: string; config: Record<string, Record<string, string[]>>; enabled: number; created_at: string }
 
 const SEV_LEVELS = ['critical', 'warning', 'info'] as const
 type SevLevel = typeof SEV_LEVELS[number]
@@ -25,7 +25,7 @@ const sevNotifiyStr = (cfg: Record<string, Record<string, string[]>>, sev: SevLe
   return parts.length > 0 ? parts.join(' | ') : '—'
 }
 
-interface FlatRow { key: string; sid: number; name: string; label: string; description: string; enabled: number; config: Record<string, Record<string, string[]>>; sev: SevLevel; rowSpan: number }
+interface FlatRow { key: string; sid: number; label: string; description: string; enabled: number; config: Record<string, Record<string, string[]>>; sev: SevLevel; rowSpan: number; created_at: string }
 
 export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
@@ -35,6 +35,8 @@ export default function StrategyConfig() {
   const [deleteTarget, setDeleteTarget] = useState<Strategy | null>(null)
   const [deleteRefs, setDeleteRefs] = useState(0)
   const [dupModal, setDupModal] = useState(false)
+  const [disableTarget, setDisableTarget] = useState<Strategy | null>(null)
+  const [disableRefs, setDisableRefs] = useState(0)
   const [form] = Form.useForm()
   const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
 
@@ -54,14 +56,14 @@ export default function StrategyConfig() {
       const hl = getHighestLevel(d.config) || 'info'
       const levels = visibleLevels(hl)
       levels.forEach((sev, i) => {
-        rows.push({ key: `${d.id}_${sev}`, sid: d.id, name: d.name, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0 })
+        rows.push({ key: `${d.id}_${sev}`, sid: d.id, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0, created_at: d.created_at })
       })
     }
     return rows
   }, [data])
 
   const saveConfig = async (vals: any) => {
-    if (!vals.name || !vals.label) { message.warning('请填写标识 (英文) 和显示名'); return }
+    if (!vals.label) { message.warning('请填写显示名'); return }
     try {
       const buildCh = (s: string) => {
         const ch: Record<string, string[]> = {}
@@ -76,7 +78,7 @@ export default function StrategyConfig() {
       for (const sev of SEV_LEVELS) {
         config[sev] = buildCh(vals[`cfg_${sev}`] || '')
       }
-      const body = { name: vals.name, label: vals.label, description: vals.description || '', config }
+      const body = { label: vals.label, description: vals.description || '', config }
       if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
       else { await api.post('/alerts/strategies', body); message.success('已创建') }
       setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
@@ -91,7 +93,7 @@ export default function StrategyConfig() {
     const highest = getHighestLevel(r.config) || 'info'
     setMaxLevel(highest)
     form.setFieldsValue({
-      name: r.name, label: r.label, description: r.description,
+      label: r.label, description: r.description,
       cfg_critical: getCfgStr(r.config, 'critical'),
       cfg_warning: getCfgStr(r.config, 'warning'),
       cfg_info: getCfgStr(r.config, 'info'),
@@ -101,6 +103,16 @@ export default function StrategyConfig() {
 
   const resetModal = () => {
     setEditing(null); form.resetFields(); setMaxLevel('critical'); setModalOpen(true)
+  }
+
+  const handleDisableStrategy = async () => {
+    if (!disableTarget) return
+    try {
+      const newEnabled = disableTarget.enabled === 1 ? 0 : 1
+      await api.put(`/alerts/strategies/${disableTarget.id}/disable`, { enabled: newEnabled })
+      message.success(newEnabled === 0 ? '策略已禁用' : '策略已启用')
+      setDisableTarget(null); load()
+    } catch { message.error('操作失败') }
   }
 
   const handleDeleteStrategy = async () => {
@@ -125,10 +137,10 @@ export default function StrategyConfig() {
       <Table<FlatRow>
         rowKey="key" dataSource={flatData} size="middle" pagination={false} bordered
         columns={[
-          { title: '名称', dataIndex: 'label', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string, r) => <span><strong>{s || r.name}</strong></span> },
-          { title: '标识', dataIndex: 'name', width: 120, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string) => <code>{s}</code> },
+          { title: '名称', dataIndex: 'label', width: 120, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string) => <span><strong>{s}</strong></span> },
           { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
-          { title: '告警级别', width: 80, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
+          { title: '创建时间', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => <span style={{ fontSize: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span> },
+          { title: '告警级别', width: 70, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
             const hl = getHighestLevel(r.config)
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
@@ -146,13 +158,9 @@ export default function StrategyConfig() {
               <Button size="small" type="text" onClick={async () => {
                 const s = data.find(d => d.id === r.sid)
                 if (!s) return
-                if (s.enabled === 1) {
-                  const { data: refs } = await api.get(`/alerts/strategies/${s.id}/refs`)
-                  const msg = refs.count > 0 ? `有 ${refs.count} 条规则正在使用此策略，禁用后这些规则将无法推送通知，确认禁用？` : '确认禁用该策略？'
-                  if (!confirm(msg)) return
-                }
-                const newEnabled = s.enabled === 1 ? 0 : 1
-                await api.put(`/alerts/strategies/${s.id}/disable`, { enabled: newEnabled }); load()
+                const { data: refs } = await api.get(`/alerts/strategies/${s.id}/refs`)
+                setDisableRefs(refs.count || 0)
+                setDisableTarget(s)
               }}>
                 <StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#999', transform: r.enabled === 1 ? 'none' : 'rotate(180deg)' }} />
               </Button>
@@ -169,7 +177,6 @@ export default function StrategyConfig() {
 
       <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={620}>
         <Form form={form} layout="vertical" onFinish={saveConfig}>
-          <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="说明" name="description" style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="覆盖级别" style={{ marginBottom: 18 }}>
@@ -185,7 +192,15 @@ export default function StrategyConfig() {
         </Form>
       </Modal>
       <Modal title="提示" open={dupModal} onCancel={() => setDupModal(false)} footer={null}>
-        <p>标识 (英文) 已存在，请更换名称。</p>
+        <p>显示名已存在，请更换名称。</p>
+      </Modal>
+      <Modal title="确认操作" open={!!disableTarget} onCancel={() => setDisableTarget(null)} onOk={handleDisableStrategy}
+        okText={disableTarget?.enabled === 1 ? '确认禁用' : '确认启用'}
+        okButtonProps={disableTarget?.enabled === 1 ? { danger: true } : {}}>
+        <p>策略: <strong>{disableTarget?.label}</strong></p>
+        {disableTarget?.enabled === 1 && disableRefs > 0
+          ? <p style={{ color: '#fa8c16' }}>有 {disableRefs} 条规则正在使用此策略，禁用后这些规则将无法推送通知。</p>
+          : <p>{disableTarget?.enabled === 1 ? '确认禁用该策略？' : '确认启用该策略？'}</p>}
       </Modal>
       <Modal title="确认删除策略" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDeleteStrategy} okText="确认删除" okButtonProps={{ danger: true }}>
         <p>策略: <strong>{deleteTarget?.label || deleteTarget?.name}</strong></p>

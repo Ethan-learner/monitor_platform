@@ -1,5 +1,6 @@
 import httpx
 import json
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -319,12 +320,12 @@ async def list_strategies() -> list:
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id, name, label, description, config, enabled FROM alert_strategies ORDER BY id")
+            cur.execute("SELECT id, name, label, description, config, enabled, created_at FROM alert_strategies ORDER BY id")
             rows = cur.fetchall()
             cur.close()
             return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3],
                      "config": json.loads(r[4]) if isinstance(r[4], str) else (r[4] or {}),
-                     "enabled": r[5]} for r in rows]
+                     "enabled": r[5], "created_at": str(r[6]) if r[6] else ""} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
@@ -334,12 +335,14 @@ async def create_strategy(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id FROM alert_strategies WHERE name=%s AND enabled != -1", (body["name"],))
-            if cur.fetchone():
-                raise HTTPException(status_code=409, detail="名称已存在")
+            gen_name = "strat_" + uuid.uuid4().hex[:8]
+            cur.execute("SELECT id, name FROM alert_strategies WHERE label=%s AND enabled != -1", (body.get("label", ""),))
+            existing = cur.fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="显示名已存在")
             cur.execute("INSERT INTO alert_strategies (name, label, description, config) VALUES (%s,%s,%s,%s)",
-                        (body["name"], body.get("label", ""), body.get("description", ""), json.dumps(body["config"])))
-            return {"id": cur.lastrowid, "status": "created"}
+                        (gen_name, body.get("label", ""), body.get("description", ""), json.dumps(body["config"])))
+            return {"id": cur.lastrowid, "status": "created", "name": gen_name}
     except HTTPException:
         raise
     except Exception as e:
