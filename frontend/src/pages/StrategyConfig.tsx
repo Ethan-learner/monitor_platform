@@ -76,7 +76,7 @@ export default function StrategyConfig() {
       }
       const config: Record<string, Record<string, string[]>> = {}
       for (const sev of SEV_LEVELS) {
-        config[sev] = buildCh(vals[`cfg_${sev}`] || '')
+        config[sev] = visibleLevels(maxLevel).includes(sev) ? buildCh(vals[`cfg_${sev}`] || '') : {}
       }
       const body = { label: vals.label, description: vals.description || '', config }
       if (editing) {
