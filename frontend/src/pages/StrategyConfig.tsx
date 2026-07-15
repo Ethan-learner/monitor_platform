@@ -73,7 +73,7 @@ export default function StrategyConfig() {
         return ch
       }
       const config: Record<string, Record<string, string[]>> = {}
-      for (const sev of visibleLevels(maxLevel)) {
+      for (const sev of SEV_LEVELS) {
         config[sev] = buildCh(vals[`cfg_${sev}`] || '')
       }
       const body = { name: vals.name, label: vals.label, description: vals.description || '', config }
