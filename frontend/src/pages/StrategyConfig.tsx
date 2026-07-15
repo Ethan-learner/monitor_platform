@@ -59,13 +59,11 @@ export default function StrategyConfig() {
       })
       return ch
     }
-    const cfgStr = values.config_str || {}
     const config: Record<string, Record<string, string[]>> = {}
     for (const sev of visibleLevels(maxLevel)) {
-      config[sev] = buildCh(cfgStr[sev] || '')
+      config[sev] = buildCh(values[`cfg_${sev}`] || '')
     }
-    const body = { ...values, config }
-    delete (body as any).config_str
+    const body = { name: values.name, label: values.label, description: values.description || '', config }
     try {
       if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
       else { await api.post('/alerts/strategies', body); message.success('已创建') }
@@ -80,11 +78,9 @@ export default function StrategyConfig() {
     setTimeout(() => {
       form.setFieldsValue({
         name: r.name, label: r.label, description: r.description,
-        config_str: {
-          critical: getCfgStr(r.config, 'critical'),
-          warning: getCfgStr(r.config, 'warning'),
-          info: getCfgStr(r.config, 'info'),
-        },
+        cfg_critical: getCfgStr(r.config, 'critical'),
+        cfg_warning: getCfgStr(r.config, 'warning'),
+        cfg_info: getCfgStr(r.config, 'info'),
       })
     }, 50)
     setModalOpen(true)
@@ -122,6 +118,7 @@ export default function StrategyConfig() {
           }},
           { title: '操作', width: 140, align: 'center', render: (_, r) => (
             <Space>
+              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(r)} />
               <Button size="small" type="text" onClick={async () => {
                 if (r.enabled === 1) {
                   const { data: refs } = await api.get(`/alerts/strategies/${r.id}/refs`)
@@ -133,7 +130,6 @@ export default function StrategyConfig() {
               }}>
                 <StopOutlined style={{ color: r.enabled === 1 ? '#fa8c16' : '#999', transform: r.enabled === 1 ? 'none' : 'rotate(180deg)' }} />
               </Button>
-              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => handleEdit(r)} />
               <Popconfirm title="确认删除？" onConfirm={async () => { await api.delete(`/alerts/strategies/${r.id}`); load() }}>
                 <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
               </Popconfirm>
@@ -151,7 +147,7 @@ export default function StrategyConfig() {
             <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={SEV_LEVELS.map(l => ({ label: SEV_LABELS[l as SevLevel], value: l }))} />
           </Form.Item>
           {visibleLevels(maxLevel).map(sev => (
-            <Form.Item key={sev} name={['config_str', sev]} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
+            <Form.Item key={sev} name={`cfg_${sev}`} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
               <Input placeholder="email:a@x.com; lark:id1" />
             </Form.Item>
           ))}
