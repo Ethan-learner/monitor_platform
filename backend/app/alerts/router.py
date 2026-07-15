@@ -43,8 +43,10 @@ async def list_alerts(active: bool = Query(default=True)) -> list:
 async def list_silences() -> list:
     """从 MySQL silence_records 读取静默列表（平台元数据）"""
     try:
-        with get_db(readonly=True) as conn:
+        with get_db(readonly=False) as conn:
             cur = conn.cursor()
+            # 自动过期：结束时间 < 当前时间 且 状态仍为活跃
+            cur.execute("UPDATE silence_records SET status=0 WHERE status=1 AND ends_at < NOW()")
             cur.execute("SELECT silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status FROM silence_records WHERE status != -1 ORDER BY starts_at DESC")
             rows = cur.fetchall()
             cur.close()
