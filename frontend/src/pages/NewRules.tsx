@@ -79,12 +79,12 @@ export default function NewRules() {
     </Space>
     {CATEGORY_ORDER.filter(cat => grouped[cat]).map((cat) => (<div key={cat} style={{ marginBottom: 16 }}>
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{grouped[cat].length}</Tag></Space>
-      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={grouped[cat]} size="middle" pagination={false} bordered
+      <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={grouped[cat]} pagination={false} bordered
         expandable={{
           expandIconColumnIndex: 0,
           expandedRowRender: (r) => (
-            <div style={{ padding: '8px 12px 8px 40px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-              <div><strong>告警表达式:</strong> <code style={{ fontSize: 12 }}>{r.expr}</code></div>
+            <div style={{ padding: '8px 12px 8px 40px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+              <div><strong>告警表达式:</strong> <code style={{ fontSize: 13 }}>{r.expr}</code></div>
               <div><strong>持续:</strong> {r.for || '—'}</div>
               <div><strong>描述:</strong> {r.summary || '—'}</div>
             </div>
