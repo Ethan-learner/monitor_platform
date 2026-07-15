@@ -60,8 +60,8 @@ export interface Silence {
   comment: string
   startsAt: string
   endsAt: string
-  matchers: Array<{ name: string; value: string; isRegex: boolean }>
-  status: { state: string }
+  matcherName?: string
+  matcherValue?: string
   db_status?: number
 }
 
@@ -75,13 +75,16 @@ export async function expireSilence(id: string): Promise<void> {
 }
 
 export async function createSilence(body: {
-  matchers: Array<{ name: string; value: string; isRegex: boolean }>
+  matcherName?: string
+  matcherValue?: string
+  matchers?: Array<{ name: string; value: string; isRegex: boolean }>
   startsAt: string
   endsAt: string
   createdBy: string
   comment: string
 }): Promise<{ silenceID: string }> {
-  const { data } = await api.post('/alerts/silences', body)
+  const matchers = body.matchers || [{ name: body.matcherName || 'alertname', value: body.matcherValue || '', isRegex: false }]
+  const { data } = await api.post('/alerts/silences', { ...body, matchers })
   return data
 }
 

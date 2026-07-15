@@ -41,28 +41,18 @@ async def list_alerts(active: bool = Query(default=True)) -> list:
 
 @router.get("/alerts/silences")
 async def list_silences() -> list:
+    """从 MySQL silence_records 读取静默列表（平台元数据）"""
     try:
-        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
-            resp = await client.get(f"{settings.alertmanager_url}/api/v2/silences")
-            resp.raise_for_status()
-            am_data = resp.json()
-        # 合并 DB 状态
-        db_status = {}
-        try:
-            with get_db(readonly=True) as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT silence_id, status FROM silence_records WHERE status != -1")
-                for row in cur.fetchall():
-                    db_status[row[0]] = row[1]
-                cur.close()
-        except Exception:
-            pass
-        for item in am_data:
-            sid = item.get("id", "")
-            item["db_status"] = db_status.get(sid, 1)
-        return am_data
-    except (httpx.HTTPError, httpx.ConnectError):
-        raise HTTPException(status_code=502, detail="alertmanager_unreachable")
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT silence_id, operator, matcher_name, matcher_value, starts_at, ends_at, comment, status FROM silence_records WHERE status != -1 ORDER BY starts_at DESC")
+            rows = cur.fetchall()
+            cur.close()
+            return [{"id": r[0], "createdBy": r[1], "matcherName": r[2], "matcherValue": r[3],
+                     "startsAt": str(r[4]) if r[4] else "", "endsAt": str(r[5]) if r[5] else "",
+                     "comment": r[6] or "", "db_status": r[7]} for r in rows]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
 
 @router.get("/alerts/silences/{sid}")

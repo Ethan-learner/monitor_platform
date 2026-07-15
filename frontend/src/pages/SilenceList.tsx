@@ -26,7 +26,7 @@ export default function SilenceList() {
   }
   useEffect(() => { load() }, [])
 
-  const isExpired = (r: Silence) => r.db_status === 0 || r.status?.state !== 'active'
+  const isExpired = (r: Silence) => r.db_status === 0
 
   const handleExpire = async (id: string) => {
     try { await expireSilence(id); message.success('已过期'); load() }
@@ -46,7 +46,7 @@ export default function SilenceList() {
       // expire old + create new
       await expireSilence(resetTarget.id)
       await createSilence({
-        matchers: [{ name: values.matcherName || 'alertname', value: values.matcherValue, isRegex: false }],
+                matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
         startsAt: start?.toISOString() || new Date().toISOString(),
         endsAt: end?.toISOString() || new Date(Date.now() + 3600000).toISOString(),
         createdBy: values.createdBy || 'admin',
@@ -62,7 +62,7 @@ export default function SilenceList() {
     try {
       const [start, end] = values.timeRange || []
       await createSilence({
-        matchers: [{ name: values.matcherName || 'alertname', value: values.matcherValue, isRegex: false }],
+                matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
         startsAt: start?.toISOString() || new Date().toISOString(),
         endsAt: end?.toISOString() || new Date(Date.now() + 3600000).toISOString(),
         createdBy: values.createdBy || 'admin',
@@ -83,9 +83,8 @@ export default function SilenceList() {
 
   const openReset = (r: Silence) => {
     setResetTarget(r)
-    const m = r.matchers?.[0] || {}
     form.setFieldsValue({
-      matcherName: m.name || 'alertname', matcherValue: m.value || '',
+      matcherName: r.matcherName || 'alertname', matcherValue: r.matcherValue || '',
       timeRange: [dayjs().add(1, 'minute'), dayjs().add(61, 'minute')],
       createdBy: r.createdBy, comment: r.comment || '',
     })
@@ -110,7 +109,7 @@ export default function SilenceList() {
         rowKey="id" dataSource={filtered} pagination={false} bordered
         columns={[
           { title: '创建人', dataIndex: 'createdBy', width: 100, align: 'center' },
-          { title: '匹配规则', width: 280, align: 'center', render: (_, r) => r.matchers?.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}={m.value}</Tag>) },
+          { title: '匹配规则', width: 280, align: 'center', render: (_, r) => <Tag>{r.matcherName || '—'}={r.matcherValue || '—'}</Tag> },
           { title: '开始时间', dataIndex: 'startsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
           { title: '结束时间', dataIndex: 'endsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
           { title: '状态', width: 70, align: 'center', render: (_, r) => (
