@@ -352,12 +352,21 @@ async def create_strategy(body: dict) -> dict:
 @router.put("/alerts/strategies/{sid}")
 async def update_strategy(sid: int, body: dict) -> dict:
     try:
+        cfg = body.get("config", {})
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
             cur.execute("UPDATE alert_strategies SET label=%s, description=%s, config=%s, enabled=%s WHERE id=%s",
-                        (body.get("label", ""), body.get("description", ""), json.dumps(body["config"]), body.get("enabled", 1), sid))
+                        (body.get("label", ""), body.get("description", ""), json.dumps(cfg), body.get("enabled", 1), sid))
+            # 同步更新关联规则的级别
+            sev_levels = ["critical", "warning", "info"]
+            new_sev = "warning"
+            for lv in sev_levels:
+                if cfg.get(lv) and len(cfg[lv]) > 0:
+                    new_sev = lv
+                    break
+            cur.execute("UPDATE alert_rules SET severity=%s WHERE strategy_id=%s AND status != -1", (new_sev, sid))
             cur.close()
-            return {"status": "updated"}
+            return {"status": "updated", "synced_severity": new_sev}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
