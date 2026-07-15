@@ -322,7 +322,9 @@ async def list_strategies() -> list:
             cur.execute("SELECT id, name, label, description, config, enabled FROM alert_strategies ORDER BY id")
             rows = cur.fetchall()
             cur.close()
-            return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3], "config": json.loads(r[4]) if isinstance(r[4], str) else r[4], "enabled": r[5]} for r in rows]
+            return [{"id": r[0], "name": r[1], "label": r[2], "description": r[3],
+                     "config": json.loads(r[4]) if isinstance(r[4], str) else (r[4] or {}),
+                     "enabled": r[5]} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
 

@@ -37,7 +37,6 @@ export default function StrategyConfig() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Strategy | null>(null)
   const [form] = Form.useForm()
-  const [cfg, setCfg] = useState<Record<string, string>>({ critical: '', warning: '', info: '' })
   const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
 
   const load = async () => { setLoading(true); try { setData((await api.get('/alerts/strategies')).data) } catch {} finally { setLoading(false) } }
@@ -60,31 +59,39 @@ export default function StrategyConfig() {
       })
       return ch
     }
-    const config = Object.fromEntries(visibleLevels(maxLevel).map((l: SevLevel) => [l, buildCh(cfg[l] || '')]))
+    const cfgStr = values.config_str || {}
+    const config: Record<string, Record<string, string[]>> = {}
+    for (const sev of visibleLevels(maxLevel)) {
+      config[sev] = buildCh(cfgStr[sev] || '')
+    }
     const body = { ...values, config }
+    delete (body as any).config_str
     try {
       if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
       else { await api.post('/alerts/strategies', body); message.success('已创建') }
-      setModalOpen(false); form.resetFields(); setCfg({ critical: '', warning: '', info: '' }); setMaxLevel('critical'); setEditing(null); load()
+      setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
     } catch { message.error('保存失败') }
   }
 
   const handleEdit = (r: Strategy) => {
     setEditing(r)
-    form.setFieldsValue({ name: r.name, label: r.label, description: r.description })
     const highest = getHighestLevel(r.config) || 'critical'
     setMaxLevel(highest)
-    setCfg({
-      critical: getCfgStr(r.config, 'critical'),
-      warning: getCfgStr(r.config, 'warning'),
-      info: getCfgStr(r.config, 'info'),
-    })
+    setTimeout(() => {
+      form.setFieldsValue({
+        name: r.name, label: r.label, description: r.description,
+        config_str: {
+          critical: getCfgStr(r.config, 'critical'),
+          warning: getCfgStr(r.config, 'warning'),
+          info: getCfgStr(r.config, 'info'),
+        },
+      })
+    }, 50)
     setModalOpen(true)
   }
 
   const resetModal = () => {
-    setEditing(null); form.resetFields()
-    setCfg({ critical: '', warning: '', info: '' }); setMaxLevel('critical'); setModalOpen(true)
+    setEditing(null); form.resetFields(); setMaxLevel('critical'); setModalOpen(true)
   }
 
   return (
@@ -144,8 +151,8 @@ export default function StrategyConfig() {
             <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={SEV_LEVELS.map(l => ({ label: SEV_LABELS[l as SevLevel], value: l }))} />
           </Form.Item>
           {visibleLevels(maxLevel).map(sev => (
-            <Form.Item key={sev} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
-              <Input placeholder="email:a@x.com; lark:id1" value={cfg[sev]} onChange={e => setCfg(p => ({ ...p, [sev]: e.target.value }))} />
+            <Form.Item key={sev} name={['config_str', sev]} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14 }}>
+              <Input placeholder="email:a@x.com; lark:id1" />
             </Form.Item>
           ))}
           <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
