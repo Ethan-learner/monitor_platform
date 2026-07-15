@@ -185,7 +185,6 @@ export default function NewRules() {
           </Form.Item>
         )}
         <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
-        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
           <Select options={[{ label: '警告 warning', value: 'warning' }, { label: '严重 critical', value: 'critical' }, { label: '信息 info', value: 'info' }]} />
         </Form.Item>
         <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
