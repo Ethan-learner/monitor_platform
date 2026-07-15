@@ -254,12 +254,10 @@ async def save_rule_file(filename: str, body: dict) -> dict:
             for group in data["groups"]:
                 for rule in group.get("rules", []):
                     alert_name = rule.get("alert", "")
-                    # 检查未删除的同名规则
-                    cur.execute("SELECT id, status FROM alert_rules WHERE rule_name=%s AND status != -1", (alert_name,))
-                    dup = cur.fetchone()
-                    if dup:
-                        st = "已禁用" if dup[1] == 0 else "已存在"
-                        raise HTTPException(status_code=409, detail=f"规则名 {alert_name} {st}")
+                    # 仅检查未删除的同名规则
+                    cur.execute("SELECT id FROM alert_rules WHERE rule_name=%s AND status != -1", (alert_name,))
+                    if cur.fetchone():
+                        raise HTTPException(status_code=409, detail=f"规则名 {alert_name} 已存在")
                     cur.execute(
                         "INSERT INTO alert_rules (rule_name, category, expr, duration, severity, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (rule.get("alert", ""), category,
@@ -356,7 +354,7 @@ def _write_file(filename: str, content: str) -> None:
 
 
 def _move_to_disabled(filename: str) -> None:
-    """将规则文件移至 alerts_disabled 目录"""
+    """将规则文件移至 alerts_disabled 目录（加时间戳后缀避免覆盖）"""
     if ".." in filename or "/" in filename:
         return
     try:
@@ -369,8 +367,11 @@ def _move_to_disabled(filename: str) -> None:
                 sftp.mkdir(f"{settings.alerts_dir}_disabled")
             except Exception:
                 pass
+            ts = datetime.now().strftime("%Y%m%d%H%M%S")
+            name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
+            dst_name = f"{name}_{ts}.{ext}" if ext else f"{name}_{ts}"
             src = f"{settings.alerts_dir}/{filename}"
-            dst = f"{settings.alerts_dir}_disabled/{filename}"
+            dst = f"{settings.alerts_dir}_disabled/{dst_name}"
             try:
                 sftp.rename(src, dst)
             except IOError:
