@@ -82,8 +82,9 @@ export default function NewRules() {
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={grouped[cat]} pagination={false} bordered
         expandable={{
           expandIconColumnIndex: 0,
+          indentSize: 8,
           expandedRowRender: (r) => (
-            <div style={{ padding: '8px 12px 8px 40px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+            <div style={{ padding: '8px 12px 8px 30px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
               <div><strong>告警表达式:</strong> <code style={{ fontSize: 13 }}>{r.expr}</code></div>
               <div><strong>持续:</strong> {r.for || '—'}</div>
               <div><strong>描述:</strong> {r.summary || '—'}</div>
