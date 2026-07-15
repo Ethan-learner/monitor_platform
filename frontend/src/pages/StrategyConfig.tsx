@@ -34,6 +34,7 @@ export default function StrategyConfig() {
   const [editing, setEditing] = useState<Strategy | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Strategy | null>(null)
   const [deleteRefs, setDeleteRefs] = useState(0)
+  const [dupModal, setDupModal] = useState(false)
   const [form] = Form.useForm()
   const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
 
@@ -80,7 +81,10 @@ export default function StrategyConfig() {
       if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
       else { await api.post('/alerts/strategies', body); message.success('已创建') }
       setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
-    } catch { message.error('保存失败') }
+    } catch (e: any) {
+      if (e?.response?.status === 409) { setDupModal(true); return }
+      message.error('保存失败')
+    }
   }
 
   const handleEdit = (r: Strategy) => {
@@ -180,7 +184,9 @@ export default function StrategyConfig() {
           <Space><Button type="primary" onClick={saveConfig}>保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
         </Form>
       </Modal>
-      <Modal title="确认删除策略" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDeleteStrategy} okText="确认删除" okButtonProps={{ danger: true }}>
+      <Modal title="提示" open={dupModal} onCancel={() => setDupModal(false)} footer={null}>
+        <p>标识 (英文) 已存在，请更换名称。</p>
+      </Modal>
         <p>策略: <strong>{deleteTarget?.label || deleteTarget?.name}</strong></p>
         {deleteRefs > 0 ? <p style={{ color: '#cf1322' }}>有 {deleteRefs} 条规则引用了此策略，删除后将自动禁用这些规则。</p> : <p>确认删除该策略？</p>}
       </Modal>

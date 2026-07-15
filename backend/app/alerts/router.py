@@ -334,15 +334,14 @@ async def create_strategy(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id FROM alert_strategies WHERE name=%s AND enabled=-1", (body["name"],))
-            existing = cur.fetchone()
-            if existing:
-                cur.execute("UPDATE alert_strategies SET label=%s, description=%s, config=%s, enabled=1 WHERE id=%s",
-                            (body.get("label", ""), body.get("description", ""), json.dumps(body["config"]), existing[0]))
-                return {"id": existing[0], "status": "restored"}
+            cur.execute("SELECT id FROM alert_strategies WHERE name=%s AND enabled != -1", (body["name"],))
+            if cur.fetchone():
+                raise HTTPException(status_code=409, detail="名称已存在")
             cur.execute("INSERT INTO alert_strategies (name, label, description, config) VALUES (%s,%s,%s,%s)",
                         (body["name"], body.get("label", ""), body.get("description", ""), json.dumps(body["config"])))
             return {"id": cur.lastrowid, "status": "created"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
