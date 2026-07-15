@@ -120,14 +120,13 @@ export default function SilenceList() {
 
   const createModal = (
     <Modal title="新建静默" open={modalOpen} onCancel={closeModal} footer={null}>
-      <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ createdBy: 'admin' }}>
+      <Form form={form} layout="vertical" onFinish={handleCreate}>
         <Form.Item label="匹配规则" required style={{ marginBottom: 12 }}>{matcherForm}</Form.Item>
         <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
           validator(_, value) { if (value && value[0] && value[1] && !value[1].isAfter(value[0])) return Promise.reject('结束时间必须大于开始时间'); return Promise.resolve() }
         })]}>
           <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
         </Form.Item>
-        <Form.Item label="创建人" name="createdBy"><Input /></Form.Item>
         <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="维护窗口" /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={closeModal}>取消</Button></Space>
       </Form>
@@ -136,14 +135,13 @@ export default function SilenceList() {
 
   const resetModal = (
     <Modal title="重置静默" open={!!resetTarget} onCancel={closeModal} footer={null}>
-      <Form form={form} layout="vertical" onFinish={handleReset} initialValues={{ createdBy: 'admin' }}>
+      <Form form={form} layout="vertical" onFinish={handleReset}>
         <Form.Item label="匹配规则" required style={{ marginBottom: 12 }}>{matcherForm}</Form.Item>
         <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
           validator(_, value) { if (value && value[0] && value[1] && !value[1].isAfter(value[0])) return Promise.reject('结束时间必须大于开始时间'); return Promise.resolve() }
         })]}>
           <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
         </Form.Item>
-        <Form.Item label="创建人" name="createdBy"><Input /></Form.Item>
         <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="" /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>保存</Button><Button onClick={closeModal}>取消</Button></Space>
       </Form>
@@ -162,7 +160,7 @@ export default function SilenceList() {
       <Space style={{ marginBottom: 12 }}>
         <Select placeholder="创建人" allowClear style={{ width: 140 }} value={filterCreator || undefined} onChange={v => setFilterCreator(v || '')}
           options={creators.map(c => ({ label: c, value: c }))} />
-        <Select placeholder="状态" allowClear style={{ width: 120, align: 'center' }} value={filterState || undefined} onChange={v => setFilterState(v || '')}
+        <Select placeholder="状态" allowClear style={{ width: 120 }} value={filterState || undefined} onChange={v => setFilterState(v || '')}
           options={[{ label: '活跃', value: 'active' }, { label: '已过期', value: 'expired' }]} />
       </Space>
       <Table<Silence>
@@ -176,11 +174,11 @@ export default function SilenceList() {
           }},
           { title: '开始时间', dataIndex: 'startsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
           { title: '结束时间', dataIndex: 'endsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
-          { title: '状态', width: 70, align: 'center', render: (_, r) => (
+          { title: '状态', width: 100, align: 'center', render: (_, r) => (
             isExpired(r) ? <Tag color="orange">已过期</Tag> : <Tag color="green">活跃</Tag>
           )},
-          { title: '备注', dataIndex: 'comment', ellipsis: true, align: 'center' },
-          { title: '操作', width: 170, align: 'center', render: (_, r) => {
+          { title: '备注', width: 300, dataIndex: 'comment', ellipsis: true, align: 'center' },
+          { title: '操作', width: 100, align: 'center', render: (_, r) => {
             const expired = isExpired(r)
             return (
               <Space>
@@ -190,7 +188,7 @@ export default function SilenceList() {
                 <Button size="small" type="text" icon={<UndoOutlined style={{ color: expired ? '#1677ff' : '#ddd' }} />}
                   onClick={() => { if (expired) openReset(r) }} disabled={!expired} />
                 <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />}
-                  onClick={() => { if (!expired) { message.warning('请先过期再删除'); return } setDeleteConfirm(r) }} />
+                  onClick={() => { if (!expired) { message.warning('请先过期规则，再执行删除操作'); return } setDeleteConfirm(r) }} />
               </Space>
             )
           }},

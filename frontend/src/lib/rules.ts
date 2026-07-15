@@ -79,7 +79,6 @@ export async function createSilence(body: {
   matchers: Array<{ name: string; value: string; isRegex: boolean }>
   startsAt: string
   endsAt: string
-  createdBy: string
   comment: string
 }): Promise<{ silenceID: string }> {
   const { data } = await api.post('/alerts/silences', body)

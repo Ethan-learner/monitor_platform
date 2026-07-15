@@ -88,7 +88,7 @@ async def create_silence(body: dict) -> dict:
                     raise HTTPException(status_code=502, detail=f"alertmanager_error: {resp.status_code} {detail}")
                 result = resp.json()
             # 写入 audit_log
-            log_audit(body.get("createdBy", "unknown"), "silences", "create",
+            log_audit(body.get("createdBy", "admin"), "silences", "create",
                        f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
                        f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
             # 写入 silence_records
@@ -101,7 +101,7 @@ async def create_silence(body: dict) -> dict:
                     cur = conn.cursor()
                     cur.execute(
                         "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, matchers, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,1)",
-                        (result.get("silenceID", ""), body.get("createdBy", "unknown"),
+                        (result.get("silenceID", ""), body.get("createdBy", "admin"),
                          m.get("name", ""), m.get("value", ""), json.dumps(matchers), starts, ends, body.get("comment", "")))
             except Exception: pass
             return result
