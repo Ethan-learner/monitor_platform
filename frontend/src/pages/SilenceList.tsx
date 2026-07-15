@@ -40,15 +40,17 @@ export default function SilenceList() {
 
   const handleReset = async (values: any) => {
     if (!resetTarget) return
+    const [start, end] = values.timeRange || []
+    if (!end || end.isBefore(dayjs())) {
+      message.warning('结束时间不能小于当前时间'); return
+    }
     setSubmitting(true)
     try {
-      const [start, end] = values.timeRange || []
-      // expire old + create new
       await expireSilence(resetTarget.id)
       await createSilence({
-                matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
-        startsAt: start?.toISOString() || new Date().toISOString(),
-        endsAt: end?.toISOString() || new Date(Date.now() + 3600000).toISOString(),
+        matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
+        startsAt: start?.format('YYYY-MM-DD HH:mm:ss') || dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        endsAt: end.format('YYYY-MM-DD HH:mm:ss'),
         createdBy: values.createdBy || 'admin',
         comment: values.comment || '',
       })
@@ -58,13 +60,16 @@ export default function SilenceList() {
   }
 
   const handleCreate = async (values: any) => {
+    const [start, end] = values.timeRange || []
+    if (!end || end.isBefore(dayjs())) {
+      message.warning('结束时间不能小于当前时间'); return
+    }
     setSubmitting(true)
     try {
-      const [start, end] = values.timeRange || []
       await createSilence({
-                matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
-        startsAt: start?.toISOString() || new Date().toISOString(),
-        endsAt: end?.toISOString() || new Date(Date.now() + 3600000).toISOString(),
+        matcherName: values.matcherName || 'alertname', matcherValue: values.matcherValue,
+        startsAt: start?.format('YYYY-MM-DD HH:mm:ss') || dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        endsAt: end.format('YYYY-MM-DD HH:mm:ss'),
         createdBy: values.createdBy || 'admin',
         comment: values.comment || '',
       })

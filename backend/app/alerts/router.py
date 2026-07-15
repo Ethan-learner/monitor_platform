@@ -72,11 +72,13 @@ async def get_silence(sid: str) -> dict:
 async def create_silence(body: dict) -> dict:
     try:
             async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
-                # 修复日期格式：去掉毫秒
                 clean_body = dict(body)
+                # 前端格式 YYYY-MM-DD HH:mm:ss → 转 ISO
                 for f in ['startsAt', 'endsAt']:
                     if f in clean_body and clean_body[f]:
-                        clean_body[f] = clean_body[f].replace("T", " ").replace("Z", "")[:19].replace(" ", "T") + "Z"
+                        v = clean_body[f]
+                        if ' ' in v and 'T' not in v:
+                            clean_body[f] = v.replace(' ', 'T') + ':00'
                 resp = await client.post(f"{settings.alertmanager_url}/api/v2/silences", json=clean_body)
                 if resp.status_code >= 300:
                     detail = resp.text
@@ -88,11 +90,11 @@ async def create_silence(body: dict) -> dict:
             log_audit(body.get("createdBy", "unknown"), "silences", "create",
                        f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
                        f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
-            # 写入 silence_records (upsert)
+            # 写入 silence_records
             try:
                 m = body.get("matchers", [{}])[0]
-                starts = body.get("startsAt", "").replace("T", " ").replace("Z", "")[:19]
-                ends = body.get("endsAt", "").replace("T", " ").replace("Z", "")[:19]
+                starts = body.get("startsAt", "")
+                ends = body.get("endsAt", "")
                 with get_db(readonly=False) as conn:
                     cur = conn.cursor()
                     cur.execute(
