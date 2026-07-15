@@ -117,8 +117,8 @@ async def preview_query(query: str = Query(...)) -> dict:
 
 
 @router.get("/active")
-async def list_active_categorized(bg: BackgroundTasks) -> List[dict]:
-    """从 Prometheus API 拉取活跃告警, 按关键词规则分类, 异步写入 alert_records"""
+async def list_active_categorized() -> List[dict]:
+    """从 Prometheus API 拉取活跃告警, 按关键词规则分类, 同步写入 alert_records"""
     try:
         async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.get(f"{settings.prometheus_url}/api/v1/alerts")
@@ -127,8 +127,44 @@ async def list_active_categorized(bg: BackgroundTasks) -> List[dict]:
     except Exception:
         return []
 
-    # 异步写入 MySQL
-    bg.add_task(_sync_alert_records, alerts)
+    # 同步写入 MySQL（后台任务在无事件循环环境下不稳定）
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            for a in alerts:
+                labels = a.get("labels") or {}
+                annots = a.get("annotations") or {}
+                fingerprint = a.get("fingerprint", "")
+                state = a.get("state", "firing")
+                alert_name = labels.get("alertname", "")
+                instance = labels.get("instance", "")
+                severity = labels.get("severity", "")
+                if not alert_name:
+                    continue
+                cur.execute(
+                    "SELECT id FROM alert_records WHERE fingerprint=%s AND alert_name=%s AND instance=%s AND severity=%s",
+                    (fingerprint, alert_name, instance, severity))
+                existing = cur.fetchone()
+                if existing:
+                    if state == "resolved":
+                        cur.execute("UPDATE alert_records SET status='resolved', ends_at=%s WHERE id=%s",
+                                    (datetime.now(), existing[0]))
+                else:
+                    if state == "firing":
+                        at = a.get("activeAt", "")
+                        if '.' in str(at):
+                            at = str(at)[:26]  # strip nanoseconds to 6 digits
+                        cur.execute(
+                            "INSERT INTO alert_records (alert_name, instance, severity, status, department, project, env, service, summary, labels, starts_at, fingerprint, source) "
+                            "VALUES (%s,%s,%s,'firing',%s,%s,%s,%s,%s,%s,%s,%s,'prometheus')",
+                            (alert_name, instance, severity,
+                             labels.get("department", ""), labels.get("project", ""), labels.get("env", ""),
+                             labels.get("service", ""), annots.get("summary", ""),
+                             json.dumps(labels, ensure_ascii=False),
+                             at, fingerprint))
+            cur.close()
+    except Exception:
+        pass
 
     def assign_category(alert: dict) -> str:
         job = (alert.get("labels") or {}).get("job", "")

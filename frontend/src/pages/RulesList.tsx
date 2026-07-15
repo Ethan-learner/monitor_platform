@@ -32,14 +32,16 @@ export default function RulesList() {
   const load = async () => {
     setLoading(true)
     try {
-      const cached = cacheGet('rules:alerts')
-      if (cached) { setAlerts(cached); setLoading(false) }
       const data = await fetchActiveAlerts()
       setAlerts(data); cacheSet('rules:alerts', data)
     } catch { /* ignore */ } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const cached = cacheGet('rules:alerts')
+    if (cached) setAlerts(cached)
+    load()
+  }, [])
 
   const grouped = useMemo(() => {
     const sorted = [...alerts].sort((a, b) => new Date(b.activeAt).getTime() - new Date(a.activeAt).getTime())
