@@ -47,13 +47,13 @@ async def list_silences() -> list:
             cur = conn.cursor()
             # 自动过期：结束时间 < 当前时间 且 状态仍为活跃
             cur.execute("UPDATE silence_records SET status=0 WHERE status=1 AND ends_at < NOW()")
-            cur.execute("SELECT silence_id, operator, matcher_name, matcher_value, matchers, starts_at, ends_at, comment, status FROM silence_records WHERE status != -1 ORDER BY starts_at DESC")
+            cur.execute("SELECT silence_id, operator, matchers, starts_at, ends_at, comment, status FROM silence_records WHERE status != -1 ORDER BY starts_at DESC")
             rows = cur.fetchall()
             cur.close()
             return [{"id": r[0], "createdBy": r[1],
-                     "matchers": json.loads(r[4]) if r[4] else ([{"name": r[2], "value": r[3], "isRegex": False}] if r[2] else []),
-                     "startsAt": str(r[5]) if r[5] else "", "endsAt": str(r[6]) if r[6] else "",
-                     "comment": r[7] or "", "db_status": r[8]} for r in rows]
+                     "matchers": json.loads(r[2]) if r[2] else [],
+                     "startsAt": str(r[3]) if r[3] else "", "endsAt": str(r[4]) if r[4] else "",
+                     "comment": r[5] or "", "db_status": r[6]} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
@@ -89,20 +89,18 @@ async def create_silence(body: dict) -> dict:
                 result = resp.json()
             # 写入 audit_log
             log_audit(body.get("createdBy", "admin"), "silences", "create",
-                       f"matcher={body.get('matchers',[{}])[0].get('name')}={body.get('matchers',[{}])[0].get('value')}",
+                       f"matchers={body.get('matchers',[])}",
                        f"startsAt={body.get('startsAt')} endsAt={body.get('endsAt')}")
             # 写入 silence_records
             try:
-                matchers = body.get("matchers", [{}])
-                m = matchers[0] if matchers else {}
                 starts = body.get("startsAt", "")
                 ends = body.get("endsAt", "")
                 with get_db(readonly=False) as conn:
                     cur = conn.cursor()
                     cur.execute(
-                        "INSERT INTO silence_records (silence_id, operator, matcher_name, matcher_value, matchers, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,1)",
+                        "INSERT INTO silence_records (silence_id, operator, matchers, starts_at, ends_at, comment, status) VALUES (%s,%s,%s,%s,%s,%s,1)",
                         (result.get("silenceID", ""), body.get("createdBy", "admin"),
-                         m.get("name", ""), m.get("value", ""), json.dumps(matchers), starts, ends, body.get("comment", "")))
+                         json.dumps(body.get("matchers", [])), starts, ends, body.get("comment", "")))
             except Exception: pass
             return result
     except (httpx.HTTPError, httpx.ConnectError):

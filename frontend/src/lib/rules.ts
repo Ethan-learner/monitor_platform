@@ -61,8 +61,6 @@ export interface Silence {
   startsAt: string
   endsAt: string
   matchers?: Array<{ name: string; value: string; isRegex: boolean }>
-  matcherName?: string
-  matcherValue?: string
   db_status?: number
 }
 

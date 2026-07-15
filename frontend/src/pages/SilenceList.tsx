@@ -83,7 +83,7 @@ export default function SilenceList() {
 
   const openReset = (r: Silence) => {
     setResetTarget(r)
-    setMatchers((r as any).matchers?.length ? (r as any).matchers : [{ name: (r as any).matcherName || 'alertname', value: (r as any).matcherValue || '', isRegex: false }])
+    setMatchers(r.matchers?.length ? r.matchers : [{ name: 'alertname', value: '', isRegex: false }])
     form.setFieldsValue({
       timeRange: [dayjs().add(1, 'minute'), dayjs().add(61, 'minute')],
       createdBy: r.createdBy, comment: r.comment || '',
@@ -160,9 +160,9 @@ export default function SilenceList() {
         columns={[
           { title: '创建人', dataIndex: 'createdBy', width: 100, align: 'center' },
           { title: '匹配规则', width: 280, align: 'center', render: (_, r) => {
-            const ms = (r as any).matchers
-            if (ms?.length) return ms.map((m: Matcher, i: number) => <Tag key={i} style={{ margin: 2 }}>{m.name}{m.isRegex ? '=~' : '='}{m.value}</Tag>)
-            return <Tag>{(r as any).matcherName || '?'}={(r as any).matcherValue || '?'}</Tag>
+            const ms = r.matchers
+            if (ms?.length) return ms.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}{m.isRegex ? '=~' : '='}{m.value}</Tag>)
+            return <span style={{ color: '#999' }}>—</span>
           }},
           { title: '开始时间', dataIndex: 'startsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
           { title: '结束时间', dataIndex: 'endsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
@@ -181,7 +181,7 @@ export default function SilenceList() {
                   onClick={() => { if (expired) openReset(r) }} disabled={!expired} />
                 <Popconfirm title="确认删除该静默？" onConfirm={() => { api.post(`/alerts/silences/${r.id}/delete`).then(() => { message.success('已删除'); load() }).catch(() => message.error('操作失败')) }} okText="确认删除" cancelText="取消"
                   onCancel={() => {}} disabled={!expired}>
-                  <Button size="small" type="text" onClick={(e) => { if (!expired) { e.stopPropagation(); message.warning('请先过期再删除') } }}
+                  <Button size="small" type="text" onClick={(e) => { if (!expired) { e.stopPropagation(); message.warning('请先过期静默规则，再执行删除操作') } }}
                     icon={<DeleteOutlined style={{ color: expired ? '#999' : '#ddd' }} />} />
                 </Popconfirm>
               </Space>
