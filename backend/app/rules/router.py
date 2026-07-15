@@ -253,6 +253,13 @@ async def save_rule_file(filename: str, body: dict) -> dict:
             cur = conn.cursor()
             for group in data["groups"]:
                 for rule in group.get("rules", []):
+                    alert_name = rule.get("alert", "")
+                    # 检查未删除的同名规则
+                    cur.execute("SELECT id, status FROM alert_rules WHERE rule_name=%s AND status != -1", (alert_name,))
+                    dup = cur.fetchone()
+                    if dup:
+                        st = "已禁用" if dup[1] == 0 else "已存在"
+                        raise HTTPException(status_code=409, detail=f"规则名 {alert_name} {st}")
                     cur.execute(
                         "INSERT INTO alert_rules (rule_name, category, expr, duration, severity, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (rule.get("alert", ""), category,
@@ -266,6 +273,8 @@ async def save_rule_file(filename: str, body: dict) -> dict:
         _write_file(filename, content)
         log_audit(operator, "rules", "create", f"file={filename}")
         return {"status": "saved", "filename": filename}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
