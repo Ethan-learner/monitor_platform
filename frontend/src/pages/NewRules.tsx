@@ -81,9 +81,10 @@ export default function NewRules() {
       <Space style={{ marginBottom: 8 }}><Badge color={CATEGORY_COLORS[cat] || '#d9d9d9'} /><strong>{cat}</strong><Tag>{grouped[cat].length}</Tag></Space>
       <Table<ParsedRule> rowKey={(r, i) => r.name + i} dataSource={grouped[cat]} size="middle" pagination={false} bordered
         expandable={{
+          expandIconColumnIndex: 0,
           expandedRowRender: (r) => (
             <div style={{ padding: '4px 12px', display: 'flex', flexWrap: 'wrap', gap: '8px 24px', fontSize: 12 }}>
-              <span><strong>表达式:</strong> <code style={{ fontSize: 11 }}>{r.expr}</code></span>
+              <span><strong>告警表达式:</strong> <code style={{ fontSize: 11 }}>{r.expr}</code></span>
               <span><strong>持续:</strong> {r.for || '—'}</span>
               <span><strong>策略:</strong> {getStrategyName(r.strategy_id)}</span>
               <span><strong>描述:</strong> {r.summary || '—'}</span>
@@ -91,7 +92,8 @@ export default function NewRules() {
           ),
         }}
         columns={[
-          { title: '名称', dataIndex: 'name', width: 200, render: (s: string) => <strong>{s}</strong> },
+          { title: '名称', dataIndex: 'name', width: 220, render: (s: string) => <strong>{s}</strong> },
+          { title: '策略', width: 120, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
           { title: '告警级别', width: 80, align: 'center', render: (_: any, r: any) => (
             <Tag color={SEV_COLORS[r.severity] || '#999'}>{SEV_LABELS[r.severity] || r.severity || '—'}</Tag>
           )},
