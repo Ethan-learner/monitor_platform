@@ -74,7 +74,7 @@ export default function SilenceNew() {
           })]}>
             <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
           </Form.Item>
-          <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="维护窗口" /></Form.Item>
+          <Form.Item label="备注" name="comment"><Input.TextArea rows={3} /></Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={loading}>创建</Button>
             <Button onClick={() => navigate('/dashboard/alertmanager-silences')}>取消</Button>

@@ -74,6 +74,7 @@ async def create_silence(body: dict) -> dict:
     try:
             async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
                 clean_body = dict(body)
+                clean_body.setdefault("createdBy", "admin")
                 # 前端格式 YYYY-MM-DD HH:mm:ss → 转 ISO
                 for f in ['startsAt', 'endsAt']:
                     if f in clean_body and clean_body[f]:

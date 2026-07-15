@@ -119,7 +119,7 @@ export default function SilenceList() {
         })]}>
           <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
         </Form.Item>
-        <Form.Item label="备注" name="comment"><Input.TextArea rows={3} placeholder="维护窗口" /></Form.Item>
+        <Form.Item label="备注" name="comment"><Input.TextArea rows={3}/></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={closeModal}>取消</Button></Space>
       </Form>
     </Modal>
