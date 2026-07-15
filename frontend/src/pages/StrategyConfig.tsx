@@ -185,6 +185,13 @@ export default function StrategyConfig() {
         <p>显示名已存在，请更换名称。</p>
       </Modal>
       <Modal title="确认操作" open={!!disableTarget} onCancel={() => setDisableTarget(null)} onOk={handleDisableStrategy}
+        okText={disableTarget?.enabled === 1 ? '确认禁用' : '确认启用'}
+        okButtonProps={disableTarget?.enabled === 1 ? { danger: true } : {}}>
+        <p>策略: <strong>{disableTarget?.label}</strong></p>
+        {disableTarget?.enabled === 1 && disableRefs > 0
+          ? <p style={{ color: '#fa8c16' }}>有 {disableRefs} 条规则正在使用此策略，禁用后这些规则将无法推送通知。</p>
+          : <p>{disableTarget?.enabled === 1 ? '确认禁用该策略？' : '确认启用该策略？'}</p>}
+      </Modal>
     </div>
   )
 }
