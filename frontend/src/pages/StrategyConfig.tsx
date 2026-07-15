@@ -31,6 +31,7 @@ export default function StrategyConfig() {
   const [data, setData] = useState<Strategy[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<Strategy | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Strategy | null>(null)
   const [deleteRefs, setDeleteRefs] = useState(0)
   const [form] = Form.useForm()
