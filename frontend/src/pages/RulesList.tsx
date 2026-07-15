@@ -68,7 +68,7 @@ export default function RulesList() {
             pagination={false}
             columns={[
               {
-                title: '级别', dataIndex: 'severity', width: 70, align: 'center',
+                title: '告警级别', dataIndex: 'severity', width: 70, align: 'center',
                 render: (s: string) => <Tag color={severityColor[s] || 'default'}>{s || '-'}</Tag>,
               },
               { title: '告警名称', dataIndex: 'name', width: 200, align: 'center' },

@@ -16,18 +16,20 @@ interface AlertListProps {
   error?: string | null
 }
 
+const labelCol = (key: string, title: string, width?: number) => ({
+  title,
+  dataIndex: ['labels', key],
+  width,
+  ellipsis: true,
+  render: (v: string) => v || <Text type="secondary">—</Text>,
+})
+
 export default function AlertList({ alerts, error }: AlertListProps) {
   const navigate = useNavigate()
 
   if (error) {
     return (
-      <Alert
-        type="error"
-        showIcon
-        message="告警服务暂不可用"
-        description={error}
-        style={{ margin: 24 }}
-      />
+      <Alert type="error" showIcon message="告警服务暂不可用" description={error} style={{ margin: 24 }} />
     )
   }
 
@@ -41,45 +43,40 @@ export default function AlertList({ alerts, error }: AlertListProps) {
 
   const columns: ColumnsType<AlertItem> = [
     {
-      title: '严重度',
+      title: '告警级别',
       dataIndex: ['labels', 'severity'],
-      width: 100,
-      render: (sev: string) => <Tag color={severityColor[sev] || 'default'}>{sev || 'unknown'}</Tag>,
+      width: 90,
+      render: (sev: string) => <Tag color={severityColor[sev] || 'default'}>{sev || '—'}</Tag>,
     },
-    { title: '告警名', dataIndex: ['labels', 'alertname'], width: 200 },
-    { title: '实例', dataIndex: ['labels', 'instance'], width: 180 },
-    {
-      title: '摘要',
-      dataIndex: ['annotations', 'summary'],
-      render: (s: string) => <Text type="secondary">{s}</Text>,
-    },
+    { title: '告警名称', dataIndex: ['labels', 'alertname'], width: 180 },
+    labelCol('instance', '实例', 180),
+    labelCol('service', '服务', 100),
+    labelCol('region', '地区'),
+    labelCol('department', '部门'),
+    labelCol('project', '项目'),
+    labelCol('env', '环境'),
     {
       title: '状态',
       dataIndex: ['status', 'state'],
-      width: 90,
-      render: (st: string) => <Tag color={st === 'firing' ? 'red' : 'green'}>{st || 'firing'}</Tag>,
+      width: 70,
+      render: (st: string) => <Tag color={st === 'firing' ? 'red' : 'green'}>{st || '—'}</Tag>,
+    },
+    {
+      title: '描述',
+      dataIndex: ['annotations', 'summary'],
+      ellipsis: true,
+      render: (s: string) => <Text type="secondary">{s || '—'}</Text>,
     },
     {
       title: '操作',
       key: 'action',
-      width: 90,
+      width: 80,
       align: 'center',
       render: (_: any, record: AlertItem) => (
         <Tooltip title="创建静默规则">
-          <Button
-            size="small"
-            onClick={() =>
-              navigate('/dashboard/silence-new', {
-                state: {
-                  alertName: record.labels.alertname,
-                  alertLabels: record.labels,
-                  createdBy: 'admin',
-                },
-              })
-            }
-          >
-            静默
-          </Button>
+          <Button size="small" onClick={() =>
+            navigate('/dashboard/silence-new', { state: { alertName: record.labels.alertname, alertLabels: record.labels } })
+          }>静默</Button>
         </Tooltip>
       ),
     },
@@ -92,6 +89,7 @@ export default function AlertList({ alerts, error }: AlertListProps) {
       columns={columns}
       pagination={{ pageSize: 20, showSizeChanger: false }}
       size="middle"
+      scroll={{ x: 1200 }}
     />
   )
 }
