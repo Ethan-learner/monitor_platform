@@ -262,7 +262,10 @@ async def save_rule_file(filename: str, body: dict) -> dict:
                          filename, operator, strategy_id or None, custom_notify or None),
                     )
             cur.close()
-            return {"status": "saved", "filename": filename}
+        # 同步写入服务器 YAML 文件
+        _write_file(filename, content)
+        log_audit(operator, "rules", "create", f"file={filename}")
+        return {"status": "saved", "filename": filename}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -281,20 +284,42 @@ async def reload_prometheus() -> dict:
 
 @router.post("/update")
 async def update_rule(body: dict) -> dict:
-    """MySQL 更新告警规则"""
+    """MySQL 更新告警规则 + 同步服务器 YAML"""
     old_name = body.get("oldRuleName", "")
     new_name = body.get("newName", "")
     expr = body.get("expr", "")
     duration = body.get("for", "")
     severity = body.get("severity", "warning")
     summary = body.get("summary", "")
+    strategy_id = body.get("strategy_id")
+    custom_notify = body.get("custom_notify", "")
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s WHERE rule_name=%s",
-                        (new_name, expr, duration, severity, summary, old_name))
+            # 获取当前文件名
+            cur.execute("SELECT file_name FROM alert_rules WHERE rule_name=%s", (old_name,))
+            row = cur.fetchone()
+            old_file = row[0] if row else ""
+            # 生成新文件名
+            if old_file:
+                parts = old_file.split("_", 1)
+                prefix = parts[0] + "_" if len(parts) > 1 else ""
+                new_file = prefix + new_name.lower().replace(" ", "_") + ".yml" if " " not in new_name else prefix + new_name.lower().replace(" ", "_").replace("__", "_") + ".yml"
+                # 清理非ASCII
+                new_file = "".join(c for c in new_file if c.isalnum() or c in "._-")
+            else:
+                new_file = new_name.lower().replace(" ", "_") + ".yml"
+            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s, strategy_id=%s, custom_notify=%s WHERE rule_name=%s",
+                        (new_name, expr, duration, severity, summary, strategy_id or None, custom_notify or None, old_name))
             cur.close()
-            return {"status": "updated"}
+        # 同步服务器 YAML
+        new_yaml = f"groups:\n  - name: {new_file.replace('.yml', '')}\n    rules:\n      - alert: {new_name}\n        expr: {expr}\n        for: {duration}\n        labels:\n          severity: {severity}\n        annotations:\n          summary: \"{summary}\"\n"
+        if old_file and old_file != new_file:
+            _move_to_disabled(old_file)
+        _write_file(new_file, new_yaml)
+        if old_file and old_file != new_file:
+            log_audit(body.get("operator", "system"), "rules", "update", f"old={old_name} file={old_file}->{new_file}")
+        return {"status": "updated", "filename": new_file}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -321,15 +346,55 @@ def _write_file(filename: str, content: str) -> None:
     raise HTTPException(status_code=404, detail="cannot write: no target")
 
 
+def _move_to_disabled(filename: str) -> None:
+    """将规则文件移至 alerts_disabled 目录"""
+    if ".." in filename or "/" in filename:
+        return
+    try:
+        if settings.ssh_host:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            try:
+                sftp.mkdir(f"{settings.alerts_dir}_disabled")
+            except Exception:
+                pass
+            src = f"{settings.alerts_dir}/{filename}"
+            dst = f"{settings.alerts_dir}_disabled/{filename}"
+            try:
+                sftp.rename(src, dst)
+            except IOError:
+                try:
+                    sftp.remove(src)
+                except IOError:
+                    pass
+            sftp.close(); ssh.close()
+    except Exception:
+        pass
+
+
 @router.post("/delete")
 async def delete_rule(body: dict) -> dict:
     rule_name = body.get("ruleName", "")
     try:
+        # 获取文件名用于移动
+        file_name = ""
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT file_name FROM alert_rules WHERE rule_name=%s", (rule_name,))
+            row = cur.fetchone()
+            if row: file_name = row[0]
+            cur.close()
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
             cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s", (rule_name,))
             cur.close()
-            return {"status": "deleted", "rule": rule_name}
+        # 移动文件到 disabled 目录
+        if file_name:
+            _move_to_disabled(file_name)
+        log_audit("system", "rules", "delete", f"rule={rule_name} file={file_name}")
+        return {"status": "deleted", "rule": rule_name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
