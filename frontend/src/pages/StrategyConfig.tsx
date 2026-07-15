@@ -82,7 +82,11 @@ export default function StrategyConfig() {
       if (editing) {
         body['enabled'] = editing.enabled
         await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新')
-      } else { await api.post('/alerts/strategies', body); message.success('已创建') }
+      } else {
+        const res = (await api.post('/alerts/strategies', body)).data
+        const msg = res.relinked > 0 ? `已创建，${res.relinked} 条规则已恢复链接` : '已创建'
+        message.success(msg)
+      }
       setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
     } catch (e: any) {
       if (e?.response?.status === 409) { setDupModal(true); return }

@@ -342,7 +342,23 @@ async def create_strategy(body: dict) -> dict:
                 raise HTTPException(status_code=409, detail="显示名已存在")
             cur.execute("INSERT INTO alert_strategies (name, label, description, config) VALUES (%s,%s,%s,%s)",
                         (gen_name, body.get("label", ""), body.get("description", ""), json.dumps(body["config"])))
-            return {"id": cur.lastrowid, "status": "created", "name": gen_name}
+            new_id = cur.lastrowid
+            # 查找同名已删策略，将其关联规则重新链接到新策略并恢复启用
+            cur.execute("SELECT id FROM alert_strategies WHERE label=%s AND enabled=-1 AND id != %s", (body.get("label", ""), new_id))
+            old_ids = [r[0] for r in cur.fetchall()]
+            relinked = 0
+            new_cfg = body.get("config", {})
+            sev_levels = ["critical", "warning", "info"]
+            new_sev = "warning"
+            for lv in sev_levels:
+                if new_cfg.get(lv) and len(new_cfg[lv]) > 0:
+                    new_sev = lv
+                    break
+            for oid in old_ids:
+                cur.execute("UPDATE alert_rules SET strategy_id=%s, status=1, severity=%s WHERE strategy_id=%s AND status=0",
+                            (new_id, new_sev, oid))
+                relinked += cur.rowcount
+            return {"id": new_id, "status": "created", "name": gen_name, "relinked": relinked, "synced_severity": new_sev}
     except HTTPException:
         raise
     except Exception as e:
