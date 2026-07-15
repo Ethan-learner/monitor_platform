@@ -79,8 +79,10 @@ export default function StrategyConfig() {
         config[sev] = buildCh(vals[`cfg_${sev}`] || '')
       }
       const body = { label: vals.label, description: vals.description || '', config }
-      if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
-      else { await api.post('/alerts/strategies', body); message.success('已创建') }
+      if (editing) {
+        body['enabled'] = editing.enabled
+        await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新')
+      } else { await api.post('/alerts/strategies', body); message.success('已创建') }
       setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
     } catch (e: any) {
       if (e?.response?.status === 409) { setDupModal(true); return }
