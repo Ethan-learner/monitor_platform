@@ -365,10 +365,28 @@ def _move_to_disabled(filename: str) -> None:
             try:
                 sftp.rename(src, dst)
             except IOError:
-                try:
-                    sftp.remove(src)
-                except IOError:
-                    pass
+                pass
+            sftp.close(); ssh.close()
+    except Exception:
+        pass
+
+
+def _move_to_active(filename: str) -> None:
+    """将规则文件从 alerts_disabled 移回 alerts 目录"""
+    if ".." in filename or "/" in filename:
+        return
+    try:
+        if settings.ssh_host:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            sftp = ssh.open_sftp()
+            src = f"{settings.alerts_dir}_disabled/{filename}"
+            dst = f"{settings.alerts_dir}/{filename}"
+            try:
+                sftp.rename(src, dst)
+            except IOError:
+                pass
             sftp.close(); ssh.close()
     except Exception:
         pass
@@ -405,12 +423,24 @@ async def disable_rule(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT status FROM alert_rules WHERE rule_name=%s", (rule_name,))
+            cur.execute("SELECT status, file_name FROM alert_rules WHERE rule_name=%s", (rule_name,))
             row = cur.fetchone()
-            new_status = 0 if (row and row[0] == 1) else 1
+            if not row:
+                raise HTTPException(status_code=404, detail="rule_not_found")
+            cur_status = row[0]
+            file_name = row[1] or ""
+            new_status = 0 if cur_status == 1 else 1
             cur.execute("UPDATE alert_rules SET status=%s WHERE rule_name=%s", (new_status, rule_name))
             cur.close()
-            return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
+        # 移动文件
+        if file_name:
+            if new_status == 0:
+                _move_to_disabled(file_name)
+            else:
+                _move_to_active(file_name)
+        return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
