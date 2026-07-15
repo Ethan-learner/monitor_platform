@@ -49,22 +49,23 @@ export default function StrategyConfig() {
 
   const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
 
-  const handleSave = async (values: any) => {
-    const buildCh = (s: string) => {
-      const ch: Record<string, string[]> = {}
-      if (!s) return ch
-      s.split(';').forEach(part => {
-        const [chan, recips] = part.split(':')
-        if (chan && recips) ch[chan.trim()] = recips.split(',').map((r: string) => r.trim()).filter(Boolean)
-      })
-      return ch
-    }
-    const config: Record<string, Record<string, string[]>> = {}
-    for (const sev of visibleLevels(maxLevel)) {
-      config[sev] = buildCh(values[`cfg_${sev}`] || '')
-    }
-    const body = { name: values.name, label: values.label, description: values.description || '', config }
+  const saveConfig = async () => {
+    try { var vals = await form.validateFields() } catch { return }
     try {
+      const buildCh = (s: string) => {
+        const ch: Record<string, string[]> = {}
+        if (!s) return ch
+        s.split(';').forEach(part => {
+          const [chan, recips] = part.split(':')
+          if (chan && recips) ch[chan.trim()] = recips.split(',').map((r: string) => r.trim()).filter(Boolean)
+        })
+        return ch
+      }
+      const config: Record<string, Record<string, string[]>> = {}
+      for (const sev of visibleLevels(maxLevel)) {
+        config[sev] = buildCh(vals[`cfg_${sev}`] || '')
+      }
+      const body = { name: vals.name, label: vals.label, description: vals.description || '', config }
       if (editing) { await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新') }
       else { await api.post('/alerts/strategies', body); message.success('已创建') }
       setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
@@ -139,7 +140,7 @@ export default function StrategyConfig() {
       />
 
       <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={620}>
-        <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form form={form} layout="vertical">
           <Form.Item label="标识 (英文)" name="name" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
           <Form.Item label="说明" name="description" style={FMT}><Input placeholder="" /></Form.Item>
@@ -151,7 +152,7 @@ export default function StrategyConfig() {
               <Input placeholder="email:a@x.com; lark:id1" />
             </Form.Item>
           ))}
-          <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
+          <Space><Button type="primary" onClick={saveConfig}>保存</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
         </Form>
       </Modal>
     </div>
