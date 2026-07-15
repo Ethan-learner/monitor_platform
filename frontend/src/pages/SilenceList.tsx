@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Table, Button, Tag, Space, Typography, Modal, Form, Input, DatePicker, Select, message, Popconfirm } from 'antd'
-import { ReloadOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { ReloadOutlined, DeleteOutlined, PlusOutlined, EditOutlined, StopOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { fetchSilences, expireSilence, createSilence, type Silence } from '../lib/rules'
 import { cacheGet, cacheSet } from '../lib/cache'
@@ -14,8 +14,6 @@ export default function SilenceList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
-  const [filterCreator, setFilterCreator] = useState('')
-  const [filterState, setFilterState] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -26,7 +24,7 @@ export default function SilenceList() {
 
   const handleExpire = async (id: string) => {
     try { await expireSilence(id); message.success('已过期'); load() }
-    catch { message.error('过期失败') }
+    catch { message.error('操作失败') }
   }
 
   const handleCreate = async (values: any) => {
@@ -47,44 +45,36 @@ export default function SilenceList() {
     } catch { message.error('创建失败') } finally { setSubmitting(false) }
   }
 
-  const creators = useMemo(() => [...new Set(silences.map(s => s.createdBy))], [silences])
-  const filtered = useMemo(() => {
-    let list = [...silences]
-    if (filterCreator) list = list.filter(s => s.createdBy === filterCreator)
-    if (filterState) list = list.filter(s => (s.status?.state || '') === filterState)
-    return list
-  }, [silences, filterCreator, filterState])
+  const active = useMemo(() => silences.filter(s => s.status?.state === 'active'), [silences])
 
   return (
     <div style={{ padding: 16 }}>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
-        <Title level={5} style={{ margin: 0 }}>静默规则</Title>
+        <Title level={5} style={{ margin: 0 }}>静默规则 ({active.length})</Title>
         <Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>创建静默</Button>
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>刷新</Button>
         </Space>
       </Space>
-      <Space style={{ marginBottom: 12 }}>
-        <Space>
-          <Select placeholder="创建人" allowClear style={{ width: 140 }} value={filterCreator || undefined} onChange={v => setFilterCreator(v || '')}
-            options={creators.map(c => ({ label: c, value: c }))} />
-          <Select placeholder="状态" allowClear style={{ width: 120 }} value={filterState || undefined} onChange={v => setFilterState(v || '')}
-            options={[{ label: '活跃', value: 'active' }, { label: '已过期', value: 'expired' }]} />
-        </Space>
-      </Space>
       <Table<Silence>
-        rowKey="id" dataSource={filtered} pagination={false} bordered
+        rowKey="id" dataSource={active} pagination={false} bordered
         columns={[
-          { title: '创建人', dataIndex: 'createdBy', width: 90, align: 'center' },
-          { title: '匹配规则', width: 280, render: (_, r) => r.matchers?.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}={m.value}</Tag>) },
-          { title: '开始', dataIndex: 'startsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
-          { title: '结束', dataIndex: 'endsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
-          { title: '状态', dataIndex: ['status', 'state'], width: 80, align: 'center', render: (s: string) => <Tag color={s === 'active' ? 'green' : 'default'}>{s || '-'}</Tag> },
-          { title: '备注', dataIndex: 'comment', ellipsis: true, width: 120 },
-          { title: '操作', width: 60, align: 'center', render: (_, r) => (
-            <Popconfirm title="确认过期该静默？" disabled={r.status?.state !== 'active'} onConfirm={() => handleExpire(r.id)}>
-              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: r.status?.state === 'active' ? '#999' : '#ddd' }} />} />
-            </Popconfirm>
+          { title: '创建人', dataIndex: 'createdBy', width: 100, align: 'center' },
+          { title: '匹配规则', width: 280, align: 'center', render: (_, r) => r.matchers?.map((m, i) => <Tag key={i} style={{ margin: 2 }}>{m.name}={m.value}</Tag>) },
+          { title: '开始时间', dataIndex: 'startsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
+          { title: '结束时间', dataIndex: 'endsAt', width: 160, align: 'center', render: (s: string) => new Date(s).toLocaleString() },
+          { title: '状态', width: 70, align: 'center', render: () => <Tag color="green">活跃</Tag> },
+          { title: '备注', dataIndex: 'comment', ellipsis: true, align: 'center' },
+          { title: '操作', width: 160, align: 'center', render: (_, r) => (
+            <Space>
+              <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} disabled title="暂不支持编辑" />
+              <Popconfirm title="确认删除该静默？" onConfirm={() => handleExpire(r.id)} okText="确认删除" cancelText="取消">
+                <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
+              </Popconfirm>
+              <Popconfirm title="确认过期该静默？" onConfirm={() => handleExpire(r.id)} okText="确认" cancelText="取消">
+                <Button size="small" type="text" icon={<StopOutlined style={{ color: '#fa8c16' }} />} />
+              </Popconfirm>
+            </Space>
           )},
         ]}
       />

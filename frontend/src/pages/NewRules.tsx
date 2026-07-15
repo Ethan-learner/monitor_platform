@@ -84,23 +84,23 @@ export default function NewRules() {
           expandIconColumnIndex: 0,
           indentSize: 8,
           expandedRowRender: (r) => (
-            <div style={{ padding: '8px 12px 8px 30px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
-              <div><strong>告警表达式:</strong> <code style={{ fontSize: 13 }}>{r.expr}</code></div>
-              <div><strong>持续:</strong> {r.for || '—'}</div>
-              <div><strong>描述:</strong> {r.summary || '—'}</div>
+            <div style={{ padding: '8px 12px 8px 30px', display: 'flex', flexDirection: 'column', gap: 5, fontSize: 14 }}>
+              <div><strong>告警表达式  :  </strong> <code style={{ fontSize: 15 }}>{r.expr}</code></div>
+              <div><strong>持续  :  </strong> {r.for || '—'}</div>
+              <div><strong>描述  :  </strong> {r.summary || '—'}</div>
             </div>
           ),
         }}
         columns={[
-          { title: '名称', dataIndex: 'name', width: 220, render: (s: string) => <strong>{s}</strong> },
-          { title: '策略', width: 120, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 12 }}>{getStrategyName(r.strategy_id)}</span> },
-          { title: '告警级别', width: 80, align: 'center', render: (_: any, r: any) => (
+          { title: '名称', dataIndex: 'name', width: 400, align: 'center',render: (s: string) => <strong>{s}</strong> },
+          { title: '策略', width: 180, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 14 }}>{getStrategyName(r.strategy_id)}</span> },
+          { title: '告警级别', width: 120, align: 'center', render: (_: any, r: any) => (
             <Tag color={SEV_COLORS[r.severity] || '#999'}>{SEV_LABELS[r.severity] || r.severity || '—'}</Tag>
           )},
-          { title: '状态', width: 70, align: 'center', render: (_: any, r: any) => (
+          { title: '状态', width: 120, align: 'center', render: (_: any, r: any) => (
             <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
           )},
-          { title: '操作', width: 150, align: 'center', render: (_: any, r: any) => (<Space>
+          { title: '操作', width: 120, align: 'center', render: (_: any, r: any) => (<Space>
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => {
               setEditTarget(r)
               setEditCustomMode(!r.strategy_id && !!r.custom_notify)
