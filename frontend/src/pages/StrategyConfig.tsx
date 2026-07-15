@@ -187,6 +187,7 @@ export default function StrategyConfig() {
       <Modal title="提示" open={dupModal} onCancel={() => setDupModal(false)} footer={null}>
         <p>标识 (英文) 已存在，请更换名称。</p>
       </Modal>
+      <Modal title="确认删除策略" open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onOk={handleDeleteStrategy} okText="确认删除" okButtonProps={{ danger: true }}>
         <p>策略: <strong>{deleteTarget?.label || deleteTarget?.name}</strong></p>
         {deleteRefs > 0 ? <p style={{ color: '#cf1322' }}>有 {deleteRefs} 条规则引用了此策略，删除后将自动禁用这些规则。</p> : <p>确认删除该策略？</p>}
       </Modal>
