@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # 告警规则文件目录
     alerts_dir: str = "/data/software/prometheus/alerts"
 
+    # 域控认证
+    eip_url: str = "http://eip.longcheer.com:8009/api/v1/common/user/login"
+
     # Doris (告警历史)
     doris_host: str = ""
     doris_port: int = 9030

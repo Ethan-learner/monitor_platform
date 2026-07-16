@@ -1,6 +1,7 @@
 import secrets
 
-from fastapi import APIRouter, Form, Request
+import httpx
+from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 
 from app.auth.jwt import create_token, verify_token
@@ -27,6 +28,47 @@ def _set_auth_cookie(resp: Response, username: str, role: str, name: str) -> Non
         max_age=settings.jwt_ttl_seconds,
         path="/",
     )
+
+
+@router.post("/login")
+async def login_with_eip(body: dict) -> dict:
+    """域控登录：POST {username, password} → 回调公司 EIP 接口验证"""
+    username = body.get("username", "")
+    password = body.get("password", "")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password required")
+    # 调用域控 API
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            eip_resp = await client.post(
+                settings.eip_url,
+                json={"username": username, "password": password},
+            )
+            if eip_resp.status_code != 200:
+                raise HTTPException(status_code=401, detail="用户名或密码错误")
+            eip_data = eip_resp.json()
+            userinfo = eip_data.get("data", {}).get("userinfo") if eip_data.get("data") else None
+            if not userinfo:
+                raise HTTPException(status_code=401, detail="域控返回数据异常")
+            name = userinfo.get("displayName") or userinfo.get("name") or username
+            role = "ops"
+    except HTTPException:
+        raise
+    except Exception:
+        # 域控不可达时，dev_mock 兜底
+        if settings.dev_mock and username in _MOCK_USERS:
+            valid = {"admin": "admin123", "dev": "dev123", "manager": "mgr123"}
+            if valid.get(username) != password:
+                raise HTTPException(status_code=401, detail="用户名或密码错误")
+            user = _MOCK_USERS[username]
+            username, role, name = user["sub"], user["role"], user["name"]
+        else:
+            raise HTTPException(status_code=502, detail="域控服务不可达")
+    # 签发 JWT
+    import json
+    resp = Response(content=json.dumps({"username": username, "role": role, "displayName": name}), media_type="application/json")
+    _set_auth_cookie(resp, username, role, name)
+    return resp
 
 
 @router.get("/dev-login")
