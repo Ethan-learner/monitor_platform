@@ -291,8 +291,8 @@ function RoleTab() {
           title={<Space><span>用户列表</span>{selectedRole && <Text type="secondary">({selectedRole.label})</Text>}</Space>}
           extra={selectedRole ? <Button size="small" type={editMode ? 'primary' : 'default'} onClick={() => setEditMode(!editMode)}>{editMode ? '完成编辑' : '编辑用户'}</Button> : null}>
           {selectedRole ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: 'calc(100% - 40px)' }}>
-              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '8px 8px 0 0', padding: 12, overflow: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '8px 8px 0 0', padding: 12, overflow: 'auto', minHeight: 0 }}>
                 <div style={{ fontSize: 12, color: '#1677ff', fontWeight: 600, marginBottom: 8 }}>已分配用户 ({assignedUsers.length})</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {assignedUsers.map(u => {
@@ -305,7 +305,7 @@ function RoleTab() {
                   })}
                 </div>
               </div>
-              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '0 0 8px 8px', borderTop: 'none', padding: 12, overflow: 'auto' }}>
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '0 0 8px 8px', borderTop: 'none', padding: 12, overflow: 'auto', minHeight: 0 }}>
                 <div style={{ fontSize: 12, color: '#666', fontWeight: 600, marginBottom: 8 }}>未分配用户 ({unassignedUsers.length})</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {unassignedUsers.map(u => {
