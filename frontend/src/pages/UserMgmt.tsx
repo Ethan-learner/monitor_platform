@@ -202,7 +202,7 @@ function RoleTab() {
       ])
       setRoles(r.data || [])
       setAllPerms(p.data || [])
-      setAllUsers((u.data?.data || []).filter((x: any) => x.username !== 'admin'))
+      setAllUsers((u.data?.data || []).filter((x: any) => x.username !== 'admin' && x.status !== -1))
     } catch {}
   }
   useEffect(() => { load() }, [])
