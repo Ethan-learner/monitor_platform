@@ -387,24 +387,18 @@ def _move_to_disabled(filename: str) -> str:
         return filename
     try:
         if settings.ssh_host:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            sftp = ssh.open_sftp()
-            try:
-                sftp.mkdir(f"{settings.alerts_dir}_disabled")
-            except Exception:
-                pass
             ts = datetime.now().strftime("%Y%m%d%H%M%S")
             name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
             dst_name = f"{name}_{ts}.{ext}" if ext else f"{name}_{ts}"
             src = f"{settings.alerts_dir}/{filename}"
             dst = f"{settings.alerts_dir}_disabled/{dst_name}"
-            try:
-                sftp.rename(src, dst)
-            except IOError:
-                pass
-            sftp.close(); ssh.close()
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
+            ssh.exec_command(f"mkdir -p {settings.alerts_dir}_disabled")
+            stdin, stdout, stderr = ssh.exec_command(f"mv {src} {dst}")
+            stderr.read()  # wait for completion
+            ssh.close()
             return dst_name
     except Exception:
         pass
@@ -420,14 +414,11 @@ def _move_to_active(filename: str) -> None:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            sftp = ssh.open_sftp()
             src = f"{settings.alerts_dir}_disabled/{filename}"
             dst = f"{settings.alerts_dir}/{filename}"
-            try:
-                sftp.rename(src, dst)
-            except IOError:
-                pass
-            sftp.close(); ssh.close()
+            stdin, stdout, stderr = ssh.exec_command(f"mv {src} {dst}")
+            stderr.read()
+            ssh.close()
     except Exception:
         pass
 
