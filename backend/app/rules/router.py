@@ -395,9 +395,9 @@ def _ssh_move(src: str, dst: str) -> bool:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            ssh.exec_command(f"mkdir -p {Path(dst).parent}")
-            stdin, stdout, stderr = ssh.exec_command(f"mv {src} {dst}")
-            stderr.read()
+            dst_dir = str(Path(dst).parent)
+            stdin, stdout, stderr = ssh.exec_command(f"mkdir -p {dst_dir} && mv {src} {dst}")
+            stdout.read(); stderr.read()
             ssh.close()
             return True
     except Exception:
