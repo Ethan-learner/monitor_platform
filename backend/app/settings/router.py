@@ -226,6 +226,21 @@ async def update_user_status(uid: int, body: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.delete("/users/{uid}")
+async def delete_user(uid: int) -> dict:
+    """删除用户（软删除 status=-1）"""
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM system_user_roles WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM system_user_perms WHERE user_id=%s", (uid,))
+            cur.execute("DELETE FROM users WHERE id=%s", (uid,))
+            cur.close()
+            return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/login-logs")
 async def list_login_logs(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0), username: str = Query(""), result: str = Query("")) -> dict:
     """登录日志列表"""

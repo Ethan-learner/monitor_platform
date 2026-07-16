@@ -38,7 +38,7 @@ function UserTab() {
     setLoading(true)
     try {
       const { data } = await api.get('/settings/users', { params: { limit: 200 } })
-      const list = data.data || []
+      const list = (data.data || []).filter((u: any) => u.status !== -1)
       if (search) {
         const s = search.toLowerCase()
         setData(list.filter((u: any) => (u.username || '').toLowerCase().includes(s) || (u.displayName || '').toLowerCase().includes(s) || (u.personCode || '').includes(s)))
@@ -110,7 +110,7 @@ function UserTab() {
           }},
           { title: '邮箱', dataIndex: 'email', width: 140, ellipsis: true, render: (s: string) => s || '—' },
           { title: '手机', dataIndex: 'phone', width: 100, render: (s: string) => s || '—' },
-          { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: number) => <Tag color={s === 1 ? 'green' : 'red'}>{s === 1 ? '启用' : '禁用'}</Tag> },
+          { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{s === 1 ? '启用' : '禁用'}</Tag> },
           { title: '操作', width: 130, align: 'center', render: (_: any, r: any) => {
             if (isProtected(r)) return <Text type="secondary" style={{ fontSize: 12 }}>受保护</Text>
             return (
@@ -119,7 +119,7 @@ function UserTab() {
                 <Popconfirm title={r.status === 1 ? '确认禁用？' : '确认启用？'} onConfirm={() => toggleStatus(r.id, r.status)}>
                   <Button size="small" type="text" icon={<StopOutlined style={{ color: r.status === 1 ? '#fa8c16' : '#999' }} />} />
                 </Popconfirm>
-                <Popconfirm title="确认删除？" onConfirm={() => { api.put(`/settings/users/${r.id}/status`, { status: -1 }).then(load).catch(() => message.error('操作失败')) }}>
+                <Popconfirm title="确认删除该用户？" onConfirm={() => { api.delete(`/settings/users/${r.id}`).then(load).catch(() => message.error('操作失败')) }}>
                   <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
                 </Popconfirm>
               </Space>
@@ -268,7 +268,7 @@ function RoleTab() {
   return (
     <Row gutter={16} style={{ height: 'calc(100vh - 160px)' }}>
       <Col span={8}>
-        <Card size="small" style={{ height: '100%' }} styles={{ body: { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 12 } }}
+        <Card size="small" style={{ height: '100%' }} bodyStyle={{ height: 'calc(100% - 38px)', display: 'flex', flexDirection: 'column', padding: '12px 12px 0' }}
           title={<Space style={{ width: '100%', justifyContent: 'space-between' }}><span>角色列表</span><Button size="small" type="text" icon={<PlusOutlined />} onClick={() => setAddOpen(true)} /></Space>}>
           <Input size="small" placeholder="搜索角色" prefix={<SearchOutlined />} value={roleSearch} onChange={e => setRoleSearch(e.target.value)}
             style={{ marginBottom: 12 }} variant="borderless" />
@@ -287,7 +287,7 @@ function RoleTab() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" style={{ height: '100%' }} styles={{ body: { flex: 1, overflow: 'hidden', padding: 12, display: 'flex', flexDirection: 'column' } }}
+        <Card size="small" style={{ height: '100%' }} bodyStyle={{ height: 'calc(100% - 38px)', display: 'flex', flexDirection: 'column', padding: 12 }}
           title={<Space><span>用户列表</span>{selectedRole && <Text type="secondary">({selectedRole.label})</Text>}</Space>}
           extra={selectedRole ? <Button size="small" type={editMode ? 'primary' : 'default'} onClick={() => setEditMode(!editMode)}>{editMode ? '完成编辑' : '编辑用户'}</Button> : null}>
           {selectedRole ? (
