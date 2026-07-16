@@ -172,7 +172,7 @@ async def register_user(body: dict) -> dict:
         from app.db import get_db
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            cur.execute("SELECT id FROM users WHERE username=%s AND status != -1", (username,))
             if cur.fetchone():
                 raise HTTPException(status_code=409, detail="用户名已存在")
             cur.execute("INSERT INTO users (username, password_hash, display_name, department) VALUES (%s,%s,%s,%s)",
