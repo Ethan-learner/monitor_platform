@@ -153,11 +153,11 @@ async def get_profile(user: dict = Depends(current_user)) -> dict:
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id, username, person_code, display_name, email, department, role, status, last_login, created_at FROM users WHERE username=%s", (username,))
+            cur.execute("SELECT id, username, person_code, display_name, email, phone, department, role, status, last_login, created_at FROM users WHERE username=%s", (username,))
             row = cur.fetchone()
             if not row:
                 return {"username": username, "displayName": user.get("name", username), "role": user.get("role", "dev"), "loginLogs": []}
-            profile = {"id": row[0], "username": row[1], "personCode": row[2] or "", "displayName": row[3] or "", "email": row[4] or "", "department": row[5] or "", "role": row[6], "status": row[7], "lastLogin": str(row[8]) if row[8] else "", "createdAt": str(row[9]) if row[9] else ""}
+            profile = {"id": row[0], "username": row[1], "personCode": row[2] or "", "displayName": row[3] or "", "email": row[4] or "", "phone": row[5] or "", "department": row[6] or "", "role": row[7], "status": row[8], "lastLogin": str(row[9]) if row[9] else "", "createdAt": str(row[10]) if row[10] else ""}
             cur.execute("SELECT login_time, ip_address, user_agent, result, failed_reason FROM login_logs WHERE username=%s ORDER BY login_time DESC LIMIT 10", (username,))
             logs = [{"loginTime": str(r[0]) if r[0] else "", "ip": r[1] or "", "userAgent": r[2] or "", "result": r[3] or "", "failedReason": r[4] or ""} for r in cur.fetchall()]
             profile["loginLogs"] = logs
@@ -180,10 +180,18 @@ async def list_users(limit: int = Query(50, ge=1, le=200), offset: int = Query(0
             cur = conn.cursor()
             cur.execute(f"SELECT COUNT(*) FROM users {where}", params)
             total = cur.fetchone()[0]
-            cur.execute(f"SELECT id, username, person_code, display_name, email, department, role, status, last_login, created_at FROM users {where} ORDER BY id LIMIT %s OFFSET %s", params + [limit, offset])
+            cur.execute(f"SELECT id, username, person_code, display_name, email, phone, department, role, status, last_login, created_at FROM users {where} ORDER BY id LIMIT %s OFFSET %s", params + [limit, offset])
             rows = cur.fetchall()
+            # 批量获取角色
+            user_ids = [r[0] for r in rows]
+            roles_map = {}
+            if user_ids:
+                placeholders = ','.join(['%s'] * len(user_ids))
+                cur.execute(f"SELECT user_id, role_id FROM system_user_roles WHERE user_id IN ({placeholders})", user_ids)
+                for ur in cur.fetchall():
+                    roles_map.setdefault(ur[0], []).append(ur[1])
             cur.close()
-            return {"total": total, "data": [{"id": r[0], "username": r[1], "personCode": r[2] or "", "displayName": r[3] or "", "email": r[4] or "", "department": r[5] or "", "role": r[6], "status": r[7], "lastLogin": str(r[8]) if r[8] else "", "createdAt": str(r[9]) if r[9] else ""} for r in rows]}
+            return {"total": total, "data": [{"id": r[0], "username": r[1], "personCode": r[2] or "", "displayName": r[3] or "", "email": r[4] or "", "phone": r[5] or "", "department": r[6] or "", "role": r[7], "roles": roles_map.get(r[0], []), "status": r[8], "lastLogin": str(r[9]) if r[9] else "", "createdAt": str(r[10]) if r[10] else ""} for r in rows]}
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"db_error: {e}")
 
