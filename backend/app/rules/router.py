@@ -148,12 +148,12 @@ async def list_active_categorized() -> List[dict]:
                         if '.' in str(at):
                             at = str(at)[:26]  # strip nanoseconds to 6 digits
                         cur.execute(
-                            "INSERT INTO alert_records (alert_name, instance, severity, status, department, project, env, service, summary, labels, starts_at, fingerprint, source) "
-                            "VALUES (%s,%s,%s,'firing',%s,%s,%s,%s,%s,%s,%s,%s,'prometheus')",
+                            "INSERT INTO alert_records (alert_name, instance, severity, status, department, project, env, service, region, summary, starts_at, fingerprint, source, recipients) "
+                            "VALUES (%s,%s,%s,'firing',%s,%s,%s,%s,%s,%s,%s,%s,'prometheus','[]')",
                             (alert_name, instance, severity,
                              labels.get("department", ""), labels.get("project", ""), labels.get("env", ""),
-                             labels.get("service", ""), annots.get("summary", ""),
-                             json.dumps(labels, ensure_ascii=False),
+                             labels.get("service", ""), labels.get("region", ""),
+                             annots.get("summary", ""),
                              at, fingerprint))
             cur.close()
     except Exception:

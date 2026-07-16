@@ -97,11 +97,12 @@ CREATE TABLE IF NOT EXISTS alert_records (
     project VARCHAR(100) COMMENT '项目',
     env VARCHAR(50) COMMENT '环境',
     service VARCHAR(100) COMMENT '服务',
+    region VARCHAR(50) COMMENT '地区',
     summary TEXT COMMENT '告警摘要',
-    labels JSON COMMENT '原始标签',
+    recipients JSON COMMENT '接收人快照 [{channel, to}]',
     starts_at DATETIME COMMENT '开始时间',
     ends_at DATETIME COMMENT '结束时间',
-    fingerprint VARCHAR(100) COMMENT '去重指纹',
+    fingerprint VARCHAR(255) COMMENT '去重指纹',
     source VARCHAR(50) COMMENT '来源: prometheus/alertmanager',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_alert_name (alert_name),
@@ -109,7 +110,7 @@ CREATE TABLE IF NOT EXISTS alert_records (
     INDEX idx_severity (severity),
     INDEX idx_starts_at (starts_at),
     INDEX idx_fingerprint (fingerprint)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警记录表'; (KV)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警记录表';
 CREATE TABLE IF NOT EXISTS platform_config (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     config_key VARCHAR(100) NOT NULL UNIQUE COMMENT '配置键',
