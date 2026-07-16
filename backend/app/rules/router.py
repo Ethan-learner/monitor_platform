@@ -298,20 +298,20 @@ async def save_rule_file(filename: str, body: dict) -> dict:
 
 @router.post("/reload")
 async def reload_prometheus() -> dict:
-    """三节点全部热加载"""
+    """三节点同时热加载"""
     nodes = [
         "http://172.16.10.27:9090",
         "http://172.16.10.28:9090",
         "http://172.16.10.29:9090",
     ]
     results = []
-    for url in nodes:
-        try:
-            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+        for url in nodes:
+            try:
                 resp = await client.post(f"{url}/-/reload")
-                results.append(f"{url}: {'ok' if resp.status_code < 300 else 'fail'}")
-        except Exception:
-            results.append(f"{url}: unreachable")
+                results.append(f"{url}: {'ok' if resp.status_code < 300 else resp.status_code}")
+            except Exception as e:
+                results.append(f"{url}: {str(e)[:30]}")
     return {"status": "ok", "nodes": results}
 
 
