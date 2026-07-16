@@ -11,12 +11,6 @@ from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-_MOCK_USERS = {
-    "admin": {"sub": "admin", "role": "ops", "name": "运维管理员"},
-    "dev": {"sub": "dev", "role": "dev", "name": "开发工程师"},
-    "manager": {"sub": "manager", "role": "mgmt", "name": "管理者"},
-}
-
 
 def _set_auth_cookie(resp: Response, username: str, role: str, name: str) -> None:
     token = create_token({"sub": username, "role": role, "name": name})
@@ -32,7 +26,8 @@ def _set_auth_cookie(resp: Response, username: str, role: str, name: str) -> Non
 
 @router.post("/login")
 async def login_with_eip(body: dict, request: Request) -> Response:
-    """域控登录：POST {username, password} → 回调公司 EIP 接口验证，同步用户信息"""
+    """登录：域控 EIP → 手动账号(password_hash) → dev_mock 兜底"""
+    import hashlib, json as json_mod
     username = body.get("username", "")
     password = body.get("password", "")
     ip = request.client.host if request.client else ""
@@ -43,10 +38,10 @@ async def login_with_eip(body: dict, request: Request) -> Response:
     full_name = username
     person_code = ""
     department = ""
-    role = "dev"
+    role = "ops"
     login_ok = False
 
-    # 调用域控 API
+    # 1. 尝试域控 EIP API
     eip_user = None
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -57,12 +52,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
             eip_data = eip_resp.json() if eip_resp.text else {}
             if eip_resp.status_code == 200 and eip_data.get("data") and eip_data["data"].get("userinfo"):
                 ui = eip_data["data"]["userinfo"]
-                eip_user = {
-                    "name": ui.get("personName", username),
-                    "code": ui.get("personCode", ""),
-                    "dept": ui.get("deptName", ""),
-                    "role": "ops",
-                }
+                eip_user = {"name": ui.get("personName", username), "code": ui.get("personCode", ""), "dept": ui.get("deptName", "")}
     except Exception:
         pass
 
@@ -70,33 +60,63 @@ async def login_with_eip(body: dict, request: Request) -> Response:
         full_name = eip_user["name"]
         person_code = eip_user["code"]
         department = eip_user["dept"]
-        role = eip_user["role"]
         login_ok = True
-    elif settings.dev_mock and username in _MOCK_USERS:
-        valid = {"admin": "admin123", "dev": "dev123", "manager": "mgr123"}
-        if valid.get(username) != password:
-            _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "密码错误")
-            raise HTTPException(status_code=401, detail="用户名或密码错误")
-        mu = _MOCK_USERS[username]
-        full_name = mu["name"]
-        role = mu["role"]
-        login_ok = True
+    else:
+        # 2. 尝试手动账号（users 表 password_hash）
+        try:
+            from app.db import get_db
+            with get_db(readonly=True) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT id, display_name, person_code, department, role, password_hash FROM users WHERE username=%s AND status=1", (username,))
+                row = cur.fetchone()
+                cur.close()
+                if row and row[5]:
+                    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+                    if pw_hash == row[5]:
+                        full_name = row[1] or username
+                        person_code = row[2] or ""
+                        department = row[3] or ""
+                        role = row[4]
+                        login_ok = True
+        except Exception:
+            pass
+
+    # 3. dev_mock 兜底（域控不可达时走 DB 手动账号）
+    if not login_ok and settings.dev_mock:
+        try:
+            from app.db import get_db
+            with get_db(readonly=True) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT display_name, person_code, department, role, password_hash FROM users WHERE username=%s AND status=1", (username,))
+                row = cur.fetchone()
+                cur.close()
+                if row and row[4]:
+                    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+                    if pw_hash == row[4]:
+                        full_name = row[0] or username
+                        person_code = row[1] or ""
+                        department = row[2] or ""
+                        role = row[3]
+                        login_ok = True
+        except Exception:
+            pass
 
     if not login_ok:
-        _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "域控验证失败")
+        _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "验证失败")
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    # 同步用户信息到 users 表
+    # 同步用户信息到 users 表，角色从 DB 读取（EIP 不返回角色）
     from app.db import get_db
     from datetime import datetime
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            cur.execute("SELECT id, role FROM users WHERE username=%s", (username,))
             existing = cur.fetchone()
             now = datetime.now()
             if existing:
                 uid = existing[0]
+                role = existing[1]  # 保留 DB 中已分配的角色
                 cur.execute("UPDATE users SET display_name=%s, person_code=%s, department=%s, last_login=%s, updated_at=%s WHERE id=%s",
                             (full_name, person_code, department, now, now, uid))
             else:
@@ -109,9 +129,8 @@ async def login_with_eip(body: dict, request: Request) -> Response:
         pass
 
     # 签发 JWT
-    import json
     resp_data = {"username": username, "role": role, "displayName": full_name}
-    resp = Response(content=json.dumps(resp_data), media_type="application/json")
+    resp = Response(content=json_mod.dumps(resp_data), media_type="application/json")
     _set_auth_cookie(resp, username, role, full_name)
     return resp
 
@@ -131,28 +150,13 @@ def _log_login(user_id, username, name, person_code, department, ip, ua, result,
 
 @router.get("/dev-login")
 async def dev_login_get(username: str = "admin", password: str = "") -> RedirectResponse:
-    if not settings.dev_mock:
-        return RedirectResponse("/login")
-    valid = {"admin": "admin123", "dev": "dev123", "manager": "mgr123"}
-    if valid.get(username) != password:
-        return RedirectResponse("/login?error=invalid")
-    user = _MOCK_USERS.get(username, _MOCK_USERS["admin"])
-    resp = RedirectResponse("/dashboard", status_code=302)
-    _set_auth_cookie(resp, user["sub"], user["role"], user["name"])
-    return resp
+    """开发模式：重定向到前端登录页"""
+    return RedirectResponse("/login")
+
 
 @router.post("/dev-login")
 async def dev_login(username: str = Form("admin"), password: str = Form("")) -> RedirectResponse:
-    """开发模式 mock 登录,跳过 OIDC 流程。账号 admin/admin123 dev/dev123 manager/mgr123"""
-    if not settings.dev_mock:
-        return RedirectResponse("/login")
-    valid = {"admin": "admin123", "dev": "dev123", "manager": "mgr123"}
-    if valid.get(username) != password:
-        return RedirectResponse("/login?error=invalid")
-    user = _MOCK_USERS.get(username, _MOCK_USERS["admin"])
-    resp = RedirectResponse("/dashboard", status_code=302)
-    _set_auth_cookie(resp, user["sub"], user["role"], user["name"])
-    return resp
+    return RedirectResponse("/login")
 
 
 @router.get("/login")

@@ -13,8 +13,6 @@ export default function Login() {
     return <Navigate to="/dashboard" replace />
   }
 
-  const isDev = !!(import.meta as any).env?.DEV
-
   const handleFinish = async (values: { username: string; password: string }) => {
     try {
       const { data } = await api.post('/auth/login', values)
@@ -41,11 +39,6 @@ export default function Login() {
             <Button type="primary" htmlType="submit" block icon={<LoginOutlined />}>登 录</Button>
           </Form.Item>
         </Form>
-        {isDev && (
-          <div style={{ marginTop: 16, fontSize: 12, color: '#999' }}>
-            <p>开发模式：admin / admin123 | dev / dev123 | manager / mgr123</p>
-          </div>
-        )}
       </Card>
     </div>
   )
