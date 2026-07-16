@@ -119,7 +119,7 @@ function UserTab() {
                 <Popconfirm title={r.status === 1 ? '确认禁用？' : '确认启用？'} onConfirm={() => toggleStatus(r.id, r.status)}>
                   <Button size="small" type="text" icon={<StopOutlined style={{ color: r.status === 1 ? '#fa8c16' : '#999' }} />} />
                 </Popconfirm>
-                <Popconfirm title="确认删除？" onConfirm={() => { /* TODO: delete user */ }}>
+                <Popconfirm title="确认删除？" onConfirm={() => { api.put(`/settings/users/${r.id}/status`, { status: -1 }).then(load).catch(() => message.error('操作失败')) }}>
                   <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
                 </Popconfirm>
               </Space>
@@ -291,7 +291,7 @@ function RoleTab() {
           title={<Space><span>用户列表</span>{selectedRole && <Text type="secondary">({selectedRole.label})</Text>}</Space>}
           extra={selectedRole ? <Button size="small" type={editMode ? 'primary' : 'default'} onClick={() => setEditMode(!editMode)}>{editMode ? '完成编辑' : '编辑用户'}</Button> : null}>
           {selectedRole ? (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
               <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '8px 8px 0 0', padding: 12, overflow: 'auto', minHeight: 0 }}>
                 <div style={{ fontSize: 12, color: '#1677ff', fontWeight: 600, marginBottom: 8 }}>已分配用户 ({assignedUsers.length})</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
