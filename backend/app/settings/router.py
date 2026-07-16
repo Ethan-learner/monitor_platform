@@ -6,6 +6,143 @@ from fastapi import Depends
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
+@router.get("/permissions")
+async def list_permissions() -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT `key`, label, module FROM system_permissions ORDER BY module, id")
+            return [{"key": r[0], "label": r[1], "module": r[2]} for r in cur.fetchall()]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+@router.get("/roles")
+async def list_roles() -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, name, label, description, status FROM system_roles ORDER BY id")
+            roles = []
+            for r in cur.fetchall():
+                cur2 = conn.cursor()
+                cur2.execute("SELECT permission_key FROM system_role_perms WHERE role_id=%s", (r[0],))
+                perms = [x[0] for x in cur2.fetchall()]
+                roles.append({"id": r[0], "name": r[1], "label": r[2], "description": r[3] or "", "status": r[4], "permissions": perms})
+            return roles
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+@router.post("/roles")
+async def create_role(body: dict) -> dict:
+    name, label = body.get("name", ""), body.get("label", "")
+    if not name or not label:
+        raise HTTPException(status_code=400, detail="name and label required")
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO system_roles (name, label, description) VALUES (%s,%s,%s)",
+                        (name, label, body.get("description", "")))
+            return {"id": cur.lastrowid, "status": "created"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/roles/{rid}")
+async def update_role(rid: int, body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE system_roles SET label=%s, description=%s WHERE id=%s",
+                        (body.get("label", ""), body.get("description", ""), rid))
+            cur.close()
+            return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/roles/{rid}")
+async def delete_role(rid: int) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM system_role_perms WHERE role_id=%s", (rid,))
+            cur.execute("DELETE FROM system_user_roles WHERE role_id=%s", (rid,))
+            cur.execute("DELETE FROM system_roles WHERE id=%s", (rid,))
+            cur.close()
+            return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/roles/{rid}/permissions")
+async def update_role_permissions(rid: int, body: dict) -> dict:
+    """一次性设置角色全部权限"""
+    perms = body.get("permissions", [])
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM system_role_perms WHERE role_id=%s", (rid,))
+            for pk in perms:
+                cur.execute("INSERT INTO system_role_perms (role_id, permission_key) VALUES (%s,%s)", (rid, pk))
+            cur.close()
+            return {"status": "ok", "count": len(perms)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/users/{uid}/roles")
+async def get_user_roles(uid: int) -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT sr.id, sr.name, sr.label FROM system_user_roles sur JOIN system_roles sr ON sr.id=sur.role_id WHERE sur.user_id=%s", (uid,))
+            return [{"id": r[0], "name": r[1], "label": r[2]} for r in cur.fetchall()]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
+@router.post("/users/{uid}/roles")
+async def assign_user_role(uid: int, body: dict) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO system_user_roles (user_id, role_id) VALUES (%s,%s)", (uid, body["role_id"]))
+            cur.close()
+            return {"status": "assigned"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/users/{uid}/roles/{rid}")
+async def remove_user_role(uid: int, rid: int) -> dict:
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM system_user_roles WHERE user_id=%s AND role_id=%s", (uid, rid))
+            cur.close()
+            return {"status": "removed"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/users/{uid}/permissions")
+async def update_user_permissions(uid: int, body: dict) -> dict:
+    """一次性设置用户权限覆盖"""
+    perms = body.get("permissions", [])
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM system_user_perms WHERE user_id=%s", (uid,))
+            for pk in perms:
+                cur.execute("INSERT IGNORE INTO system_user_perms (user_id, permission_key, granted) VALUES (%s,%s,1)", (uid, pk))
+            cur.close()
+            return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/profile")
 async def get_profile(user: dict = Depends(current_user)) -> dict:
     """当前用户档案 + 最近10条登录记录"""
