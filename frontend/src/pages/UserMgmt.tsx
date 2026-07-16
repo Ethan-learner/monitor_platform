@@ -223,19 +223,23 @@ function RoleTab() {
 
   const assignUser = async (uid: number) => {
     if (!selectedRole) return
+    const u = unassignedUsers.find(x => x.id === uid)
+    if (!u) return
     try {
       await api.post(`/settings/users/${uid}/roles`, { role_id: selectedRole.id })
-      message.success('已添加')
-      selectRole(selectedRole)
+      setAssignedUsers(prev => [...prev, u])
+      setUnassignedUsers(prev => prev.filter(x => x.id !== uid))
     } catch { message.error('操作失败') }
   }
 
   const removeUser = async (uid: number) => {
     if (!selectedRole) return
+    const u = assignedUsers.find(x => x.id === uid)
+    if (!u) return
     try {
       await api.delete(`/settings/users/${uid}/roles/${selectedRole.id}`)
-      message.success('已移除')
-      selectRole(selectedRole)
+      setUnassignedUsers(prev => [...prev, u])
+      setAssignedUsers(prev => prev.filter(x => x.id !== uid))
     } catch { message.error('操作失败') }
   }
 
