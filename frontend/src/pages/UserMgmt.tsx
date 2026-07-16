@@ -263,11 +263,13 @@ function RoleTab() {
   const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
   return (
-    <Row gutter={16}>
+    <Row gutter={16} style={{ height: 'calc(100vh - 160px)' }}>
       <Col span={8}>
-        <Card size="small" title={<Space style={{ width: '100%', justifyContent: 'space-between' }}><span>角色列表</span><Button size="small" type="text" icon={<PlusOutlined />} onClick={() => setAddOpen(true)} /></Space>}
-          extra={<Input size="small" placeholder="搜索" prefix={<SearchOutlined />} value={roleSearch} onChange={e => setRoleSearch(e.target.value)} style={{ width: 120 }} allowClear />}>
-          <div style={{ maxHeight: 500, overflow: 'auto' }}>
+        <Card size="small" style={{ height: '100%' }}
+          title={<Space style={{ width: '100%', justifyContent: 'space-between' }}><span>角色列表</span><Button size="small" type="text" icon={<PlusOutlined />} onClick={() => setAddOpen(true)} /></Space>}>
+          <Input size="small" placeholder="搜索角色" prefix={<SearchOutlined />} value={roleSearch} onChange={e => setRoleSearch(e.target.value)}
+            style={{ marginBottom: 12 }} variant="borderless" />
+          <div style={{ flex: 1, overflow: 'auto' }}>
             {filteredRoles.map(r => (
               <div key={r.id} onClick={() => selectRole(r)}
                 style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 4, background: selectedRole?.id === r.id ? '#e6f4ff' : '#fff', border: selectedRole?.id === r.id ? '1px solid #1677ff' : '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -282,7 +284,7 @@ function RoleTab() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" title="用户列表"
+        <Card size="small" style={{ height: '100%' }} title="用户列表"
           extra={selectedRole ? <Text type="secondary">{selectedRole.label}</Text> : null}>
           {selectedRole ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: 500 }}>
@@ -306,7 +308,7 @@ function RoleTab() {
               </div>
             </div>
           ) : (
-            <div style={{ color: '#999', padding: 40, textAlign: 'center' }}>请选择左侧角色</div>
+            <div style={{ color: '#999', padding: 40, textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>请选择角色</div>
           )}
         </Card>
       </Col>
