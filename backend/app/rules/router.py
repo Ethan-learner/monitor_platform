@@ -388,46 +388,43 @@ def _write_file(filename: str, content: str) -> None:
     raise HTTPException(status_code=404, detail="cannot write: no target")
 
 
-def _move_to_disabled(filename: str) -> str:
-    """将规则文件移至 alerts_disabled 目录（加时间戳后缀避免覆盖），返回新文件名"""
-    if ".." in filename or "/" in filename:
-        return filename
-    try:
-        if settings.ssh_host:
-            ts = datetime.now().strftime("%Y%m%d%H%M%S")
-            name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
-            dst_name = f"{name}_{ts}.{ext}" if ext else f"{name}_{ts}"
-            src = f"{settings.alerts_dir}/{filename}"
-            dst = f"{settings.alerts_dir}_disabled/{dst_name}"
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            ssh.exec_command(f"mkdir -p {settings.alerts_dir}_disabled")
-            stdin, stdout, stderr = ssh.exec_command(f"mv {src} {dst}")
-            stderr.read()  # wait for completion
-            ssh.close()
-            return dst_name
-    except Exception:
-        pass
-    return filename
-
-
-def _move_to_active(filename: str) -> None:
-    """将规则文件从 alerts_disabled 移回 alerts 目录"""
-    if ".." in filename or "/" in filename:
-        return
+def _ssh_move(src: str, dst: str) -> bool:
+    """SSH mv 移动文件"""
     try:
         if settings.ssh_host:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(settings.ssh_host, port=settings.ssh_port, username=settings.ssh_user, password=settings.ssh_password, timeout=10)
-            src = f"{settings.alerts_dir}_disabled/{filename}"
-            dst = f"{settings.alerts_dir}/{filename}"
+            ssh.exec_command(f"mkdir -p {Path(dst).parent}")
             stdin, stdout, stderr = ssh.exec_command(f"mv {src} {dst}")
             stderr.read()
             ssh.close()
+            return True
     except Exception:
         pass
+    return False
+
+
+def _move_to_disabled(filename: str) -> None:
+    """禁用：移至 alerts_disabled/（保持原名）"""
+    if ".." in filename or "/" in filename: return
+    _ssh_move(f"{settings.alerts_dir}/{filename}", f"{settings.alerts_dir}_disabled/{filename}")
+
+
+def _move_to_deleted(filename: str) -> str:
+    """删除：移至 alerts_deleted/（加时间戳后缀）, 返回新文件名"""
+    if ".." in filename or "/" in filename: return filename
+    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
+    dst_name = f"{name}_{ts}.{ext}" if ext else f"{name}_{ts}"
+    _ssh_move(f"{settings.alerts_dir}/{filename}", f"{settings.alerts_dir}_deleted/{dst_name}")
+    return dst_name
+
+
+def _move_from_disabled(filename: str) -> None:
+    """从 alerts_disabled/ 移回 alerts/"""
+    if ".." in filename or "/" in filename: return
+    _ssh_move(f"{settings.alerts_dir}_disabled/{filename}", f"{settings.alerts_dir}/{filename}")
 
 
 @router.post("/delete")
@@ -443,7 +440,7 @@ async def delete_rule(body: dict) -> dict:
             cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s AND status != -1", (rule_name,))
             cur.close()
         if file_name:
-            dst = _move_to_disabled(file_name)
+            dst = _move_to_deleted(file_name)
             with get_db(readonly=False) as conn:
                 cur = conn.cursor()
                 cur.execute("UPDATE alert_rules SET file_name=%s WHERE rule_name=%s AND status=-1", (dst, rule_name))
@@ -466,16 +463,13 @@ async def disable_rule(body: dict) -> dict:
                 raise HTTPException(status_code=404, detail="rule_not_found")
             cur_status, file_name, rid = row
             new_status = 0 if cur_status == 1 else 1
-            new_file = file_name
-            # 禁用：移动文件到 disabled 目录
+            # 禁用：移文件到 alerts_disabled（保持原名）
             if new_status == 0 and file_name:
-                new_file = _move_to_disabled(file_name)
-            # 启用：移回文件（从时间戳文件名恢复）
+                _move_to_disabled(file_name)
+            # 启用：移回文件
             if new_status == 1 and file_name:
-                _move_to_active(file_name)
-                # 恢复原始文件名
-                new_file = file_name.rsplit("_", 1)[0] + ".yml" if "_" in file_name else file_name
-            cur.execute("UPDATE alert_rules SET status=%s, file_name=%s WHERE id=%s", (new_status, new_file, rid))
+                _move_from_disabled(file_name)
+            cur.execute("UPDATE alert_rules SET status=%s WHERE id=%s", (new_status, rid))
             cur.close()
         return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
     except HTTPException:
