@@ -13,30 +13,6 @@ from app.audit import log_audit
 from app.config import settings
 from app.db import get_db
 
-def _parse_custom_notify(text: str):
-    """将 custom_notify 字符串转为 JSON 对象: 'critical:email:a@x.com,lark:id1; warning:email:b@x.com' → {critical:{email:[a],lark:[id1]},warning:{email:[b]}}"""
-    if not text:
-        return None
-    result = {}
-    for part in text.split(";"):
-        part = part.strip()
-        if not part or ":" not in part:
-            continue
-        sev, rest = part.split(":", 1)
-        sev = sev.strip()
-        ch = {}
-        for pair in rest.split(","):
-            pair = pair.strip()
-            if ":" not in pair:
-                continue
-            chan, val = pair.split(":", 1)
-            chan = chan.strip()
-            ch.setdefault(chan, []).append(val.strip())
-        if ch:
-            result[sev] = ch
-    return result if result else None
-
-
 router = APIRouter(prefix="/api/rules", tags=["rules"])
 
 CATEGORY_PREFIX: Dict[str, str] = {
