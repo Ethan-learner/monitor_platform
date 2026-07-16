@@ -303,30 +303,38 @@ async def update_rule(body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            # 获取当前文件名
-            cur.execute("SELECT file_name FROM alert_rules WHERE rule_name=%s", (old_name,))
+            # 改名时检查新名称是否已存在（未删除状态）
+            if old_name != new_name:
+                cur.execute("SELECT id FROM alert_rules WHERE rule_name=%s AND status != -1", (new_name,))
+                if cur.fetchone():
+                    raise HTTPException(status_code=409, detail=f"规则名 {new_name} 已存在")
+            # 获取当前记录（仅未删除的）
+            cur.execute("SELECT file_name, id FROM alert_rules WHERE rule_name=%s AND status != -1", (old_name,))
             row = cur.fetchone()
-            old_file = row[0] if row else ""
+            if not row:
+                raise HTTPException(status_code=404, detail="rule_not_found")
+            old_file, rid = row
             # 生成新文件名
             if old_file:
                 parts = old_file.split("_", 1)
                 prefix = parts[0] + "_" if len(parts) > 1 else ""
-                new_file = prefix + new_name.lower().replace(" ", "_") + ".yml" if " " not in new_name else prefix + new_name.lower().replace(" ", "_").replace("__", "_") + ".yml"
-                # 清理非ASCII
+                new_file = prefix + new_name.lower().replace(" ", "_") + ".yml"
                 new_file = "".join(c for c in new_file if c.isalnum() or c in "._-")
             else:
                 new_file = new_name.lower().replace(" ", "_") + ".yml"
-            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s, strategy_id=%s, custom_notify=%s WHERE rule_name=%s",
-                        (new_name, expr, duration, severity, summary, strategy_id or None, custom_notify or None, old_name))
+            # 仅更新当前记录
+            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s, strategy_id=%s, custom_notify=%s WHERE id=%s",
+                        (new_name, expr, duration, severity, summary, strategy_id or None, custom_notify or None, rid))
             cur.close()
         # 同步服务器 YAML
         new_yaml = f"groups:\n  - name: {new_file.replace('.yml', '')}\n    rules:\n      - alert: {new_name}\n        expr: {expr}\n        for: {duration}\n        labels:\n          severity: {severity}\n        annotations:\n          summary: \"{summary}\"\n"
         if old_file and old_file != new_file:
             _move_to_disabled(old_file)
         _write_file(new_file, new_yaml)
-        if old_file and old_file != new_file:
-            log_audit(body.get("operator", "system"), "rules", "update", f"old={old_name} file={old_file}->{new_file}")
+        log_audit(body.get("operator", "system"), "rules", "update", f"old={old_name}->{new_name} file={old_file}->{new_file}")
         return {"status": "updated", "filename": new_file}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
