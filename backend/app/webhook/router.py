@@ -102,13 +102,13 @@ async def list_push_log(limit: int = Query(20, ge=1, le=100)) -> list:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT alert_name, instance, channel, status, summary, alert_reason, recipient, created_at FROM webhook_push_log ORDER BY created_at DESC LIMIT %s",
+                "SELECT alert_name, instance, channel, status, summary, action, recipient, created_at FROM webhook_push_log ORDER BY created_at DESC LIMIT %s",
                 (limit,),
             )
             rows = cur.fetchall()
             cur.close()
             return [
-                {"alertName": r[0], "instance": r[1], "channel": r[2], "status": r[3], "summary": r[4], "alertReason": r[5] or r[4], "recipient": r[6], "createdAt": str(r[7])}
+                {"alertName": r[0], "instance": r[1], "channel": r[2], "status": r[3], "summary": r[4], "action": r[5] or r[4] or "", "recipient": r[6], "createdAt": str(r[7])}
                 for r in rows
             ]
     except Exception as e:

@@ -6,7 +6,7 @@ import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
-interface PushRecord { alertName: string; instance: string; channel: string; status: string; summary: string; recipient: string; alertReason: string; createdAt: string }
+interface PushRecord { alertName: string; instance: string; channel: string; status: string; summary: string; recipient: string; action: string; createdAt: string }
 
 // ... FlowTopo remains unchanged ...
 
@@ -147,7 +147,7 @@ export default function WebhookEvents() {
     const map: Record<string, { time: string; alert: string; instance: string; action: string; reason: string; hasEmail: boolean; hasLark: boolean; emailOk: boolean; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
     pushLog.forEach((r) => {
       const key = `${r.alertName}|${r.instance}`
-      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.alertReason || r.summary || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
+      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.action || r.summary || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
       const ok = r.status === 1 || r.status === '1' || r.status === 'success'
       if (r.channel === 'email') { map[key].hasEmail = true; map[key].emailOk = ok; map[key].emailRecipient = r.recipient || '' }
       if (r.channel === 'lark') { map[key].hasLark = true; map[key].larkOk = ok; map[key].larkRecipient = r.recipient || '' }
