@@ -16,10 +16,6 @@ export default function Login() {
   const isDev = !!(import.meta as any).env?.DEV
 
   const handleFinish = async (values: { username: string; password: string }) => {
-    if (isDev) {
-      window.location.href = `/api/auth/dev-login?username=${values.username}&password=${values.password}`
-      return
-    }
     try {
       const { data } = await api.post('/auth/login', values)
       await init()
