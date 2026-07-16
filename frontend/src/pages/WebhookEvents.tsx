@@ -144,13 +144,13 @@ export default function WebhookEvents() {
   }, {} as Record<string, number>) || {}
 
   const groupedLog = useMemo(() => {
-    const map: Record<string, { time: string; alert: string; instance: string; reason: string; emailOk: boolean; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
+    const map: Record<string, { time: string; alert: string; instance: string; action: string; reason: string; hasEmail: boolean; hasLark: boolean; emailOk: boolean; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
     pushLog.forEach((r) => {
       const key = `${r.alertName}|${r.instance}`
-      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, reason: r.alertReason || r.summary || '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
+      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.alertReason || r.summary || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
       const ok = r.status === 1 || r.status === '1' || r.status === 'success'
-      if (r.channel === 'email') { map[key].emailOk = ok; map[key].emailRecipient = r.recipient || '' }
-      if (r.channel === 'lark') { map[key].larkOk = ok; map[key].larkRecipient = r.recipient || '' }
+      if (r.channel === 'email') { map[key].hasEmail = true; map[key].emailOk = ok; map[key].emailRecipient = r.recipient || '' }
+      if (r.channel === 'lark') { map[key].hasLark = true; map[key].larkOk = ok; map[key].larkRecipient = r.recipient || '' }
       if (r.createdAt > map[key].time) map[key].time = r.createdAt
     })
     return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
@@ -179,25 +179,30 @@ export default function WebhookEvents() {
             { title: '告警名称', dataIndex: 'alert', width: 160, render: (s: string) => s || '—' },
             { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
             {
-              title: '邮件', width: 160,
-              render: (_: any, r: typeof groupedLog[0]) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Tag color={r.emailOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.emailOk ? '成功' : '失败'}</Tag>
-                  {r.emailRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.emailRecipient}</span>}
-                  {!r.emailRecipient && <span style={{ fontSize: 12, color: '#ccc' }}>—</span>}
-                </div>
-              ),
+              title: '邮件', width: 150,
+              render: (_: any, r: typeof groupedLog[0]) => {
+                if (!r.hasEmail) return <Tag color="default">未触发</Tag>
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Tag color={r.emailOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.emailOk ? '成功' : '失败'}</Tag>
+                    {r.emailRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.emailRecipient}</span>}
+                  </div>
+                )
+              },
             },
             {
-              title: '飞书', width: 160,
-              render: (_: any, r: typeof groupedLog[0]) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Tag color={r.larkOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.larkOk ? '成功' : '失败'}</Tag>
-                  {r.larkRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.larkRecipient}</span>}
-                  {!r.larkRecipient && <span style={{ fontSize: 12, color: '#ccc' }}>—</span>}
-                </div>
-              ),
+              title: '飞书', width: 150,
+              render: (_: any, r: typeof groupedLog[0]) => {
+                if (!r.hasLark) return <Tag color="default">未触发</Tag>
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Tag color={r.larkOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.larkOk ? '成功' : '失败'}</Tag>
+                    {r.larkRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.larkRecipient}</span>}
+                  </div>
+                )
+              },
             },
+            { title: '推送操作', dataIndex: 'action', width: 100, align: 'center' },
             { title: '原因', dataIndex: 'reason', ellipsis: true, width: 200 },
           ]}
         />
