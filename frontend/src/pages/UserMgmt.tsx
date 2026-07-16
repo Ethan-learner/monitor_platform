@@ -207,19 +207,18 @@ function RoleTab() {
   }
   useEffect(() => { load() }, [])
 
+  const [editMode, setEditMode] = useState(false)
+
   const selectRole = async (role: any) => {
-    setSelectedRole(role)
-    const assigned: any[] = []
-    const unassigned: any[] = []
+    setSelectedRole(role); setEditMode(false)
+    const a: any[] = []; const ua: any[] = []
     for (const u of allUsers) {
       try {
         const r = await api.get(`/settings/users/${u.id}/roles`)
-        if ((r.data || []).some((x: any) => x.id === role.id)) assigned.push(u)
-        else unassigned.push(u)
-      } catch { unassigned.push(u) }
+        if ((r.data || []).some((x: any) => x.id === role.id)) a.push(u); else ua.push(u)
+      } catch { ua.push(u) }
     }
-    setAssignedUsers(assigned)
-    setUnassignedUsers(unassigned)
+    setAssignedUsers(a); setUnassignedUsers(ua)
   }
 
   const assignUser = async (uid: number) => {
@@ -284,27 +283,36 @@ function RoleTab() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" style={{ height: '100%' }} title="用户列表"
-          extra={selectedRole ? <Text type="secondary">{selectedRole.label}</Text> : null}>
+        <Card size="small" style={{ height: '100%' }}
+          title={<Space><span>用户列表</span>{selectedRole && <Text type="secondary">({selectedRole.label})</Text>}</Space>}
+          extra={selectedRole ? <Button size="small" type={editMode ? 'primary' : 'default'} onClick={() => setEditMode(!editMode)}>{editMode ? '完成编辑' : '编辑用户'}</Button> : null}>
           {selectedRole ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: 500 }}>
-              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: 8, padding: 12, overflow: 'auto' }}>
-                <Text strong style={{ display: 'block', marginBottom: 8, color: '#1677ff' }}>已分配用户 ({assignedUsers.length})</Text>
-                {assignedUsers.map(u => (
-                  <div key={u.id} style={{ padding: '6px 10px', marginBottom: 3, border: '1px solid #f5f5f5', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
-                    <div><strong>{u.displayName || u.username}</strong> <Text type="secondary" style={{ fontSize: 11 }}>({u.department || '—'})</Text></div>
-                    <Button size="small" danger onClick={() => removeUser(u.id)}>移除</Button>
-                  </div>
-                ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: 'calc(100% - 40px)' }}>
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '8px 8px 0 0', padding: 12, overflow: 'auto' }}>
+                <div style={{ fontSize: 12, color: '#1677ff', fontWeight: 600, marginBottom: 8 }}>已分配用户 ({assignedUsers.length})</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {assignedUsers.map(u => {
+                    const label = `${u.displayName || u.username}（${u.personCode || '-'}）`
+                    return editMode ? (
+                      <Tag key={u.id} closable onClose={() => removeUser(u.id)} style={{ margin: 0, cursor: 'pointer' }}>{label}</Tag>
+                    ) : (
+                      <Tag key={u.id} style={{ margin: 0 }}>{label}</Tag>
+                    )
+                  })}
+                </div>
               </div>
-              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: 8, padding: 12, overflow: 'auto' }}>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>未分配用户 ({unassignedUsers.length})</Text>
-                {unassignedUsers.map(u => (
-                  <div key={u.id} style={{ padding: '6px 10px', marginBottom: 3, border: '1px solid #f5f5f5', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
-                    <div><strong>{u.displayName || u.username}</strong> <Text type="secondary" style={{ fontSize: 11 }}>({u.department || '—'})</Text></div>
-                    <Button size="small" type="primary" onClick={() => assignUser(u.id)}>添加</Button>
-                  </div>
-                ))}
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: '0 0 8px 8px', borderTop: 'none', padding: 12, overflow: 'auto' }}>
+                <div style={{ fontSize: 12, color: '#666', fontWeight: 600, marginBottom: 8 }}>未分配用户 ({unassignedUsers.length})</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {unassignedUsers.map(u => {
+                    const label = `${u.displayName || u.username}（${u.personCode || '-'}）`
+                    return editMode ? (
+                      <Tag key={u.id} style={{ margin: 0, cursor: 'pointer', borderStyle: 'dashed' }} onClick={() => assignUser(u.id)}>{label}</Tag>
+                    ) : (
+                      <Tag key={u.id} style={{ margin: 0, color: '#ccc' }}>{label}</Tag>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           ) : (
