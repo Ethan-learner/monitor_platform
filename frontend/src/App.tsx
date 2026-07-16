@@ -14,6 +14,9 @@ import SilenceList from './pages/SilenceList'
 import SilenceNew from './pages/SilenceNew'
 import WebhookEvents from './pages/WebhookEvents'
 import StrategyConfig from './pages/StrategyConfig'
+import Profile from './pages/Profile'
+import UserMgmt from './pages/UserMgmt'
+import LoginLogs from './pages/LoginLogs'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -43,6 +46,9 @@ function DashboardRoute() {
     if (item.key === 'webhook-events') return <WebhookEvents />
     if (item.key === 'strategy-config') return <StrategyConfig />
     if (item.key === 'prometheus') return <Prometheus />
+    if (item.key === 'profile') return <Profile />
+    if (item.key === 'user-mgmt') return <UserMgmt />
+    if (item.key === 'login-logs') return <LoginLogs />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
 }
