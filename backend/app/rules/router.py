@@ -427,26 +427,21 @@ def _move_to_active(filename: str) -> None:
 async def delete_rule(body: dict) -> dict:
     rule_name = body.get("ruleName", "")
     try:
-        # 获取文件名用于移动
-        file_name = ""
-        with get_db(readonly=True) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT file_name FROM alert_rules WHERE rule_name=%s", (rule_name,))
-            row = cur.fetchone()
-            if row: file_name = row[0]
-            cur.close()
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s", (rule_name,))
+            # 只取当前有效/禁用记录，排除已删除的
+            cur.execute("SELECT file_name, status FROM alert_rules WHERE rule_name=%s AND status != -1", (rule_name,))
+            row = cur.fetchone()
+            file_name = row[0] if row else ""
+            cur.execute("UPDATE alert_rules SET status=-1 WHERE rule_name=%s AND status != -1", (rule_name,))
             cur.close()
-        # 移动文件到 disabled 目录，同步更新文件名
         if file_name:
             dst = _move_to_disabled(file_name)
             with get_db(readonly=False) as conn:
                 cur = conn.cursor()
                 cur.execute("UPDATE alert_rules SET file_name=%s WHERE rule_name=%s AND status=-1", (dst, rule_name))
                 cur.close()
-        log_audit("system", "rules", "delete", f"rule={rule_name} file={file_name}")
+            log_audit("system", "rules", "delete", f"rule={rule_name} file={file_name}->{dst}")
         return {"status": "deleted", "rule": rule_name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
