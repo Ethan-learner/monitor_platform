@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -289,6 +290,7 @@ async def save_rule_file(filename: str, body: dict) -> dict:
         # 同步写入服务器 YAML 文件
         _write_file(filename, content)
         log_audit(operator, "rules", "create", f"file={filename}")
+        asyncio.create_task(_reload_all_nodes())
         return {"status": "saved", "filename": filename}
     except HTTPException:
         raise
@@ -296,23 +298,24 @@ async def save_rule_file(filename: str, body: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/reload")
-async def reload_prometheus() -> dict:
-    """三节点同时热加载"""
+async def _reload_all_nodes():
+    """三节点同时热加载（不阻塞调用方）"""
     nodes = [
         "http://172.16.10.27:9090",
         "http://172.16.10.28:9090",
         "http://172.16.10.29:9090",
     ]
-    results = []
     async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
         for url in nodes:
-            try:
-                resp = await client.post(f"{url}/-/reload")
-                results.append(f"{url}: {'ok' if resp.status_code < 300 else resp.status_code}")
-            except Exception as e:
-                results.append(f"{url}: {str(e)[:30]}")
-    return {"status": "ok", "nodes": results}
+            try: await client.post(f"{url}/-/reload")
+            except Exception: pass
+
+
+@router.post("/reload")
+async def reload_prometheus() -> dict:
+    """三节点同时热加载"""
+    await _reload_all_nodes()
+    return {"status": "ok"}
 
 
 @router.post("/update")
@@ -359,6 +362,7 @@ async def update_rule(body: dict) -> dict:
             _move_to_disabled(old_file)
         _write_file(new_file, new_yaml)
         log_audit(body.get("operator", "system"), "rules", "update", f"old={old_name}->{new_name} file={old_file}->{new_file}")
+        asyncio.create_task(_reload_all_nodes())
         return {"status": "updated", "filename": new_file}
     except HTTPException:
         raise
@@ -446,6 +450,7 @@ async def delete_rule(body: dict) -> dict:
                 cur.execute("UPDATE alert_rules SET file_name=%s WHERE rule_name=%s AND status=-1", (dst, rule_name))
                 cur.close()
             log_audit("system", "rules", "delete", f"rule={rule_name} file={file_name}->{dst}")
+        asyncio.create_task(_reload_all_nodes())
         return {"status": "deleted", "rule": rule_name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -471,6 +476,7 @@ async def disable_rule(body: dict) -> dict:
                 _move_from_disabled(file_name)
             cur.execute("UPDATE alert_rules SET status=%s WHERE id=%s", (new_status, rid))
             cur.close()
+        asyncio.create_task(_reload_all_nodes())
         return {"status": "disabled" if new_status == 0 else "enabled", "rule": rule_name}
     except HTTPException:
         raise
