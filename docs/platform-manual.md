@@ -131,15 +131,25 @@ PORTAL_DORIS_DATABASE=sdi
 ```
 前端 POST /api/auth/login {username, password}
     │
-    ├─ 调用域控 EIP API 验证
+    ├─ 1. 调用域控 EIP API 验证
     │     ├─ 成功 → 提取 personName/personCode/deptName
-    │     └─ 失败/不可达 → dev_mock 兜底 (admin/admin123)
+    │     └─ 失败/不可达 → 进入步骤2
+    │
+    ├─ 2. 查 users 表 password_hash（手动账号）
+    │     ├─ 匹配 → 读 DB 角色
+    │     └─ 不匹配 → 进入步骤3
+    │
+    ├─ 3. dev_mock 兜底（PORTAL_DEV_MOCK=true 时走 DB password_hash）
     │
     ├─ 同步 users 表 (INSERT/UPDATE)
     ├─ 写入 login_logs (IP/UserAgent/结果)
     ├─ 签发 JWT Cookie (HS256, 24h TTL)
     └─ 返回 {username, role, displayName}
 ```
+
+- 域控登录：公司 EIP 接口验证，工号/姓名/部门自动同步
+- 手动账号：`users` 表存 `password_hash`（SHA256），admin 初始密码 `admin@123Mp!`
+- 角色：首次登录默认 `ops`，后续从 `users` 表读取（管理员可在用户管理页面修改）
 
 ### 4.2 认证接口
 
@@ -172,10 +182,15 @@ PORTAL_DORIS_DATABASE=sdi
 | `alert_records` | 告警历史记录 | alert_name, instance, severity, status, department, project, env, service, region, recipients(JSON), starts_at, ends_at, fingerprint |
 | `silence_records` | 静默规则 | silence_id, operator, matchers(JSON), starts_at, ends_at, comment, status(1/0/-1) |
 | `webhook_push_log` | 推送记录 | alert_name, instance, channel, recipient, status, action(firing/resolved/repeat), summary |
-| `users` | 用户档案 | username, person_code, display_name, email, department, role, status, last_login |
+| `users` | 用户档案 | username, person_code, display_name, email, password_hash, department, role(ops/dev/mgmt), status, last_login |
 | `login_logs` | 登录日志 | user_id, username, display_name, person_code, department, login_time, ip_address, user_agent, result, failed_reason |
 | `audit_log` | 操作审计 | operator, module, action, target, detail |
 | `platform_config` | 平台配置 | config_key, config_value |
+| `system_roles` | 系统角色 | name, label, description, status |
+| `system_permissions` | 权限定义 | key, label, module |
+| `system_role_perms` | 角色权限映射 | role_id, permission_key |
+| `system_user_perms` | 用户权限覆盖 | user_id, permission_key, granted |
+| `menus` | 动态菜单 | parent_id, key, label, permission_key, icon, url, sort_order |
 
 ### 5.3 状态约定
 
