@@ -268,7 +268,7 @@ function RoleTab() {
   return (
     <Row gutter={16} style={{ height: 'calc(100vh - 160px)' }}>
       <Col span={8}>
-        <Card size="small" style={{ height: '100%' }}
+        <Card size="small" style={{ height: '100%' }} styles={{ body: { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 12 } }}
           title={<Space style={{ width: '100%', justifyContent: 'space-between' }}><span>角色列表</span><Button size="small" type="text" icon={<PlusOutlined />} onClick={() => setAddOpen(true)} /></Space>}>
           <Input size="small" placeholder="搜索角色" prefix={<SearchOutlined />} value={roleSearch} onChange={e => setRoleSearch(e.target.value)}
             style={{ marginBottom: 12 }} variant="borderless" />
@@ -287,7 +287,7 @@ function RoleTab() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" style={{ height: '100%' }}
+        <Card size="small" style={{ height: '100%' }} styles={{ body: { flex: 1, overflow: 'hidden', padding: 12, display: 'flex', flexDirection: 'column' } }}
           title={<Space><span>用户列表</span>{selectedRole && <Text type="secondary">({selectedRole.label})</Text>}</Space>}
           extra={selectedRole ? <Button size="small" type={editMode ? 'primary' : 'default'} onClick={() => setEditMode(!editMode)}>{editMode ? '完成编辑' : '编辑用户'}</Button> : null}>
           {selectedRole ? (
