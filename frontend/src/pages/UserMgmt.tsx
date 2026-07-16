@@ -285,21 +285,25 @@ function RoleTab() {
         <Card size="small" title="用户列表"
           extra={selectedRole ? <Text type="secondary">{selectedRole.label}</Text> : null}>
           {selectedRole ? (
-            <div style={{ maxHeight: 500, overflow: 'auto' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>已分配用户</Text>
-              {assignedUsers.map(u => (
-                <div key={u.id} style={{ padding: '8px 12px', marginBottom: 4, border: '1px solid #f0f0f0', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div><strong>{u.displayName || u.username}</strong> <Text type="secondary">({u.department || '—'})</Text></div>
-                  <Button size="small" danger onClick={() => removeUser(u.id)}>移除</Button>
-                </div>
-              ))}
-              <Text strong style={{ display: 'block', margin: '12px 0 8px' }}>未分配用户</Text>
-              {unassignedUsers.map(u => (
-                <div key={u.id} style={{ padding: '8px 12px', marginBottom: 4, border: '1px solid #f0f0f0', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div><strong>{u.displayName || u.username}</strong> <Text type="secondary">({u.department || '—'})</Text></div>
-                  <Button size="small" type="primary" onClick={() => assignUser(u.id)}>添加</Button>
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: 500 }}>
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: 8, padding: 12, overflow: 'auto' }}>
+                <Text strong style={{ display: 'block', marginBottom: 8, color: '#1677ff' }}>已分配用户 ({assignedUsers.length})</Text>
+                {assignedUsers.map(u => (
+                  <div key={u.id} style={{ padding: '6px 10px', marginBottom: 3, border: '1px solid #f5f5f5', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+                    <div><strong>{u.displayName || u.username}</strong> <Text type="secondary" style={{ fontSize: 11 }}>({u.department || '—'})</Text></div>
+                    <Button size="small" danger onClick={() => removeUser(u.id)}>移除</Button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ flex: 1, border: '1px solid #e8e8e8', borderRadius: 8, padding: 12, overflow: 'auto' }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>未分配用户 ({unassignedUsers.length})</Text>
+                {unassignedUsers.map(u => (
+                  <div key={u.id} style={{ padding: '6px 10px', marginBottom: 3, border: '1px solid #f5f5f5', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+                    <div><strong>{u.displayName || u.username}</strong> <Text type="secondary" style={{ fontSize: 11 }}>({u.department || '—'})</Text></div>
+                    <Button size="small" type="primary" onClick={() => assignUser(u.id)}>添加</Button>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div style={{ color: '#999', padding: 40, textAlign: 'center' }}>请选择左侧角色</div>
