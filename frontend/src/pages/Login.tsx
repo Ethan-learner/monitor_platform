@@ -39,7 +39,7 @@ export default function Login() {
             <Input prefix={<UserOutlined />} placeholder="用户名 / 工号" />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+            <Input.Password prefix={<LockOutlined />} placeholder="密码" autoComplete="current-password" />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block icon={<LoginOutlined />}>登 录</Button>

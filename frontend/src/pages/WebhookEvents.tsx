@@ -176,14 +176,14 @@ export default function WebhookEvents() {
           locale={{ emptyText: '暂无推送记录' }}
           columns={[
             { title: '时间', dataIndex: 'time', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: '告警名称', dataIndex: 'alert', width: 160, render: (s: string) => s || '—' },
-            { title: '实例', dataIndex: 'instance', width: 150, render: (s: string) => s || '—' },
+            { title: '告警名称', dataIndex: 'alert', width: 160, align: 'center', render: (s: string) => s || '—' },
+            { title: '实例', dataIndex: 'instance', width: 150, align: 'center', render: (s: string) => s || '—' },
             {
-              title: '邮件', width: 150,
+              title: '邮件', width: 150, align: 'center',
               render: (_: any, r: typeof groupedLog[0]) => {
                 if (!r.hasEmail) return <Tag color="default">未触发</Tag>
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <Tag color={r.emailOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.emailOk ? '成功' : '失败'}</Tag>
                     {r.emailRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.emailRecipient}</span>}
                   </div>
@@ -191,11 +191,11 @@ export default function WebhookEvents() {
               },
             },
             {
-              title: '飞书', width: 150,
+              title: '飞书', width: 150, align: 'center',
               render: (_: any, r: typeof groupedLog[0]) => {
                 if (!r.hasLark) return <Tag color="default">未触发</Tag>
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <Tag color={r.larkOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.larkOk ? '成功' : '失败'}</Tag>
                     {r.larkRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.larkRecipient}</span>}
                   </div>
@@ -203,7 +203,7 @@ export default function WebhookEvents() {
               },
             },
             { title: '推送操作', dataIndex: 'action', width: 100, align: 'center' },
-            { title: '原因', dataIndex: 'reason', ellipsis: true, width: 200 },
+            { title: '原因', dataIndex: 'reason', ellipsis: true, width: 200, align: 'center' },
           ]}
         />
       </Card>
