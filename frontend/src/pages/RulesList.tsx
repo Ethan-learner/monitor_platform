@@ -43,12 +43,26 @@ export default function RulesList() {
     load()
   }, [])
 
+  const unifiedAlerts = useMemo(() => {
+    const earliest: Record<string, string> = {}
+    for (const a of alerts) {
+      const key = `${a.name}|${a.instance}`
+      if (!earliest[key] || new Date(a.activeAt) < new Date(earliest[key])) {
+        earliest[key] = a.activeAt
+      }
+    }
+    return alerts.map(a => {
+      const key = `${a.name}|${a.instance}`
+      return { ...a, activeAt: earliest[key] || a.activeAt }
+    })
+  }, [alerts])
+
   const grouped = useMemo(() => {
-    const sorted = [...alerts].sort((a, b) => new Date(b.activeAt).getTime() - new Date(a.activeAt).getTime())
+    const sorted = [...unifiedAlerts].sort((a, b) => new Date(b.activeAt).getTime() - new Date(a.activeAt).getTime())
     const map: Record<string, ActiveAlert[]> = {}
     sorted.forEach((a) => { (map[a.category] = map[a.category] || []).push(a) })
     return map
-  }, [alerts])
+  }, [unifiedAlerts])
 
   const severityColor: Record<string, string> = { critical: 'red', warning: 'orange', info: 'blue' }
 
