@@ -54,8 +54,11 @@ async def update_role(rid: int, body: dict) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE system_roles SET label=%s, description=%s WHERE id=%s",
-                        (body.get("label", ""), body.get("description", ""), rid))
+            if "label" in body:
+                cur.execute("UPDATE system_roles SET label=%s, description=%s WHERE id=%s",
+                            (body.get("label", ""), body.get("description", ""), rid))
+            if "status" in body:
+                cur.execute("UPDATE system_roles SET status=%s WHERE id=%s", (body.get("status"), rid))
             cur.close()
             return {"status": "ok"}
     except Exception as e:

@@ -159,6 +159,32 @@ async def dev_login(username: str = Form("admin"), password: str = Form("")) -> 
     return RedirectResponse("/login")
 
 
+@router.post("/register")
+async def register_user(body: dict) -> dict:
+    """管理员手动创建用户，随机生成密码"""
+    import secrets, hashlib
+    username = body.get("username", "")
+    if not username:
+        raise HTTPException(status_code=400, detail="username required")
+    rand_pw = secrets.token_urlsafe(8)
+    pw_hash = hashlib.sha256(rand_pw.encode()).hexdigest()
+    try:
+        from app.db import get_db
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+            if cur.fetchone():
+                raise HTTPException(status_code=409, detail="用户名已存在")
+            cur.execute("INSERT INTO users (username, password_hash, display_name, department) VALUES (%s,%s,%s,%s)",
+                        (username, pw_hash, body.get("displayName", ""), body.get("department", "")))
+            cur.close()
+            return {"username": username, "password": rand_pw, "status": "created"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/login")
 async def login(request: Request) -> RedirectResponse:
     state = secrets.token_urlsafe(16)
