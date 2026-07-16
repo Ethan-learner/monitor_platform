@@ -13,6 +13,13 @@ const SEV_COLORS: Record<string, string> = { critical: '#cf1322', warning: '#d48
 const SEV_LABELS: Record<string, string> = { critical: '严重', warning: '警告', info: '信息' }
 const FORM_ITEM_STYLE = { marginBottom: 10 }
 
+const getPlaceholder = (sev: string) => {
+  const levels = ['critical', 'warning', 'info'] as const
+  const idx = levels.indexOf(sev as any)
+  if (idx === -1) return ''
+  return levels.slice(0, idx + 1).map(l => `${l}:email:a@x.com,lark:id1`).join('; ')
+}
+
 export default function NewRules() {
   const [rules, setRules] = useState<ParsedRule[]>([]); const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false); const [form] = Form.useForm(); const [submitting, setSubmitting] = useState(false)
@@ -23,6 +30,8 @@ export default function NewRules() {
   const [noStrategyModal, setNoStrategyModal] = useState(false)
   const [customMode, setCustomMode] = useState(false)
   const [editCustomMode, setEditCustomMode] = useState(false)
+  const [customSev, setCustomSev] = useState('warning')
+  const [editCustomSev, setEditCustomSev] = useState('warning')
 
   const load = async () => { setLoading(true); try { const cached = cacheGet('rules:parsed'); if (cached) setRules(cached); const data = await fetchParsedRules(); setRules(data); cacheSet('rules:parsed', data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load(); api.get('/alerts/strategies').then(r => setStrategies(r.data || [])).catch(() => {}) }, [])
@@ -155,13 +164,21 @@ export default function NewRules() {
             }} />
         </Form.Item>
         {customMode && (
-          <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
-            <Input placeholder="critical:email:a@x.com,lark:id1; warning:email:b@x.com" />
+          <>
+            <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
+              <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]}
+                onChange={v => setCustomSev(v)} />
+            </Form.Item>
+            <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
+              <Input placeholder={getPlaceholder(customSev)} />
+            </Form.Item>
+          </>
+        )}
+        {!customMode && (
+          <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
+            <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
           </Form.Item>
         )}
-        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
-                    <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
-        </Form.Item>
         <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={() => setModalOpen(false)}>取消</Button></Space>
       </Form>
@@ -200,13 +217,21 @@ export default function NewRules() {
             }} />
         </Form.Item>
         {editCustomMode && (
-          <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
-            <Input placeholder="critical:email:a@x.com,lark:id1; warning:email:b@x.com" />
+          <>
+            <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
+              <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]}
+                onChange={v => setEditCustomSev(v)} />
+            </Form.Item>
+            <Form.Item label="自定义接收人" name="custom_notify" style={FORM_ITEM_STYLE}>
+              <Input placeholder={getPlaceholder(editCustomSev)} />
+            </Form.Item>
+          </>
+        )}
+        {!editCustomMode && (
+          <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
+            <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
           </Form.Item>
         )}
-        <Form.Item label="级别" name="severity" style={FORM_ITEM_STYLE}>
-                    <Select options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
-        </Form.Item>
         <Form.Item label="描述" name="summary" style={FORM_ITEM_STYLE}><Input.TextArea rows={2} /></Form.Item>
         <Space><Button type="primary" htmlType="submit">保存</Button><Button onClick={() => setEditTarget(null)}>取消</Button></Space>
       </Form>
