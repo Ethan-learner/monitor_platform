@@ -20,6 +20,20 @@ const getPlaceholder = (sev: string) => {
   return levels.slice(0, idx + 1).map(l => `${l}:email:a@x.com,lark:id1`).join('; ')
 }
 
+const customToFlat = (obj: any): string => {
+  if (!obj || typeof obj !== 'object') return obj || ''
+  const parts: string[] = []
+  for (const [sev, ch] of Object.entries(obj)) {
+    if (!ch || typeof ch !== 'object') continue
+    const pairs: string[] = []
+    for (const [chan, vals] of Object.entries(ch as Record<string, string[]>)) {
+      if (Array.isArray(vals) && vals.length) pairs.push(`${chan}:${vals.join(',')}`)
+    }
+    if (pairs.length) parts.push(`${sev}:${pairs.join(',')}`)
+  }
+  return parts.join('; ')
+}
+
 export default function NewRules() {
   const [rules, setRules] = useState<ParsedRule[]>([]); const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false); const [form] = Form.useForm(); const [submitting, setSubmitting] = useState(false)
@@ -77,7 +91,8 @@ export default function NewRules() {
     } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
   }
 
-  const getStrategyName = (sid: string | number) => {
+  const getStrategyName = (sid: string | number, custom?: any) => {
+    if (custom) return '自定义'
     if (!sid) return '-'
     const s = strategies.find((x: any) => String(x.id) === String(sid))
     if (!s) return '-'
@@ -105,7 +120,7 @@ export default function NewRules() {
         }}
         columns={[
           { title: '名称', dataIndex: 'name', width: 400, align: 'center',render: (s: string) => <strong>{s}</strong> },
-          { title: '策略', width: 180, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 14 }}>{getStrategyName(r.strategy_id)}</span> },
+          { title: '策略', width: 180, align: 'center', render: (_: any, r: any) => <span style={{ fontSize: 14 }}>{getStrategyName(r.strategy_id, r.custom_notify)}</span> },
           { title: '告警级别', width: 120, align: 'center', render: (_: any, r: any) => (
             <Tag color={SEV_COLORS[r.severity] || '#999'}>{SEV_LABELS[r.severity] || r.severity || '—'}</Tag>
           )},
@@ -116,7 +131,7 @@ export default function NewRules() {
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => {
               setEditTarget(r)
               setEditCustomMode(!r.strategy_id && !!r.custom_notify)
-              editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary, strategy_id: r.strategy_id || '__custom__', custom_notify: r.custom_notify })
+              editForm.setFieldsValue({ name: r.name, expr: r.expr, for: r.for, severity: r.severity, summary: r.summary, strategy_id: r.strategy_id || '__custom__', custom_notify: typeof r.custom_notify === 'object' ? customToFlat(r.custom_notify) : (r.custom_notify || '') })
             }} />
             <Button size="small" type="text" onClick={async () => {
               if (r.status !== 0) { api.post('/rules/disable', { ruleName: r.name }).then(load); return }

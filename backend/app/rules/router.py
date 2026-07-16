@@ -13,6 +13,24 @@ from app.audit import log_audit
 from app.config import settings
 from app.db import get_db
 
+def _parse_custom_notify(text: str):
+    if not text: return None
+    result = {}
+    for part in text.split(";"):
+        part = part.strip()
+        if not part or ":" not in part: continue
+        sev, rest = part.split(":", 1)
+        sev = sev.strip()
+        ch = {}
+        for pair in rest.split(","):
+            pair = pair.strip()
+            if ":" not in pair: continue
+            chan, val = pair.split(":", 1)
+            ch.setdefault(chan.strip(), []).append(val.strip())
+        if ch: result[sev] = ch
+    return json.dumps(result) if result else None
+
+
 router = APIRouter(prefix="/api/rules", tags=["rules"])
 
 CATEGORY_PREFIX: Dict[str, str] = {
@@ -243,7 +261,7 @@ async def save_rule_file(filename: str, body: dict) -> dict:
     operator = body.get("operator", "admin")
     strategy_id = body.get("strategy_id")
     custom_notify = body.get("custom_notify", "")
-    custom_notify_json = json.dumps(custom_notify) if custom_notify else None
+    custom_notify_json = _parse_custom_notify(custom_notify)
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
     try:
@@ -301,7 +319,7 @@ async def update_rule(body: dict) -> dict:
     summary = body.get("summary", "")
     strategy_id = body.get("strategy_id")
     custom_notify = body.get("custom_notify", "")
-    custom_notify_json = json.dumps(custom_notify) if custom_notify else None
+    custom_notify_json = _parse_custom_notify(custom_notify)
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
