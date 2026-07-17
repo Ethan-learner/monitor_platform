@@ -41,6 +41,22 @@ async def login_with_eip(body: dict, request: Request) -> Response:
     role = "ops"
     login_ok = False
 
+    # 0. 先检查平台用户状态（禁用/删除则拦截）
+    try:
+        from app.db import get_db
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT status FROM users WHERE username=%s", (username,))
+            row = cur.fetchone()
+            cur.close()
+            if row and row[0] != 1:
+                _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "用户已被禁用或删除")
+                raise HTTPException(status_code=401, detail="用户已被禁用或删除")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
     # 1. 尝试域控 EIP API
     eip_user = None
     try:
