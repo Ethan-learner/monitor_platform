@@ -94,7 +94,6 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
           )
         })}
       </div>
-    </div>
   )
 }
 
