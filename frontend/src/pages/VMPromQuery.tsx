@@ -88,11 +88,11 @@ export default function VMPromQuery() {
             style={{ fontFamily: 'monospace', fontSize: 13, resize: 'none', lineHeight: '32px', padding: '4px 11px' }} />
         </Space.Compact>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 260 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 360, flex: 1 }}>
             <Tooltip title="历史查询"><HistoryOutlined style={{ color: '#999', fontSize: 16 }} /></Tooltip>
             <Select showSearch allowClear placeholder="" value={undefined}
               onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
-              filterOption={false} style={{ flex: 1, minWidth: 0 }} dropdownMatchSelectWidth={false}
+              filterOption={false} style={{ flex: 1 }} dropdownMatchSelectWidth={false}
               options={Array.from(new Map(history.map(h => [h.promql, h])).values()).map(h => ({ value: h.promql, label: h.promql }))} />
           </div>
           <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
