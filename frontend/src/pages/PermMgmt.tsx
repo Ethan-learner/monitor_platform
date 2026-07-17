@@ -15,7 +15,7 @@ function collectKeys(items: MenuItem[]): string[] {
   return keys
 }
 
-function MenuTree({ checked, onChange, saving, onSave }: { checked: string[]; onChange: (k: string[]) => void; saving: boolean; onSave: () => void }) {
+function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const items = roleMenus.ops?.menus || []
 
@@ -29,8 +29,7 @@ function MenuTree({ checked, onChange, saving, onSave }: { checked: string[]; on
   })
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
         {items.map(item => {
           if (item.key === 'overview') return null
           const hasChildren = item.children && item.children.length > 0
@@ -95,7 +94,6 @@ function MenuTree({ checked, onChange, saving, onSave }: { checked: string[]; on
           )
         })}
       </div>
-      <Button type="primary" loading={saving} onClick={onSave} style={{ marginTop: 8 }} block>保存权限</Button>
     </div>
   )
 }
@@ -103,6 +101,7 @@ function MenuTree({ checked, onChange, saving, onSave }: { checked: string[]; on
 export default function PermMgmt() {
   return (
     <div style={{ padding: 16 }}>
+      <style>{`.ant-select-focused .ant-select-selector,.ant-select-selector:focus{box-shadow:none!important;outline:none!important}.ant-input-affix-wrapper:focus,.ant-input-affix-wrapper-focused{box-shadow:none!important;outline:none!important}`}</style>
       <Tabs items={[
         { key: 'users', label: '用户权限', children: <UserPermPane /> },
         { key: 'roles', label: '角色权限', children: <RolePermPane /> },
@@ -142,7 +141,7 @@ function UserPermPane() {
   return (
     <Row gutter={16} style={{ height: 'calc(100vh - 180px)' }}>
       <Col span={8}>
-        <Card size="small" bodyStyle={{ padding: 12, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           <Input size="small" placeholder="搜索" prefix={<SearchOutlined />} value={search} onChange={e => setSearch(e.target.value)} variant="borderless" style={{ borderBottom: '1px solid #d9d9d9', marginBottom: 8 }} />
           <div style={{ flex: 1, overflow: 'auto' }}>
             {filtered.map(u => (
@@ -156,11 +155,14 @@ function UserPermPane() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" bodyStyle={{ padding: 12, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           {selected ? (
             <>
-              <div style={{ marginBottom: 8, color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.displayName || selected.username}</strong></div>
-              <MenuTree checked={permKeys} onChange={setPermKeys} saving={saving} onSave={savePerms} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.displayName || selected.username}</strong></span>
+                <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+              </div>
+              <MenuTree checked={permKeys} onChange={setPermKeys} />
             </>
           ) : (
             <div style={{ color: '#999', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>请选择左侧用户</div>
@@ -201,7 +203,7 @@ function RolePermPane() {
   return (
     <Row gutter={16} style={{ height: 'calc(100vh - 180px)' }}>
       <Col span={8}>
-        <Card size="small" bodyStyle={{ padding: 12, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           <Input size="small" placeholder="搜索" prefix={<SearchOutlined />} value={search} onChange={e => setSearch(e.target.value)} variant="borderless" style={{ borderBottom: '1px solid #d9d9d9', marginBottom: 8 }} />
           <div style={{ flex: 1, overflow: 'auto' }}>
             {filtered.map(r => (
@@ -214,11 +216,14 @@ function RolePermPane() {
         </Card>
       </Col>
       <Col span={16}>
-        <Card size="small" bodyStyle={{ padding: 12, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           {selected ? (
             <>
-              <div style={{ marginBottom: 8, color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.label}</strong></div>
-              <MenuTree checked={permKeys} onChange={setPermKeys} saving={saving} onSave={savePerms} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.label}</strong></span>
+                <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+              </div>
+              <MenuTree checked={permKeys} onChange={setPermKeys} />
             </>
           ) : (
             <div style={{ color: '#999', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>请选择左侧角色</div>
