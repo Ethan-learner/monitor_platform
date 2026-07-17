@@ -8,8 +8,8 @@ const { Title, Text } = Typography
 const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }
 const labelS: React.CSSProperties = { color: '#333', minWidth: 75, fontSize: 13, lineHeight: '32px' }
 const rowS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
-const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
-const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
+const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="off" />
+const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="off" />
 const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ width: '100%', border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }} />
 const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
 
@@ -59,6 +59,7 @@ function UserTab() {
     } catch {} finally { setLoading(false) }
   }
   useEffect(() => { load() }, [search])
+  useEffect(() => { if (addOpen) { resetAddForm() } }, [addOpen])
 
   const openEdit = async (user: any) => {
     setEditUser(user)
@@ -171,7 +172,7 @@ function UserTab() {
         ]}
       />
 
-      <Modal title="新增用户" open={addOpen} onCancel={() => { setAddOpen(false); resetAddForm() }} onOk={handleAdd} okText="确定" cancelText="取消" width={520}>
+      <Modal title="新增用户" open={addOpen} onCancel={() => { setAddOpen(false); resetAddForm() }} onOk={handleAdd} okText="确定" cancelText="取消" width={520} key={addOpen ? 'add-open' : 'add-closed'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
           <LRow label="用户名"><LInput placeholder="请输入" value={addName} onChange={e => setAddName(e.target.value)} /></LRow>
           <LRow label="姓名"><LInput placeholder="请输入" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} /></LRow>
