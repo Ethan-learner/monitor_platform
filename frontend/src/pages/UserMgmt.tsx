@@ -372,7 +372,7 @@ function RoleTab() {
         </div>
       </Modal>
 
-      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} okText="保存" onOk={async () => { await saveRoleMeta(); await saveRolePerms(); load(); }} okButtonProps={{}} width={700}>
+      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} okText="保存" onOk={async () => { await saveRoleMeta(); await saveRolePerms(); setEditRole(null); load(); }} okButtonProps={{}} width={700}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input placeholder="角色名称" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} />
           <Input placeholder="角色备注" value={editRoleDesc} onChange={e => setEditRoleDesc(e.target.value)} />
