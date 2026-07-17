@@ -88,26 +88,24 @@ export default function VMPromQuery() {
             style={{ fontFamily: 'monospace', fontSize: 13, resize: 'none', lineHeight: '32px', padding: '4px 11px' }} />
         </Space.Compact>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 280, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 260 }}>
             <Tooltip title="历史查询"><HistoryOutlined style={{ color: '#999', fontSize: 16 }} /></Tooltip>
             <Select showSearch allowClear placeholder="" value={undefined}
               onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
-              filterOption={false} style={{ flex: 1 }} dropdownMatchSelectWidth={false}
+              filterOption={false} style={{ flex: 1, minWidth: 0 }} dropdownMatchSelectWidth={false}
               options={Array.from(new Map(history.map(h => [h.promql, h])).values()).map(h => ({ value: h.promql, label: h.promql }))} />
           </div>
           <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
-            style={{ width: 170 }} options={[
+            style={{ width: 150 }} options={[
               { label: '范围 5m', value: 'range|5m' }, { label: '范围 30m', value: 'range|30m' },
               { label: '范围 1h', value: 'range|1h' }, { label: '范围 6h', value: 'range|6h' },
               { label: '范围 1d', value: 'range|1d' }, { label: '范围 7d', value: 'range|7d' },
               { label: '瞬时', value: 'instant|5m' },
             ]} />
-          {results.length > 0 && mode === 'range' && (
-            <Button.Group>
-              <Button type={viewMode === 'table' ? 'primary' : 'default'} size="small" onClick={() => setViewMode('table')}>Table</Button>
-              <Button type={viewMode === 'graph' ? 'primary' : 'default'} size="small" onClick={() => setViewMode('graph')}>Graph</Button>
-            </Button.Group>
-          )}
+          <Button.Group size="small">
+            <Button type={viewMode === 'table' ? 'primary' : 'default'} onClick={() => setViewMode('table')}>Table</Button>
+            <Button type={viewMode === 'graph' ? 'primary' : 'default'} onClick={() => setViewMode('graph')}>Graph</Button>
+          </Button.Group>
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
         </div>
       </Card>
