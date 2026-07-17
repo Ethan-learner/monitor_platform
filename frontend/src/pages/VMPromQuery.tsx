@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Input, Button, Space, Typography, Tag, Table, Card, message, Spin, Select } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
+import { Tooltip } from 'antd'
 import { api } from '../lib/api'
 
 const { Title, Text } = Typography
@@ -83,6 +84,9 @@ export default function VMPromQuery() {
             style={{ fontFamily: 'monospace', fontSize: 13 }} />
         </Space.Compact>
         <Space style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <Tooltip title="历史查询">
+            <HistoryOutlined style={{ color: '#999', fontSize: 16, lineHeight: '32px' }} />
+          </Tooltip>
           <Select showSearch allowClear placeholder="" value={undefined}
             onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
             filterOption={false} style={{ minWidth: 400, flex: 1 }} dropdownMatchSelectWidth={false}
