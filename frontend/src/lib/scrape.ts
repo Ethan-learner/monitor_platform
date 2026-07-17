@@ -4,12 +4,18 @@ export interface ScrapeTarget {
   id: number
   department: string
   category: string
-  targets: string[]
+  target: string
   labels: Record<string, string>
   status: 1 | 0 | -1
   description: string
   operator: string
   createdAt: string
+}
+
+export interface CategoryInfo {
+  department: string
+  category: string
+  count: number
 }
 
 export async function fetchTargets(): Promise<ScrapeTarget[]> {
@@ -22,10 +28,15 @@ export async function fetchDepartments(): Promise<string[]> {
   return data || []
 }
 
+export async function fetchCategories(): Promise<CategoryInfo[]> {
+  const { data } = await api.get<CategoryInfo[]>('/scrape/categories')
+  return data || []
+}
+
 export async function createTarget(data: {
   department: string
   category: string
-  targets: string[]
+  target: string
   labels: string
   description: string
 }): Promise<{ id: number }> {
@@ -39,7 +50,7 @@ export async function createTarget(data: {
   const { data: res } = await api.post('/scrape/targets', {
     department: data.department,
     category: data.category,
-    targets: data.targets.filter(Boolean),
+    target: data.target,
     labels: labelsObj,
     description: data.description,
   })
@@ -47,22 +58,22 @@ export async function createTarget(data: {
 }
 
 export async function updateTarget(id: number, data: {
-  targets: string[]
-  labels: string
-  description: string
+  target?: string
+  labels?: string
+  description?: string
 }): Promise<void> {
-  const labelsObj: Record<string, string> = {}
-  if (data.labels) {
+  const body: any = {}
+  if (data.target !== undefined) body.target = data.target
+  if (data.labels !== undefined) {
+    const labelsObj: Record<string, string> = {}
     data.labels.split('\n').forEach((line) => {
       const [k, ...v] = line.split('=')
       if (k && v.length) labelsObj[k.trim()] = v.join('=').trim()
     })
+    body.labels = labelsObj
   }
-  await api.put(`/scrape/targets/${id}`, {
-    targets: data.targets.filter(Boolean),
-    labels: labelsObj,
-    description: data.description,
-  })
+  if (data.description !== undefined) body.description = data.description
+  await api.put(`/scrape/targets/${id}`, body)
 }
 
 export async function deleteTarget(id: number): Promise<void> {

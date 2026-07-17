@@ -89,7 +89,7 @@ export default function VMPromQuery() {
             <Select showSearch allowClear placeholder="" value={undefined}
               onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
               filterOption={false} style={{ flex: 1 }} dropdownMatchSelectWidth={false}
-              options={history.map(h => ({ value: h.promql, label: h.promql }))} />
+              options={Array.from(new Map(history.map(h => [h.promql, h])).values()).map(h => ({ value: h.promql, label: h.promql }))} />
           </div>
           <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
             style={{ width: 180 }} options={[
