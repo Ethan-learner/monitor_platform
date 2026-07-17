@@ -82,7 +82,7 @@ export default function VMPromQuery() {
             placeholder="输入 PromQL 表达式，如 up{job='node'}" onPressEnter={() => execute()}
             style={{ fontFamily: 'monospace', fontSize: 13 }} />
         </Space.Compact>
-        <Space style={{ width: '100%', flexWrap: true }}>
+        <Space style={{ width: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
             style={{ width: 180 }} options={[
               { label: '范围 5m', value: 'range|5m' },
@@ -94,9 +94,9 @@ export default function VMPromQuery() {
               { label: '瞬时', value: 'instant|5m' },
             ]} />
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
-          <Select showSearch allowClear placeholder="历史查询（支持模糊搜索）" value={undefined}
+          <Select showSearch allowClear placeholder="" value={undefined}
             onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
-            filterOption={false} style={{ minWidth: 300, flex: 1 }} dropdownMatchSelectWidth={false}
+            filterOption={false} style={{ minWidth: 400, flex: 1 }} dropdownMatchSelectWidth={false}
             options={history.map(h => ({ value: h.promql, label: h.promql }))} />
         </Space>
       </Card>
