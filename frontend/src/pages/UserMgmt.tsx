@@ -372,24 +372,10 @@ function RoleTab() {
         </div>
       </Modal>
 
-      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} okText="保存" onOk={async () => { await saveRoleMeta(); await saveRolePerms(); setEditRole(null); load(); }} okButtonProps={{}} width={700}>
+      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} onOk={async () => { await saveRoleMeta(); setEditRole(null); load(); }} okText="保存" width={500}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input placeholder="角色名称" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} />
           <Input placeholder="角色备注" value={editRoleDesc} onChange={e => setEditRoleDesc(e.target.value)} />
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <Card size="small" title="权限配置">
-            {permModules.map(mod => (
-              <div key={mod} style={{ marginBottom: 12 }}>
-                <strong style={{ display: 'block', marginBottom: 4, color: '#1677ff' }}>{mod}</strong>
-                <Checkbox.Group value={permKeys} onChange={(v: any) => setPermKeys(v)}>
-                  {allPerms.filter((p: any) => p.module === mod).map((p: any) => (
-                    <Checkbox key={p.key} value={p.key} style={{ marginRight: 16, marginBottom: 2 }}>{p.label}</Checkbox>
-                  ))}
-                </Checkbox.Group>
-              </div>
-            ))}
-          </Card>
         </div>
       </Modal>
     </Row>

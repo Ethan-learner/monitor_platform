@@ -107,6 +107,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         key: 'settings', label: '系统设置', icon: 'SettingOutlined', children: [
           { key: 'profile', label: '个人中心', native: true },
           { key: 'user-mgmt', label: '用户管理', native: true },
+          { key: 'perm-mgmt', label: '权限管理', native: true },
           { key: 'login-logs', label: '登录日志', native: true },
         ],
       },
