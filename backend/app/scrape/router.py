@@ -78,23 +78,30 @@ def _ssh_mv(src: str, dst: str) -> None:
 
 # ── YAML ─────────────────────────────────────────────────────
 
-def _build_yaml(targets: List[str], labels: dict) -> str:
-    return yaml.dump([{"targets": targets, "labels": labels or {}}],
-                     default_flow_style=False, allow_unicode=True)
+def _build_yaml(entries: List[dict]) -> str:
+    """生成 YAML，每条记录一个 - targets: [...] 块"""
+    docs = []
+    for e in entries:
+        docs.append({"targets": [e["target"]], "labels": e.get("labels", {}) or {}})
+    return yaml.dump(docs, default_flow_style=False, allow_unicode=True)
 
 
-def _parse_yaml(content: str) -> tuple:
-    """返回 (targets: List[str], labels: dict)"""
+def _parse_yaml_entries(content: str) -> List[dict]:
+    """解析 YAML，返回 [{target: str, labels: dict}] 每条一个 target"""
     try:
         parsed = yaml.safe_load(content) or []
+        result = []
         for item in parsed if isinstance(parsed, list) else [parsed]:
-            if isinstance(item, dict):
-                t = item.get("targets", [])
-                return (t if isinstance(t, list) else [],
-                        item.get("labels", {}) or {})
+            if not isinstance(item, dict):
+                continue
+            targets = item.get("targets", [])
+            labels = item.get("labels", {}) or {}
+            if isinstance(targets, list):
+                for t in targets:
+                    result.append({"target": str(t), "labels": labels})
+        return result
     except Exception:
-        pass
-    return [], {}
+        return []
 
 
 # ── SSH 扫描目录，按单条 target 返回 ─────────────────────────
@@ -131,15 +138,15 @@ def _scan_remote() -> List[dict]:
             cat = fn[:-5]
             try:
                 content = _ssh_read(f"{dp}/{fn}")
-                targets, labels = _parse_yaml(content)
+                entries = _parse_yaml_entries(content)
             except Exception:
                 continue
-            for t in targets:
+            for e in entries:
                 rows.append({
                     "department": dept,
                     "category": cat,
-                    "target": t,
-                    "labels": labels,
+                    "target": e["target"],
+                    "labels": e["labels"],
                 })
     return rows
 
@@ -156,17 +163,17 @@ def _sync_yaml(dept: str, cat: str) -> None:
             cur = conn.cursor()
             cur.execute("SELECT target, labels FROM scrape_targets WHERE department=%s AND category=%s AND status=1",
                          (dept, cat))
-            active = cur.fetchall()
-            cur.execute("SELECT target, labels FROM scrape_targets WHERE department=%s AND category=%s AND status=0",
+            active = [{"target": r[0], "labels": json.loads(r[1]) if r[1] else {}}
+                      for r in cur.fetchall()]
+            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=0",
                          (dept, cat))
-            disabled = cur.fetchall()
+            has_disabled = cur.fetchone()[0] > 0
             cur.close()
 
         if active:
-            labels = json.loads(active[0][1]) if active[0][1] else {}
-            _ssh_write(yp, _build_yaml([r[0] for r in active], labels))
+            _ssh_write(yp, _build_yaml(active))
             _ssh_rm(dp)
-        elif disabled:
+        elif has_disabled:
             _ssh_rm(yp)
         else:
             _ssh_rm(yp)

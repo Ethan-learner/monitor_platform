@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Input, Button, Space, Typography, Tag, Table, Card, message, Spin, Select } from 'antd'
 import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
 import { Tooltip } from 'antd'
@@ -16,6 +16,7 @@ export default function VMPromQuery() {
   const [range, setRange] = useState('1h')
   const [history, setHistory] = useState<any[]>([])
   const [keyword, setKeyword] = useState('')
+  const [showChart, setShowChart] = useState(false)
 
   const loadHistory = useCallback(async () => {
     try { const r = await api.get('/vm/history', { params: { keyword, limit: 50 } }); setHistory(r.data || []) } catch {}
@@ -103,6 +104,9 @@ export default function VMPromQuery() {
               { label: '瞬时', value: 'instant|5m' },
             ]} />
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
+          {results.length > 0 && mode === 'range' && (
+            <Button onClick={() => setShowChart(!showChart)}>{showChart ? '表格' : '趋势图'}</Button>
+          )}
         </div>
       </Card>
 
@@ -111,10 +115,89 @@ export default function VMPromQuery() {
 
       {results.length > 0 && (
         <Card size="small" title={`结果 (${results.length} 条时间序列)`}>
-          <Table rowKey={(r, i) => i + ''} dataSource={results} size="small" pagination={false}
-            scroll={{ x: 800 }} bordered columns={columns as any} />
+          {showChart && mode === 'range' ? (
+            <div style={{ height: 300 }}><SimpleChart data={results} /></div>
+          ) : (
+            <Table rowKey={(r, i) => i + ''} dataSource={results} size="small" pagination={false}
+              scroll={{ x: 800 }} bordered columns={columns as any} />
+          )}
         </Card>
       )}
     </div>
   )
+}
+
+function SimpleChart({ data }: { data: any[] }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas || data.length === 0) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const W = canvas.offsetWidth, H = canvas.offsetHeight
+    canvas.width = W * dpr; canvas.height = H * dpr
+    ctx.scale(dpr, dpr)
+
+    const points: { t: number; v: number; label: string }[] = []
+    for (const s of data) {
+      const label = Object.values(s.metric || {}).slice(0, 3).join(', ')
+      for (const [t, v] of s.values || []) {
+        const n = parseFloat(v)
+        if (!isNaN(n)) points.push({ t, v: n, label })
+      }
+    }
+    if (points.length === 0) return
+
+    const pad = { t: 20, r: 12, b: 24, l: 50 }
+    const minT = Math.min(...points.map(p => p.t))
+    const maxT = Math.max(...points.map(p => p.t))
+    const minV = Math.min(...points.map(p => p.v))
+    const maxV = Math.max(...points.map(p => p.v))
+    const tR = maxT - minT || 1, vR = maxV - minV || 1
+    const x = (t: number) => pad.l + ((t - minT) / tR) * (W - pad.l - pad.r)
+    const y = (v: number) => H - pad.b - ((v - minV) / vR) * (H - pad.t - pad.b)
+
+    ctx.clearRect(0, 0, W, H)
+    ctx.fillStyle = '#fafafa'; ctx.fillRect(0, 0, W, H)
+
+    // Grid
+    ctx.strokeStyle = '#eee'; ctx.lineWidth = 0.5
+    for (let i = 0; i <= 5; i++) {
+      const yy = pad.t + (i / 5) * (H - pad.t - pad.b)
+      ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke()
+      ctx.fillStyle = '#999'; ctx.font = '11px sans-serif'
+      const val = maxV - (i / 5) * vR
+      ctx.textAlign = 'right'; ctx.fillText(val.toFixed(1), pad.l - 4, yy + 4)
+    }
+    // Time labels
+    ctx.fillStyle = '#999'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'
+    for (let i = 0; i <= 3; i++) {
+      const tt = minT + (i / 3) * tR
+      ctx.fillText(new Date(tt * 1000).toLocaleTimeString(), x(tt), H - 4)
+    }
+
+    // Series
+    const colors = ['#1677ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2']
+    const groups = new Map<string, { t: number; v: number }[]>()
+    for (const s of data) {
+      const label = Object.values(s.metric || {}).slice(0, 3).join(', ')
+      if (!groups.has(label)) groups.set(label, [])
+      for (const [t, v] of s.values || []) {
+        const n = parseFloat(v)
+        if (!isNaN(n)) groups.get(label)!.push({ t, v: n })
+      }
+    }
+    let ci = 0
+    for (const [_, pts] of groups) {
+      if (pts.length < 2) continue
+      pts.sort((a, b) => a.t - b.t)
+      ctx.strokeStyle = colors[ci % colors.length]; ctx.lineWidth = 1.5
+      ctx.beginPath()
+      pts.forEach((p, i) => { const px = x(p.t), py = y(p.v); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py) })
+      ctx.stroke()
+      ci++
+    }
+  }, [data])
+  return <canvas ref={ref} style={{ width: '100%', height: '100%', borderRadius: 4 }} />
 }
