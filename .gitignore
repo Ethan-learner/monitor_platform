@@ -5,3 +5,4 @@ backend/uvicorn.out
 frontend/src/pages/temp.txt
 start_backend.bat
 start_frontend.bat
+backend/test_*.py
