@@ -3,15 +3,10 @@ import { Typography, Card, Row, Col, Statistic, Button, Space } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import OverviewHealth from '../components/OverviewHealth'
 import { fetchHealth, fetchAlertsSummary, type ComponentHealth, type AlertsSummary } from '../lib/overview'
-import { useAuthStore } from '../store/authStore'
-import { roleMenus } from '../config/menus'
-import { useNavigate } from 'react-router-dom'
 
 const { Title } = Typography
 
 export default function Overview() {
-  const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
   const [health, setHealth] = useState<ComponentHealth[]>([])
   const [summary, setSummary] = useState<AlertsSummary | null>(null)
   const [loading, setLoading] = useState(false)
@@ -30,9 +25,6 @@ export default function Overview() {
   useEffect(() => {
     load()
   }, [])
-
-  const menus = roleMenus[user?.role || 'dev']?.menus || []
-  const quickBoards = menus.filter((m) => m.children).flatMap((m) => m.children!).filter((c) => c.url).slice(0, 6)
 
   return (
     <div style={{ padding: 24 }}>
@@ -53,14 +45,6 @@ export default function Overview() {
 
       <Card title="组件健康" size="small" style={{ marginBottom: 16 }}>
         <OverviewHealth health={health} loading={loading} />
-      </Card>
-
-      <Card title="常用看板" size="small">
-        <Space wrap>
-          {quickBoards.map((b) => (
-            <Button key={b.key} onClick={() => navigate(`/dashboard/${b.key}`)}>{b.label}</Button>
-          ))}
-        </Space>
       </Card>
     </div>
   )

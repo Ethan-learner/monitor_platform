@@ -40,6 +40,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
     department = ""
     role = "ops"
     login_ok = False
+    login_path = ""
 
     # 0. 先检查平台用户状态（禁用/删除则拦截）
     try:
@@ -57,45 +58,50 @@ async def login_with_eip(body: dict, request: Request) -> Response:
     except Exception:
         pass
 
-    # 1. 尝试域控 EIP API
-    eip_user = None
+    # 1. 优先匹配手动密码（管理员重置/创建的密码）
+    #    手动 password_hash 与 EIP 域控密码相互独立：匹配中则走手动路径，不再打域控
+    #    这样管理员重置某用户密码后能直接登录，不影响该用户走域控登录
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            eip_resp = await client.post(
-                settings.eip_url,
-                json={"username": username, "password": password},
-            )
-            eip_data = eip_resp.json() if eip_resp.text else {}
-            if eip_resp.status_code == 200 and eip_data.get("data") and eip_data["data"].get("userinfo"):
-                ui = eip_data["data"]["userinfo"]
-                eip_user = {"name": ui.get("personName", username), "code": ui.get("personCode", ""), "dept": ui.get("deptName", "")}
+        from app.db import get_db
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, display_name, person_code, department, role, password_hash FROM users WHERE username=%s AND status=1", (username,))
+            row = cur.fetchone()
+            cur.close()
+            if row and row[5]:
+                pw_hash = hashlib.sha256(password.encode()).hexdigest()
+                if pw_hash == row[5]:
+                    full_name = row[1] or username
+                    person_code = row[2] or ""
+                    department = row[3] or ""
+                    role = row[4]
+                    login_ok = True
+                    login_path = "manual"
     except Exception:
         pass
 
-    if eip_user:
-        full_name = eip_user["name"]
-        person_code = eip_user["code"]
-        department = eip_user["dept"]
-        login_ok = True
-    else:
-        # 2. 尝试手动账号（users 表 password_hash）
+    # 2. 未匹配手动密码时，尝试域控 EIP API（用户原域控密码登录）
+    eip_user = None
+    if not login_ok:
         try:
-            from app.db import get_db
-            with get_db(readonly=True) as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT id, display_name, person_code, department, role, password_hash FROM users WHERE username=%s AND status=1", (username,))
-                row = cur.fetchone()
-                cur.close()
-                if row and row[5]:
-                    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-                    if pw_hash == row[5]:
-                        full_name = row[1] or username
-                        person_code = row[2] or ""
-                        department = row[3] or ""
-                        role = row[4]
-                        login_ok = True
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                eip_resp = await client.post(
+                    settings.eip_url,
+                    json={"username": username, "password": password},
+                )
+                eip_data = eip_resp.json() if eip_resp.text else {}
+                if eip_resp.status_code == 200 and eip_data.get("data") and eip_data["data"].get("userinfo"):
+                    ui = eip_data["data"]["userinfo"]
+                    eip_user = {"name": ui.get("personName", username), "code": ui.get("personCode", ""), "dept": ui.get("deptName", "")}
         except Exception:
             pass
+
+        if eip_user:
+            full_name = eip_user["name"]
+            person_code = eip_user["code"]
+            department = eip_user["dept"]
+            login_ok = True
+            login_path = "eip"
 
     # 3. dev_mock 兜底（域控不可达时走 DB 手动账号）
     if not login_ok and settings.dev_mock:
@@ -114,6 +120,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
                         department = row[2] or ""
                         role = row[3]
                         login_ok = True
+                        login_path = "dev_mock"
         except Exception:
             pass
 
@@ -143,19 +150,19 @@ async def login_with_eip(body: dict, request: Request) -> Response:
                 cur.execute("INSERT INTO users (username, person_code, display_name, department, role, status, last_login) VALUES (%s,%s,%s,%s,%s,1,%s)",
                             (username, person_code, full_name, department, role, now))
                 uid = cur.lastrowid
-            _log_login(uid, username, full_name, person_code, department, ip, ua, "success", None)
+            _log_login(uid, username, full_name, person_code, department, ip, ua, "success", None, login_path)
             cur.close()
     except Exception:
         pass
 
     # 签发 JWT
-    resp_data = {"username": username, "role": role, "displayName": full_name}
+    resp_data = {"username": username, "role": role, "displayName": full_name, "loginPath": login_path}
     resp = Response(content=json_mod.dumps(resp_data), media_type="application/json")
     _set_auth_cookie(resp, username, role, full_name)
     return resp
 
 
-def _log_login(user_id, username, name, person_code, department, ip, ua, result, reason):
+def _log_login(user_id, username, name, person_code, department, ip, ua, result, reason, login_path=""):
     try:
         from app.db import get_db
         with get_db(readonly=False) as conn:

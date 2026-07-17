@@ -104,18 +104,20 @@ export default function MainLayout() {
   const fullMenus = config?.menus || [];
   // 按权限过滤菜单
   const filterMenus = (items: MenuItem[], perms?: string[]): MenuItem[] => {
-    if (!perms || perms.length === 0) return items
+    if (!perms || perms.length === 0) return items.filter(item => item.key === 'overview')
     return items.filter(item => {
       if (item.key === 'overview') return true
       if (item.children && item.children.length > 0) {
         const filtered = filterMenus(item.children, perms)
+        // 有父级权限 → 子级全部可见
+        if (perms.includes(item.key)) return true
         item.children = filtered
         return filtered.length > 0
       }
       return perms.includes(item.key)
     })
   }
-  const filtered = filterMenus(fullMenus, user.permissions)
+  const filtered = user.role === 'ops' ? fullMenus : filterMenus(fullMenus, user.permissions)
   const antdItems = toAntdItems(filtered, alertCount);
 
   const menuKeyFromPath = location.pathname.replace('/dashboard/', '');
@@ -125,7 +127,9 @@ export default function MainLayout() {
 
   const handleMenuClick = ({ key }: { key: string }) => {
     const item = findItemByKey(filtered, key);
-    if (item?.external && item?.url) {
+    if (!item) return;
+    if (item.children && item.children.length > 0) return;
+    if (item.external && item.url) {
       window.open(item.url, '_blank');
       return;
     }

@@ -119,3 +119,20 @@ CREATE TABLE IF NOT EXISTS platform_config (
     updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_config_key (config_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台配置';
+
+-- 9. Prometheus 抓取目标配置
+CREATE TABLE IF NOT EXISTS scrape_targets (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    department VARCHAR(255) NOT NULL COMMENT '部门（对应服务器目录名）',
+    category VARCHAR(255) NOT NULL COMMENT '分类（文件名，不含 .yaml）',
+    targets JSON NOT NULL COMMENT '目标列表 ["host:port", ...]',
+    labels JSON COMMENT '额外标签 {"key":"val"}',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用 -1=删除',
+    description VARCHAR(500) COMMENT '备注',
+    operator VARCHAR(100) NOT NULL COMMENT '操作人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_dept_cat (department, category),
+    INDEX idx_department (department),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prometheus 抓取目标配置';

@@ -37,13 +37,18 @@ export const roleMenus: Record<string, RoleConfig> = {
       },
       {
         key: 'system', label: '系统监控', icon: 'PieChartOutlined', children: [
-          { key: 'prometheus', label: 'Prometheus', native: true },
-          { key: 'vmselect', label: 'VictoriaMetrics', url: '/vmselect/select/0/prometheus/vmui/#/?g0.range_input=30m&g0.end_input=2026-07-07T07%3A21%3A41&g0.relative_time=last_30_minutes&g0.tab=0', hideHeader: true },
-          { key: 'webhook-events', label: 'Webhook', native: true },
+          {
+            key: 'prometheus-group', label: '指标采集', icon: 'BarChartOutlined', children: [
+          { key: 'prometheus', label: '抓取目标', native: true },
+          { key: 'scrape-configs', label: '抓取配置', native: true },
+          { key: 'vm-query', label: '时序查询', native: true },
         ],
       },
-      {
-        key: 'host', label: '主机监控', icon: 'DesktopOutlined', children: [
+      { key: 'webhook-events', label: '告警推送', native: true },
+    ],
+  },
+  {
+    key: 'host', label: '主机监控', icon: 'DesktopOutlined', children: [
           { key: 'linux-server', label: '服务器 Linux', url: '/grafana/d/Bkl9bBYik/linux?orgId=1&kiosk' },
           { key: 'windows-server', label: '服务器 Windows', url: '/grafana/d/Kdh0OoSGz/windows?orgId=1&kiosk' },
         ],

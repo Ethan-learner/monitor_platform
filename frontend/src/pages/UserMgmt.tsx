@@ -9,7 +9,7 @@ const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px soli
 const labelS: React.CSSProperties = { color: '#333', minWidth: 75, fontSize: 13, lineHeight: '32px' }
 const rowS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
 const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="off" />
-const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="off" />
+const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="new-password" />
 const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ width: '100%', border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }} />
 const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
 
@@ -55,6 +55,71 @@ function AddUserModal({ open, onClose, onSuccess, allRoles }: { open: boolean; o
 
 function genPwd() { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
 
+function EditUserModal({ user, allRoles, onClose, onSuccess }: { user: any; allRoles: any[]; onClose: () => void; onSuccess: () => void }) {
+  const [displayName, setDisplayName] = useState(user.displayName || '')
+  const [department, setDepartment] = useState(user.department || '')
+  const [email, setEmail] = useState(user.email || '')
+  const [phone, setPhone] = useState(user.phone || '')
+  const [password, setPassword] = useState('')
+  const [roleIds, setRoleIds] = useState<number[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await api.get(`/settings/users/${user.id}/roles`)
+        if (!cancelled) {
+          setRoleIds((r.data || []).map((x: any) => x.id))
+          setLoaded(true)
+        }
+      } catch {
+        if (!cancelled) setLoaded(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user.id])
+
+  const handleSave = async () => {
+    setSubmitting(true)
+    try {
+      await api.put(`/settings/users/${user.id}/info`, {
+        displayName, department, email, phone,
+        password: password || undefined,
+      })
+      const existing = await api.get(`/settings/users/${user.id}/roles`)
+      for (const r of (existing.data || [])) await api.delete(`/settings/users/${user.id}/roles/${r.id}`)
+      for (const rid of roleIds) await api.post(`/settings/users/${user.id}/roles`, { role_id: rid })
+      message.success('已更新'); onSuccess(); onClose()
+    } catch { message.error('操作失败') }
+    finally { setSubmitting(false) }
+  }
+
+  return (
+    <Modal title={`编辑用户：${user.username}`} open onCancel={onClose} onOk={handleSave} okText="保存" cancelText="取消" width={520} confirmLoading={submitting}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
+        <LRow label="用户名"><Input value={user.username} disabled style={{ ...lineStyle, flex: 1, color: '#999' }} variant="borderless" /></LRow>
+        <LRow label="姓名"><LInput placeholder="请输入" value={displayName} onChange={e => setDisplayName(e.target.value)} /></LRow>
+        <LRow label="部门"><LInput placeholder="请输入" value={department} onChange={e => setDepartment(e.target.value)} /></LRow>
+        <LRow label="密码">
+          <LPassword placeholder="留空则不修改" value={password} onChange={e => setPassword(e.target.value)} />
+          <Button size="small" onClick={() => setPassword(genPwd())}>生成</Button>
+        </LRow>
+        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={e => setPhone(e.target.value)} /></LRow>
+        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={e => setEmail(e.target.value)} /></LRow>
+        <LRow label="角色">
+          <LSelect
+            mode="multiple" allowClear showSearch optionFilterProp="label" placeholder={loaded ? '请选择' : '加载中...'}
+            value={roleIds} onChange={setRoleIds}
+            options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))}
+          />
+        </LRow>
+      </div>
+    </Modal>
+  )
+}
+
 export default function UserMgmt() {
   const [tab, setTab] = useState('users')
 
@@ -94,7 +159,6 @@ function UserTab() {
     } catch {} finally { setLoading(false) }
   }
   useEffect(() => { load() }, [search])
-  useEffect(() => { if (addOpen) { resetAddForm() } }, [addOpen])
 
   const openEdit = async (user: any) => {
     setEditUser(user)
@@ -149,8 +213,6 @@ function UserTab() {
     catch { message.error('操作失败') }
   }
 
-  }
-
   const isProtected = (u: any) => u.username === 'admin'
   const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
@@ -191,7 +253,8 @@ function UserTab() {
         ]}
       />
 
-      {addOpen && <AddUserModal open={addOpen} onClose={() => setAddOpen(false)} onSuccess={load} allRoles={allRoles} />}
+      {addOpen && <AddUserModal key={Date.now()} open={addOpen} onClose={() => setAddOpen(false)} onSuccess={load} allRoles={allRoles} />}
+      {editUser && <EditUserModal key={editUser.id} user={editUser} allRoles={allRoles} onClose={() => setEditUser(null)} onSuccess={load} />}
     </>
   )
 }

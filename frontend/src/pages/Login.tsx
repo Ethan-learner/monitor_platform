@@ -107,10 +107,6 @@ export default function Login() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saveUser, setSaveUser] = useState(() => !!localStorage.getItem(SAVED_USER_KEY))
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
-
   const handleFinish = useCallback(async (values: { username: string; password: string }) => {
     setSubmitting(true)
     setErrorMsg(null)
@@ -131,6 +127,10 @@ export default function Login() {
       setSubmitting(false)
     }
   }, [saveUser, init])
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   const renderSpark = (s: typeof SPARK_DATA[number], i: number, w: number, h: number) => {
     const maxV = Math.max(...s.values)

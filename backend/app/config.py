@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     doris_password: str = ""
     doris_database: str = "sdi"
 
+    # Prometheus 抓取目标配置目录
+    prometheus_targets_dir: str = "/data/software/prometheus/prometheus_targets"
+
     # Webhook 告警分发服务（3节点集群：27/28/29）
     webhook_url: str = "http://172.16.10.27:8090"
     webhook_nodes: str = "http://172.16.10.27:8090,http://172.16.10.28:8090,http://172.16.10.29:8090"

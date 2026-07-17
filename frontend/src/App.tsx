@@ -18,6 +18,8 @@ import Profile from './pages/Profile'
 import UserMgmt from './pages/UserMgmt'
 import PermMgmt from './pages/PermMgmt'
 import LoginLogs from './pages/LoginLogs'
+import ScrapeConfig from './pages/ScrapeConfig'
+import VMPromQuery from './pages/VMPromQuery'
 import NotFound from './pages/NotFound'
 import { useAuthStore } from './store/authStore'
 import { roleMenus, type MenuItem, nativeMenuKeys } from './config/menus'
@@ -35,9 +37,11 @@ function findItemByKey(items: MenuItem[], key: string): MenuItem | undefined {
 function DashboardRoute() {
   const { menuKey } = useParams<{ menuKey: string }>()
   const user = useAuthStore((s) => s.user)
-  const menus = roleMenus[user?.role || 'dev']?.menus || []
+  const perms = user?.permissions
+  const menus = roleMenus['ops']?.menus || []
   const item = findItemByKey(menus, menuKey || '')
   if (!item) return <NotFound />
+  if (item.key !== 'overview' && user?.role !== 'ops' && perms && !perms.includes(item.key)) return <NotFound />
   if (item.native) {
     if (item.key === nativeMenuKeys.overview) return <Overview />
     if (item.key === nativeMenuKeys.newRules) return <NewRules />
@@ -51,6 +55,8 @@ function DashboardRoute() {
     if (item.key === 'user-mgmt') return <UserMgmt />
     if (item.key === 'perm-mgmt') return <PermMgmt />
     if (item.key === 'login-logs') return <LoginLogs />
+    if (item.key === 'scrape-configs') return <ScrapeConfig />
+    if (item.key === 'vm-query') return <VMPromQuery />
   }
   return <Dashboard url={item.url || ''} title={item.label} hideHeader={item.hideHeader} />
 }
