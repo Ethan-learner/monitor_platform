@@ -1,2 +1,7 @@
 # Visual brainstorming companion mockups (session artifacts)
 .superpowers/
+backend/uvicorn.err
+backend/uvicorn.out
+frontend/src/pages/temp.txt
+start_backend.bat
+start_frontend.bat
