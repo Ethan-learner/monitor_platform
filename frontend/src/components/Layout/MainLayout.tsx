@@ -101,16 +101,30 @@ export default function MainLayout() {
   if (!user) return null;
 
   const config = roleMenus[user.role];
-  const menus = config?.menus || [];
-  const antdItems = toAntdItems(menus, alertCount);
+  const fullMenus = config?.menus || [];
+  // 按权限过滤菜单
+  const filterMenus = (items: MenuItem[], perms?: string[]): MenuItem[] => {
+    if (!perms || perms.length === 0) return items
+    return items.filter(item => {
+      if (item.key === 'overview') return true
+      if (item.children && item.children.length > 0) {
+        const filtered = filterMenus(item.children, perms)
+        item.children = filtered
+        return filtered.length > 0
+      }
+      return perms.includes(item.key)
+    })
+  }
+  const filtered = filterMenus(fullMenus, user.permissions)
+  const antdItems = toAntdItems(filtered, alertCount);
 
   const menuKeyFromPath = location.pathname.replace('/dashboard/', '');
-  const defaultLeafKey = findLeafKey(menus) || '';
+  const defaultLeafKey = findLeafKey(filtered) || '';
   const currentKey = menuKeyFromPath || defaultLeafKey;
-  const openKeys = findParentKeys(menus, currentKey).slice(0, -1);
+  const openKeys = findParentKeys(filtered, currentKey).slice(0, -1);
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    const item = findItemByKey(menus, key);
+    const item = findItemByKey(filtered, key);
     if (item?.external && item?.url) {
       window.open(item.url, '_blank');
       return;

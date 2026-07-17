@@ -247,12 +247,28 @@ async def logout() -> Response:
 
 @router.get("/me")
 async def me(request: Request) -> dict:
+    from app.db import get_db
     token = request.cookies.get(settings.cookie_name)
     if not token:
         from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="not authenticated")
     payload = verify_token(token)
-    return {"username": payload["sub"], "role": payload["role"], "displayName": payload["name"]}
+    username = payload["sub"]
+    # 收集权限：用户直接权限 + 角色权限
+    perms = set()
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            # 用户直接权限
+            cur.execute("SELECT permission_key FROM system_user_perms WHERE user_id=(SELECT id FROM users WHERE username=%s) AND granted=1", (username,))
+            for r in cur.fetchall(): perms.add(r[0])
+            # 角色权限
+            cur.execute("SELECT srp.permission_key FROM system_user_roles sur JOIN system_role_perms srp ON srp.role_id=sur.role_id JOIN users u ON u.id=sur.user_id WHERE u.username=%s", (username,))
+            for r in cur.fetchall(): perms.add(r[0])
+            cur.close()
+    except Exception:
+        pass
+    return {"username": username, "role": payload["role"], "displayName": payload["name"], "permissions": list(perms)}
 
 
 @router.get("/verify")

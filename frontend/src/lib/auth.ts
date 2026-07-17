@@ -4,6 +4,7 @@ export interface PortalUser {
   username: string
   role: 'ops' | 'dev' | 'mgmt'
   displayName: string
+  permissions?: string[]
 }
 
 const isDev = !!(import.meta as any).env?.DEV
