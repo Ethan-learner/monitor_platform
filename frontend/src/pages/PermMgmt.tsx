@@ -131,9 +131,8 @@ function UserPermTab() {
 
   const openEdit = async (u: any) => {
     setEditUser(u)
-    setUserKeys([])
-    try { const r = await api.get(`/settings/users/${u.id}/roles`); setUserKeys(r.data?.map((x: any) => x.id.toString()) || []) }
-    catch { }
+    try { const r = await api.get(`/settings/users/${u.id}/permissions`); setUserKeys(r.data || []) }
+    catch { setUserKeys([]) }
   }
 
   const savePerms = async () => {
@@ -169,15 +168,19 @@ function RolePermTab() {
     api.get('/settings/roles').then(r => setRoles(r.data || []))
   }, [])
 
-  const openEdit = async (role: any) => {
+  const openEdit = (role: any) => {
     setEditRole(role)
     setRoleKeys(role.permissions || [])
   }
 
   const savePerms = async () => {
     if (!editRole) return
-    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: roleKeys }); message.success('已更新'); setEditRole(null) }
+    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: roleKeys }); message.success('已更新'); setEditRole(null); loadRoles() }
     catch { message.error('操作失败') }
+  }
+
+  const loadRoles = async () => {
+    try { const r = await api.get('/settings/roles'); setRoles(r.data || []) } catch {}
   }
 
   return (

@@ -130,6 +130,17 @@ async def remove_user_role(uid: int, rid: int) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/users/{uid}/permissions")
+async def get_user_permissions(uid: int) -> list:
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT permission_key FROM system_user_perms WHERE user_id=%s AND granted=1", (uid,))
+            return [r[0] for r in cur.fetchall()]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"db_error: {e}")
+
+
 @router.put("/users/{uid}/permissions")
 async def update_user_permissions(uid: int, body: dict) -> dict:
     """一次性设置用户权限覆盖"""
