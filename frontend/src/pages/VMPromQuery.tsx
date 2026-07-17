@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Input, Button, Typography, Tag, Table, Card, message, Spin, Select, Tooltip, Segmented } from 'antd'
+import { Input, Button, Typography, Tag, Table, Card, message, Spin, Select, Tooltip } from 'antd'
 import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -102,7 +102,10 @@ export default function VMPromQuery() {
               { label: '瞬时', value: 'instant|5m' },
             ]} />
           {results.length > 0 && mode === 'range' && (
-            <Segmented options={[{ value: 'table', label: 'Table' }, { value: 'graph', label: 'Graph' }]} value={viewMode} onChange={v => setViewMode(v as any)} />
+            <Button.Group>
+              <Button type={viewMode === 'table' ? 'primary' : 'default'} size="small" onClick={() => setViewMode('table')}>Table</Button>
+              <Button type={viewMode === 'graph' ? 'primary' : 'default'} size="small" onClick={() => setViewMode('graph')}>Graph</Button>
+            </Button.Group>
           )}
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
         </div>
