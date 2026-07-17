@@ -103,8 +103,8 @@ export default function VMPromQuery() {
               { label: '瞬时', value: 'instant|5m' },
             ]} />
           <Button.Group size="small">
-            <Button type={viewMode === 'table' ? 'primary' : 'default'} onClick={() => setViewMode('table')}>Table</Button>
-            <Button type={viewMode === 'graph' ? 'primary' : 'default'} onClick={() => setViewMode('graph')}>Graph</Button>
+            <Button type={viewMode === 'table' && results.length > 0 ? 'primary' : 'default'} onClick={() => setViewMode('table')}>Table</Button>
+            <Button type={viewMode === 'graph' && results.length > 0 ? 'primary' : 'default'} onClick={() => setViewMode('graph')}>Graph</Button>
           </Button.Group>
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
         </div>
