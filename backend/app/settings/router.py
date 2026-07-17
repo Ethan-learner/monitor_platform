@@ -167,8 +167,11 @@ async def get_profile(user: dict = Depends(current_user)) -> dict:
             cur.execute("SELECT id, username, person_code, display_name, email, phone, department, role, status, last_login, created_at FROM users WHERE username=%s", (username,))
             row = cur.fetchone()
             if not row:
-                return {"username": username, "displayName": user.get("name", username), "role": user.get("role", "dev"), "loginLogs": []}
+                return {"username": username, "displayName": user.get("name", username), "role": user.get("role", "dev"), "loginLogs": [], "roles": []}
             profile = {"id": row[0], "username": row[1], "personCode": row[2] or "", "displayName": row[3] or "", "email": row[4] or "", "phone": row[5] or "", "department": row[6] or "", "role": row[7], "status": row[8], "lastLogin": str(row[9]) if row[9] else "", "createdAt": str(row[10]) if row[10] else ""}
+            # 从 system_user_roles 获取多角色
+            cur.execute("SELECT sr.name, sr.label FROM system_user_roles sur JOIN system_roles sr ON sr.id=sur.role_id WHERE sur.user_id=%s", (row[0],))
+            profile["roles"] = [(r[1] or r[0]) for r in cur.fetchall()]
             cur.execute("SELECT login_time, ip_address, user_agent, result, failed_reason FROM login_logs WHERE username=%s ORDER BY login_time DESC LIMIT 10", (username,))
             logs = [{"loginTime": str(r[0]) if r[0] else "", "ip": r[1] or "", "userAgent": r[2] or "", "result": r[3] or "", "failedReason": r[4] or ""} for r in cur.fetchall()]
             profile["loginLogs"] = logs

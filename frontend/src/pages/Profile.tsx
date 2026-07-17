@@ -31,9 +31,7 @@ export default function Profile() {
           <Descriptions.Item label="部门">{profile.department || '—'}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{profile.email || '—'}</Descriptions.Item>
           <Descriptions.Item label="角色">
-            <Tag color={profile.role === 'ops' ? 'green' : profile.role === 'dev' ? 'blue' : 'purple'}>
-              {profile.role === 'ops' ? '运维' : profile.role === 'dev' ? '开发' : '管理'}
-            </Tag>
+            {profile.roles?.length > 0 ? profile.roles.map((r: string) => <Tag key={r} style={{ marginBottom: 2 }}>{r}</Tag>) : <Tag>{profile.role === 'ops' ? '运维' : profile.role === 'dev' ? '开发' : '管理'}</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="最近登录">{profile.lastLogin || '—'}</Descriptions.Item>
           <Descriptions.Item label="注册时间">{profile.createdAt || '—'}</Descriptions.Item>

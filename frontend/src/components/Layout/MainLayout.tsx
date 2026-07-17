@@ -124,8 +124,6 @@ export default function MainLayout() {
   };
 
   const userMenuItems = [
-    { key: 'role', label: `角色: ${config?.name || user.role}` },
-    { type: 'divider' as const },
     { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, danger: true },
   ];
 
