@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Table, Tag, Input, Space, Button, Typography, message, Tabs, Modal, Checkbox, Card, Row, Col } from 'antd'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
+import { roleMenus, type MenuItem } from '../config/menus'
 
 const { Title, Text } = Typography
 
@@ -16,45 +17,107 @@ export default function PermMgmt() {
   )
 }
 
-function PermTree({ perms, permKeys, onChange }: { perms: any[]; permKeys: string[]; onChange: (keys: string[]) => void }) {
-  const modules = useMemo(() => [...new Set(perms.map(p => p.module))] as string[], [perms])
+function collectKeys(items: MenuItem[]): string[] {
+  const keys: string[] = []
+  for (const item of items) {
+    keys.push(item.key)
+    if (item.children) keys.push(...collectKeys(item.children))
+  }
+  return keys
+}
 
-  const toggleModule = (mod: string, checked: boolean) => {
-    const modKeys = perms.filter(p => p.module === mod).map(p => p.key)
-    if (checked) {
-      const newKeys = [...new Set([...permKeys, ...modKeys])]
-      onChange(newKeys)
-    } else {
-      onChange(permKeys.filter(k => !modKeys.includes(k)))
-    }
+function MenuCheckbox({ items, checked, onChange }: { items: MenuItem[]; checked: string[]; onChange: (keys: string[]) => void }) {
+  const allKeys = useMemo(() => collectKeys(items), [items])
+
+  const allChecked = allKeys.every(k => checked.includes(k))
+  const indeterminate = allKeys.some(k => checked.includes(k)) && !allChecked
+
+  const toggleAll = (v: boolean) => {
+    if (v) { onChange([...new Set([...checked, ...allKeys])]) }
+    else { onChange(checked.filter(k => !allKeys.includes(k))) }
   }
 
-  const moduleChecked = (mod: string) => perms.filter(p => p.module === mod).every(p => permKeys.includes(p.key))
-  const moduleIndeterminate = (mod: string) => {
-    const keys = perms.filter(p => p.module === mod).map(p => p.key)
-    const checked = keys.filter(k => permKeys.includes(k))
-    return checked.length > 0 && checked.length < keys.length
-  }
+  const allItemsChecked = (its: MenuItem[]): boolean => its.every(i => {
+    if (i.children) return allItemsChecked(i.children)
+    return checked.includes(i.key)
+  })
+  const someItemsChecked = (its: MenuItem[]): boolean => its.some(i => {
+    if (i.children) return someItemsChecked(i.children)
+    return checked.includes(i.key)
+  })
 
   return (
-    <div style={{ marginTop: 8 }}>
-      {modules.map(mod => {
-        const subPerms = perms.filter(p => p.module === mod)
+    <div>
+      {items.map(item => {
+        const hasChildren = item.children && item.children.length > 0
+        const itemKeys = hasChildren ? collectKeys(item.children!) : [item.key]
+        const itemChecked = hasChildren ? allItemsChecked(item.children!) : checked.includes(item.key)
+        const itemIndeterminate = hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)
+
+        if (!hasChildren && item.key === 'overview') return null // skip overview
+
+        const toggleItem = (v: boolean) => {
+          if (hasChildren) {
+            if (v) { onChange([...new Set([...checked, ...itemKeys])]) }
+            else { onChange(checked.filter(k => !itemKeys.includes(k))) }
+          } else {
+            if (v) { onChange([...checked, item.key]) }
+            else { onChange(checked.filter(k => k !== item.key)) }
+          }
+        }
+
         return (
-          <div key={mod} style={{ marginBottom: 12 }}>
-            <Checkbox
-              checked={moduleChecked(mod)}
-              indeterminate={moduleIndeterminate(mod)}
-              onChange={e => toggleModule(mod, e.target.checked)}
-              style={{ fontWeight: 600, marginBottom: 6 }}
-            >{mod}</Checkbox>
-            <div style={{ paddingLeft: 24 }}>
-              <Checkbox.Group value={permKeys} onChange={v => onChange(v as string[])}>
-                {subPerms.map(p => (
-                  <Checkbox key={p.key} value={p.key} style={{ marginRight: 16, marginBottom: 2 }}>{p.label}</Checkbox>
-                ))}
-              </Checkbox.Group>
-            </div>
+          <div key={item.key} style={{ marginBottom: hasChildren ? 14 : 4, marginLeft: 0 }}>
+            <Checkbox checked={itemChecked} indeterminate={itemIndeterminate} onChange={e => toggleItem(e.target.checked)}
+              style={{ fontWeight: hasChildren ? 600 : 400 }}>
+              {item.label}
+            </Checkbox>
+            {hasChildren && (
+              <div style={{ paddingLeft: 24, marginTop: 4 }}>
+                {item.children!.map(child => {
+                  const grandChildren = child.children && child.children.length > 0
+                  const childKeys = grandChildren ? collectKeys(child.children!) : [child.key]
+                  const childChecked = grandChildren ? allItemsChecked(child.children!) : checked.includes(child.key)
+                  const childIndeterminate = grandChildren && someItemsChecked(child.children!) && !allItemsChecked(child.children!)
+
+                  const toggleChild = (v: boolean) => {
+                    if (grandChildren) {
+                      if (v) { onChange([...new Set([...checked, ...childKeys])]) }
+                      else { onChange(checked.filter(k => !childKeys.includes(k))) }
+                    } else {
+                      if (v) { onChange([...checked, child.key]) }
+                      else { onChange(checked.filter(k => k !== child.key)) }
+                    }
+                  }
+
+                  if (!grandChildren) {
+                    return (
+                      <div key={child.key} style={{ marginBottom: 2 }}>
+                        <Checkbox checked={childChecked} onChange={e => toggleChild(e.target.checked)} style={{ fontSize: 13 }}>
+                          {child.label}
+                        </Checkbox>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div key={child.key} style={{ marginBottom: 4 }}>
+                      <Checkbox checked={childChecked} indeterminate={childIndeterminate} onChange={e => toggleChild(e.target.checked)}
+                        style={{ fontSize: 13 }}>{child.label}</Checkbox>
+                      <div style={{ paddingLeft: 24 }}>
+                        {child.children!.map(gc => (
+                          <div key={gc.key} style={{ marginBottom: 1 }}>
+                            <Checkbox checked={checked.includes(gc.key)} onChange={e => {
+                              if (e.target.checked) { onChange([...checked, gc.key]) }
+                              else { onChange(checked.filter(k => k !== gc.key)) }
+                            }} style={{ fontSize: 12 }}>{gc.label}</Checkbox>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })}
@@ -64,22 +127,23 @@ function PermTree({ perms, permKeys, onChange }: { perms: any[]; permKeys: strin
 
 function UserPermTab() {
   const [users, setUsers] = useState<any[]>([])
-  const [perms, setPerms] = useState<any[]>([])
   const [editUser, setEditUser] = useState<any>(null)
-  const [userPermKeys, setUserPermKeys] = useState<string[]>([])
+  const [userKeys, setUserKeys] = useState<string[]>([])
 
   useEffect(() => {
     api.get('/settings/users', { params: { limit: 200 } }).then(r => setUsers((r.data?.data || []).filter((u: any) => u.username !== 'admin' && u.status !== -1)))
-    api.get('/settings/permissions').then(r => setPerms(r.data || []))
   }, [])
 
   const openEdit = async (u: any) => {
     setEditUser(u)
+    setUserKeys([])
+    try { const r = await api.get(`/settings/users/${u.id}/roles`); setUserKeys(r.data?.map((x: any) => x.id.toString()) || []) }
+    catch { }
   }
 
   const savePerms = async () => {
     if (!editUser) return
-    try { await api.put(`/settings/users/${editUser.id}/permissions`, { permissions: userPermKeys }); message.success('已更新'); setEditUser(null) }
+    try { await api.put(`/settings/users/${editUser.id}/permissions`, { permissions: userKeys }); message.success('已更新'); setEditUser(null) }
     catch { message.error('操作失败') }
   }
 
@@ -95,7 +159,7 @@ function UserPermTab() {
       />
       <Modal title="用户权限" open={!!editUser} onCancel={() => setEditUser(null)} onOk={savePerms} okText="保存" width={600}>
         {editUser && <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}><Text>{editUser.displayName || editUser.username}</Text></Card>}
-        <PermTree perms={perms} permKeys={userPermKeys} onChange={setUserPermKeys} />
+        <MenuCheckbox items={roleMenus.ops?.menus || []} checked={userKeys} onChange={setUserKeys} />
       </Modal>
     </>
   )
@@ -103,23 +167,21 @@ function UserPermTab() {
 
 function RolePermTab() {
   const [roles, setRoles] = useState<any[]>([])
-  const [perms, setPerms] = useState<any[]>([])
   const [editRole, setEditRole] = useState<any>(null)
-  const [rolePermKeys, setRolePermKeys] = useState<string[]>([])
+  const [roleKeys, setRoleKeys] = useState<string[]>([])
 
   useEffect(() => {
     api.get('/settings/roles').then(r => setRoles(r.data || []))
-    api.get('/settings/permissions').then(r => setPerms(r.data || []))
   }, [])
 
   const openEdit = async (role: any) => {
     setEditRole(role)
-    setRolePermKeys(role.permissions || [])
+    setRoleKeys(role.permissions || [])
   }
 
   const savePerms = async () => {
     if (!editRole) return
-    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: rolePermKeys }); message.success('已更新'); setEditRole(null); (await api.get('/settings/roles')).data || [] }
+    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: roleKeys }); message.success('已更新'); setEditRole(null) }
     catch { message.error('操作失败') }
   }
 
@@ -134,7 +196,7 @@ function RolePermTab() {
       />
       <Modal title="角色权限" open={!!editRole} onCancel={() => setEditRole(null)} onOk={savePerms} okText="保存" width={600}>
         {editRole && <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}><Text>{editRole.label}</Text></Card>}
-        <PermTree perms={perms} permKeys={rolePermKeys} onChange={setRolePermKeys} />
+        <MenuCheckbox items={roleMenus.ops?.menus || []} checked={roleKeys} onChange={setRoleKeys} />
       </Modal>
     </>
   )
