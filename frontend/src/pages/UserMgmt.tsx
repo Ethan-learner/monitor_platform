@@ -33,12 +33,15 @@ function UserTab() {
   const [addName, setAddName] = useState('')
   const [addDisplay, setAddDisplay] = useState('')
   const [addDept, setAddDept] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addPhone, setAddPhone] = useState('')
+  const [addRoleIds, setAddRoleIds] = useState<number[]>([])
 
   const load = async () => {
     setLoading(true)
     try {
       const { data } = await api.get('/settings/users', { params: { limit: 200 } })
-      const list = (data.data || []).filter((u: any) => u.status !== -1)
+      const list = (data.data || []).filter((u: any) => u.username !== 'admin' && u.status !== -1)
       if (search) {
         const s = search.toLowerCase()
         setData(list.filter((u: any) => (u.username || '').toLowerCase().includes(s) || (u.displayName || '').toLowerCase().includes(s) || (u.personCode || '').includes(s)))
@@ -84,9 +87,15 @@ function UserTab() {
   const handleAdd = async () => {
     if (!addName) { message.warning('请输入用户名'); return }
     try {
-      const res = await api.post('/auth/register', { username: addName, displayName: addDisplay, department: addDept })
+      const res = await api.post('/auth/register', { username: addName, displayName: addDisplay, department: addDept, email: addEmail, phone: addPhone })
+      const newUid = res.data.id
+      if (newUid && addRoleIds.length > 0) {
+        for (const rid of addRoleIds) {
+          await api.post(`/settings/users/${newUid}/roles`, { role_id: rid })
+        }
+      }
       message.success(`已创建，初始密码: ${res.data.password}`)
-      setAddOpen(false); setAddName(''); setAddDisplay(''); setAddDept(''); load()
+      setAddOpen(false); setAddName(''); setAddDisplay(''); setAddDept(''); setAddEmail(''); setAddPhone(''); setAddRoleIds([]); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
   }
 
@@ -102,6 +111,7 @@ function UserTab() {
       <Table rowKey="id" dataSource={data} loading={loading} size="middle" bordered pagination={false}
         columns={[
           { title: '用户名', dataIndex: 'username', width: 100 },
+          { title: '工号', dataIndex: 'personCode', width: 100, render: (s: string) => s || '—' },
           { title: '姓名', dataIndex: 'displayName', width: 80, render: (s: string) => s || '—' },
           { title: '部门', dataIndex: 'department', width: 120, ellipsis: true, render: (s: string) => s || '—' },
           { title: '角色', width: 100, render: (_: any, r: any) => {

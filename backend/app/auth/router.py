@@ -175,10 +175,10 @@ async def register_user(body: dict) -> dict:
             cur.execute("SELECT id FROM users WHERE username=%s AND status != -1", (username,))
             if cur.fetchone():
                 raise HTTPException(status_code=409, detail="用户名已存在")
-            cur.execute("INSERT INTO users (username, password_hash, display_name, department) VALUES (%s,%s,%s,%s)",
-                        (username, pw_hash, body.get("displayName", ""), body.get("department", "")))
+            cur.execute("INSERT INTO users (username, password_hash, display_name, department, email, phone) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (username, pw_hash, body.get("displayName", ""), body.get("department", ""), body.get("email", ""), body.get("phone", "")))
             cur.close()
-            return {"username": username, "password": rand_pw, "status": "created"}
+            return {"id": cur.lastrowid, "username": username, "password": rand_pw, "status": "created"}
     except HTTPException:
         raise
     except Exception as e:
