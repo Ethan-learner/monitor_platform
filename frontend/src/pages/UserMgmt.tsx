@@ -128,8 +128,8 @@ function UserTab() {
   const labelS: React.CSSProperties = { color: '#333', minWidth: 75, fontSize: 13, lineHeight: '32px' }
   const rowS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
 
-  const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="new-password" />
-  const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="new-password" />
+  const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
+  const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
   const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ width: '100%', border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }} />
   const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
   const resetAddForm = () => { setAddName(''); setAddDisplay(''); setAddPassword(''); setAddPhone(''); setAddEmail(''); setAddRoleIds([]) }
@@ -144,16 +144,16 @@ function UserTab() {
       </Space>
       <Table rowKey="id" dataSource={data} loading={loading} size="middle" bordered pagination={false}
         columns={[
-          { title: '用户名', dataIndex: 'username', width: 100 },
-          { title: '工号', dataIndex: 'personCode', width: 100, render: (s: string) => s || '—' },
-          { title: '姓名', dataIndex: 'displayName', width: 80, render: (s: string) => s || '—' },
-          { title: '部门', dataIndex: 'department', width: 120, ellipsis: true, render: (s: string) => s || '—' },
-          { title: '角色', width: 100, render: (_: any, r: any) => {
+          { title: '用户名', dataIndex: 'username', align: 'center', width: 100 },
+          { title: '工号', dataIndex: 'personCode', align: 'center', width: 100, render: (s: string) => s || '—' },
+          { title: '姓名', dataIndex: 'displayName', align: 'center', width: 80, render: (s: string) => s || '—' },
+          { title: '部门', dataIndex: 'department', align: 'center', width: 120, ellipsis: true, render: (s: string) => s || '—' },
+          { title: '角色', width: 100, align: 'center', render: (_: any, r: any) => {
             const labels = allRoles.filter((x: any) => r.roles?.includes(x.id)).map((x: any) => x.label)
             return labels.length > 0 ? labels.join(',') : <Text type="secondary">未分配</Text>
           }},
-          { title: '邮箱', dataIndex: 'email', width: 140, ellipsis: true, render: (s: string) => s || '—' },
-          { title: '手机', dataIndex: 'phone', width: 100, render: (s: string) => s || '—' },
+          { title: '邮箱', dataIndex: 'email', align: 'center', width: 140, ellipsis: true, render: (s: string) => s || '—' },
+          { title: '手机', dataIndex: 'phone', align: 'center', width: 100, render: (s: string) => s || '—' },
           { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{s === 1 ? '启用' : '禁用'}</Tag> },
           { title: '操作', width: 130, align: 'center', render: (_: any, r: any) => {
             if (isProtected(r)) return <Text type="secondary" style={{ fontSize: 12 }}>受保护</Text>

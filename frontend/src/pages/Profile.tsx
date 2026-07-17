@@ -61,10 +61,10 @@ export default function Profile() {
       <Card title="最近登录记录" size="small">
         <Table rowKey="id" dataSource={profile.loginLogs || []} pagination={false} size="small"
           columns={[
-            { title: '登录时间', dataIndex: 'loginTime', width: 160, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: 'IP', dataIndex: 'ip', width: 120 },
+            { title: '登录时间', dataIndex: 'loginTime', align: 'center', width: 160, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: 'IP', dataIndex: 'ip', align: 'center', width: 120 },
             { title: '浏览器', dataIndex: 'userAgent', ellipsis: true },
-            { title: '结果', dataIndex: 'result', width: 80, render: (s: string) => <Tag color={s === 'success' ? 'green' : 'red'}>{s === 'success' ? '成功' : '失败'}</Tag> },
+            { title: '结果', dataIndex: 'result', width: 80, align: 'center', render: (s: string) => <Tag color={s === 'success' ? 'green' : 'red'}>{s === 'success' ? '成功' : '失败'}</Tag> },
             { title: '失败原因', dataIndex: 'failedReason', ellipsis: true },
           ]}
         />
