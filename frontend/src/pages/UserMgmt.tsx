@@ -124,13 +124,13 @@ function UserTab() {
   const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
   // 行式表单组件
-  const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none' }
-  const labelS: React.CSSProperties = { color: '#333', minWidth: 70, fontSize: 13, lineHeight: '32px' }
+  const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none' }
+  const labelS: React.CSSProperties = { color: '#333', minWidth: 75, fontSize: 13, lineHeight: '32px' }
   const rowS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
 
   const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
   const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
-  const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ ...lineStyle, flex: 1, ...p.style }} />
+  const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ ...lineStyle, ...(p.style || {}) }} />
   const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
   const resetAddForm = () => { setAddName(''); setAddDisplay(''); setAddPassword(''); setAddPhone(''); setAddEmail(''); setAddRoleIds([]) }
   const genPwd = () => { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
@@ -188,10 +188,8 @@ function UserTab() {
       <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} onOk={saveInfo} okText="确定" cancelText="取消" width={520}>
         {editUser && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <LRow label="用户名" style={{ flex: 1 }}><LInput value={editUser.username} disabled /></LRow>
-              <LRow label="工号" style={{ flex: 1 }}><LInput value={editUser.personCode || '—'} disabled /></LRow>
-            </div>
+            <LRow label="用户名"><LInput value={editUser.username} disabled /></LRow>
+            <LRow label="工号"><LInput value={editUser.personCode || '—'} disabled /></LRow>
             <LRow label="姓名"><LInput placeholder="请输入" defaultValue={editUser.displayName} id="edit-displayName" /></LRow>
             <LRow label="密码">
               <LPassword placeholder="留空不修改" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
