@@ -211,6 +211,8 @@ function RoleTab() {
   const [allPerms, setAllPerms] = useState<any[]>([])
   const [editRole, setEditRole] = useState<any>(null)
   const [permKeys, setPermKeys] = useState<string[]>([])
+  const [editRoleLabel, setEditRoleLabel] = useState('')
+  const [editRoleDesc, setEditRoleDesc] = useState('')
   const [selectedRole, setSelectedRole] = useState<any>(null)
   const [allUsers, setAllUsers] = useState<any[]>([])
   const [assignedUsers, setAssignedUsers] = useState<any[]>([])
