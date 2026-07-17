@@ -121,7 +121,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
         _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "验证失败")
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    # 同步用户信息到 users 表，角色从 DB 读取（EIP 不返回角色）
+    # 同步用户信息到 users 表，角色从 system_user_roles 读取
     from app.db import get_db
     from datetime import datetime
     try:
@@ -132,9 +132,13 @@ async def login_with_eip(body: dict, request: Request) -> Response:
             now = datetime.now()
             if existing:
                 uid = existing[0]
-                role = existing[1]  # 保留 DB 中已分配的角色
-                cur.execute("UPDATE users SET display_name=%s, person_code=%s, department=%s, last_login=%s, updated_at=%s WHERE id=%s",
-                            (full_name, person_code, department, now, now, uid))
+                # 从 system_user_roles 取角色，优先使用第一个角色
+                cur.execute("SELECT sr.name FROM system_user_roles sur JOIN system_roles sr ON sr.id=sur.role_id WHERE sur.user_id=%s ORDER BY sr.id", (uid,))
+                roles = [r[0] for r in cur.fetchall()]
+                new_role = roles[0] if roles else existing[1]
+                cur.execute("UPDATE users SET role=%s, display_name=%s, person_code=%s, department=%s, last_login=%s, updated_at=%s WHERE id=%s",
+                            (new_role, full_name, person_code, department, now, now, uid))
+                role = new_role
             else:
                 cur.execute("INSERT INTO users (username, person_code, display_name, department, role, status, last_login) VALUES (%s,%s,%s,%s,%s,1,%s)",
                             (username, person_code, full_name, department, role, now))
