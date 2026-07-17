@@ -197,6 +197,22 @@ export default function Login() {
         @keyframes p-dashMove {
           to { stroke-dashoffset: -24; }
         }
+        .login-input input,
+        .login-input .ant-input-outlined {
+          background: #0a0e1a !important;
+          color: #ffffff !important;
+        }
+        .login-input input::placeholder {
+          color: rgba(180,200,240,0.4) !important;
+        }
+        .login-input input:-webkit-autofill,
+        .login-input input:-webkit-autofill:hover,
+        .login-input input:-webkit-autofill:focus,
+        .login-input input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #0a0e1a inset !important;
+          -webkit-text-fill-color: #ffffff !important;
+          caret-color: #40a9ff !important;
+        }
       `}</style>
 
       <div
@@ -848,16 +864,13 @@ export default function Login() {
         >
           UNIFIED MONITORING PORTAL
         </Text>
-        <Form onFinish={handleFinish} layout="vertical" size="large">
+        <Form onFinish={handleFinish} layout="vertical" size="large" className="login-input">
           <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
             <Input
               prefix={<UserOutlined style={{ color: '#ffffff', fontSize: 14 }} />}
               placeholder="用户名 / 工号"
               variant="outlined"
-              styles={{
-                input: { color: '#ffffff', background: '#0a0e1a' },
-                root: { background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)' },
-              }}
+              style={{ background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)', color: '#ffffff' }}
             />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
@@ -866,10 +879,7 @@ export default function Login() {
               placeholder="密码"
               autoComplete="current-password"
               variant="outlined"
-              styles={{
-                input: { color: '#ffffff', background: '#0a0e1a' },
-                root: { background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)' },
-              }}
+              style={{ background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)', color: '#ffffff' }}
             />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
