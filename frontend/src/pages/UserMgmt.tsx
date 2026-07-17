@@ -182,7 +182,7 @@ function UserTab() {
           </LRow>
           <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={addPhone} onChange={e => setAddPhone(e.target.value)} /></LRow>
           <LRow label="邮箱"><LInput placeholder="非必填" value={addEmail} onChange={e => setAddEmail(e.target.value)} /></LRow>
-          <LRow label="角色"><LSelect mode="multiple" allowClear placeholder="请选择" value={addRoleIds} onChange={v => setAddRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
+          <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" value={addRoleIds} onChange={v => setAddRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
         </div>
       </Modal>
 
@@ -198,7 +198,7 @@ function UserTab() {
             </LRow>
             <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" defaultValue={editUser.phone} id="edit-phone" /></LRow>
             <LRow label="邮箱"><LInput placeholder="非必填" defaultValue={editUser.email} id="edit-email" /></LRow>
-            <LRow label="角色"><LSelect mode="multiple" allowClear placeholder="请选择" defaultValue={userRoles} onChange={v => setUserRoles(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
+            <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" defaultValue={userRoles} onChange={v => setUserRoles(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
           </div>
         )}
       </Modal>
