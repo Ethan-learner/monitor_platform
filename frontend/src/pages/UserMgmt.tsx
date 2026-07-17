@@ -25,6 +25,7 @@ function UserTab() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [editUser, setEditUser] = useState<any>(null)
+  const [editPassword, setEditPassword] = useState('')
   const [allRoles, setAllRoles] = useState<any[]>([])
   const [allPerms, setAllPerms] = useState<any[]>([])
   const [userRoles, setUserRoles] = useState<number[]>([])
@@ -89,9 +90,13 @@ function UserTab() {
         department: editUser.department || '',
         email: getVal('edit-email'),
         phone: getVal('edit-phone'),
-        password: getVal('edit-password') || undefined,
+        password: editPassword || undefined,
       })
-      message.success('已更新'); setEditUser(null); load()
+      // save roles
+      const existing = await api.get(`/settings/users/${editUser.id}/roles`)
+      for (const r of (existing.data || [])) await api.delete(`/settings/users/${editUser.id}/roles/${r.id}`)
+      for (const rid of userRoles) await api.post(`/settings/users/${editUser.id}/roles`, { role_id: rid })
+      message.success('已更新'); setEditUser(null); setEditPassword(''); load()
     } catch { message.error('操作失败') }
   }
 
@@ -118,11 +123,23 @@ function UserTab() {
   const isProtected = (u: any) => u.username === 'admin'
   const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
+  // 行式表单组件
+  const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none' }
+  const labelS: React.CSSProperties = { color: '#333', minWidth: 70, fontSize: 13, lineHeight: '32px' }
+  const rowS: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
+
+  const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
+  const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" />
+  const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ ...lineStyle, flex: 1, ...p.style }} />
+  const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
+  const resetAddForm = () => { setAddName(''); setAddDisplay(''); setAddPassword(''); setAddPhone(''); setAddEmail(''); setAddRoleIds([]) }
+  const genPwd = () => { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
+
   return (
     <>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'flex-end' }}>
         <Input placeholder="搜索" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 160 }} allowClear prefix={<SearchOutlined />} />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>新增用户</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { resetAddForm(); setAddOpen(true) }}>新增用户</Button>
       </Space>
       <Table rowKey="id" dataSource={data} loading={loading} size="middle" bordered pagination={false}
         columns={[
@@ -154,42 +171,35 @@ function UserTab() {
         ]}
       />
 
-      <Modal title="新增用户" open={addOpen} onCancel={() => setAddOpen(false)} onOk={handleAdd} okText="确定" cancelText="取消">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input placeholder="请输入" value={addName} onChange={e => setAddName(e.target.value)} />
-          <Input placeholder="请输入" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} />
-          <Input.Password placeholder="请输入" value={addPassword} onChange={e => setAddPassword(e.target.value)} />
-          <Input addonBefore="+86" placeholder="非必填" value={addPhone} onChange={e => setAddPhone(e.target.value)} />
-          <Input placeholder="非必填" value={addEmail} onChange={e => setAddEmail(e.target.value)} />
-          <Select
-            mode="multiple"
-            allowClear
-            placeholder="请选择"
-            value={addRoleIds}
-            onChange={(v: any) => setAddRoleIds(v)}
-            options={allRoles.filter((r: any) => r.status === 1).map((r: any) => ({ value: r.id, label: r.label }))}
-            style={{ width: '100%' }}
-          />
+      <Modal title="新增用户" open={addOpen} onCancel={() => { setAddOpen(false); resetAddForm() }} onOk={handleAdd} okText="确定" cancelText="取消" width={520}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
+          <LRow label="用户名"><LInput placeholder="请输入" value={addName} onChange={e => setAddName(e.target.value)} /></LRow>
+          <LRow label="姓名"><LInput placeholder="请输入" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} /></LRow>
+          <LRow label="密码">
+            <LPassword placeholder="留空自动生成" value={addPassword} onChange={e => setAddPassword(e.target.value)} />
+            <Button size="small" onClick={() => setAddPassword(genPwd())}>生成</Button>
+          </LRow>
+          <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={addPhone} onChange={e => setAddPhone(e.target.value)} /></LRow>
+          <LRow label="邮箱"><LInput placeholder="非必填" value={addEmail} onChange={e => setAddEmail(e.target.value)} /></LRow>
+          <LRow label="角色"><LSelect mode="multiple" allowClear placeholder="请选择" value={addRoleIds} onChange={v => setAddRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
         </div>
       </Modal>
 
-      <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} onOk={saveInfo} okText="确定" cancelText="取消" width={500}>
+      <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} onOk={saveInfo} okText="确定" cancelText="取消" width={520}>
         {editUser && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ color: '#999', fontSize: 12 }}>用户名: <strong>{editUser.username}</strong>　|　工号: {editUser.personCode || '—'}</div>
-            <Input placeholder="姓名 (请输入)" defaultValue={editUser.displayName} id="edit-displayName" />
-            <Input.Password placeholder="密码 (请输入, 留空不修改)" id="edit-password" />
-            <Input addonBefore="+86" placeholder="手机 (非必填)" defaultValue={editUser.phone} id="edit-phone" />
-            <Input placeholder="邮箱 (非必填)" defaultValue={editUser.email} id="edit-email" />
-            <Select
-              mode="multiple"
-              allowClear
-              placeholder="请选择"
-              defaultValue={userRoles}
-              onChange={(v: any) => setUserRoles(v)}
-              options={allRoles.filter((r: any) => r.status === 1).map((r: any) => ({ value: r.id, label: r.label }))}
-              style={{ width: '100%' }}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <LRow label="用户名" style={{ flex: 1 }}><LInput value={editUser.username} disabled /></LRow>
+              <LRow label="工号" style={{ flex: 1 }}><LInput value={editUser.personCode || '—'} disabled /></LRow>
+            </div>
+            <LRow label="姓名"><LInput placeholder="请输入" defaultValue={editUser.displayName} id="edit-displayName" /></LRow>
+            <LRow label="密码">
+              <LPassword placeholder="留空不修改" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+              <Button size="small" onClick={() => { const p = genPwd(); setEditPassword(p); navigator.clipboard.writeText(p).catch(() => {}); message.success('已生成并复制: ' + p) }}>重置</Button>
+            </LRow>
+            <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" defaultValue={editUser.phone} id="edit-phone" /></LRow>
+            <LRow label="邮箱"><LInput placeholder="非必填" defaultValue={editUser.email} id="edit-email" /></LRow>
+            <LRow label="角色"><LSelect mode="multiple" allowClear placeholder="请选择" defaultValue={userRoles} onChange={v => setUserRoles(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
           </div>
         )}
       </Modal>

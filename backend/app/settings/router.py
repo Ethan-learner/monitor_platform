@@ -258,6 +258,7 @@ async def delete_user(uid: int) -> dict:
             cur.execute("DELETE FROM users WHERE id=%s", (uid,))
             cur.close()
             return {"status": "deleted"}
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
