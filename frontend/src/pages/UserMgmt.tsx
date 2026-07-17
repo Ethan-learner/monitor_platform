@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Input, Space, Button, Typography, Popconfirm, message, Tabs, Modal, Checkbox, Card, Row, Col } from 'antd'
+import { Table, Tag, Input, Space, Button, Typography, Popconfirm, message, Tabs, Modal, Checkbox, Card, Row, Col, Select } from 'antd'
 import { EditOutlined, StopOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -35,6 +35,7 @@ function UserTab() {
   const [addDept, setAddDept] = useState('')
   const [addEmail, setAddEmail] = useState('')
   const [addPhone, setAddPhone] = useState('')
+  const [addPassword, setAddPassword] = useState('')
   const [addRoleIds, setAddRoleIds] = useState<number[]>([])
 
   const load = async () => {
@@ -79,6 +80,21 @@ function UserTab() {
     catch { message.error('操作失败') }
   }
 
+  const saveInfo = async () => {
+    if (!editUser) return
+    const getVal = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || ''
+    try {
+      await api.put(`/settings/users/${editUser.id}/info`, {
+        displayName: getVal('edit-displayName'),
+        department: editUser.department || '',
+        email: getVal('edit-email'),
+        phone: getVal('edit-phone'),
+        password: getVal('edit-password') || undefined,
+      })
+      message.success('已更新'); setEditUser(null); load()
+    } catch { message.error('操作失败') }
+  }
+
   const toggleStatus = async (uid: number, cur: number) => {
     try { await api.put(`/settings/users/${uid}/status`, { status: cur === 1 ? 0 : 1 }); message.success('已更新'); load() }
     catch { message.error('操作失败') }
@@ -87,15 +103,15 @@ function UserTab() {
   const handleAdd = async () => {
     if (!addName) { message.warning('请输入用户名'); return }
     try {
-      const res = await api.post('/auth/register', { username: addName, displayName: addDisplay, department: addDept, email: addEmail, phone: addPhone })
+      const res = await api.post('/auth/register', { username: addName, displayName: addDisplay, department: addDept, email: addEmail, phone: addPhone, password: addPassword || undefined })
       const newUid = res.data.id
       if (newUid && addRoleIds.length > 0) {
         for (const rid of addRoleIds) {
           await api.post(`/settings/users/${newUid}/roles`, { role_id: rid })
         }
       }
-      message.success(`已创建，初始密码: ${res.data.password}`)
-      setAddOpen(false); setAddName(''); setAddDisplay(''); setAddDept(''); setAddEmail(''); setAddPhone(''); setAddRoleIds([]); load()
+      message.success(addPassword ? '已创建' : `已创建，初始密码: ${res.data.password}`)
+      setAddOpen(false); setAddName(''); setAddDisplay(''); setAddDept(''); setAddEmail(''); setAddPhone(''); setAddPassword(''); setAddRoleIds([]); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
   }
 
@@ -138,54 +154,44 @@ function UserTab() {
         ]}
       />
 
-      <Modal title="新增用户" open={addOpen} onCancel={() => setAddOpen(false)} onOk={handleAdd} okText="创建">
+      <Modal title="新增用户" open={addOpen} onCancel={() => setAddOpen(false)} onOk={handleAdd} okText="确定" cancelText="取消">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input placeholder="用户名 (英文)" value={addName} onChange={e => setAddName(e.target.value)} />
-          <Input placeholder="姓名" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} />
-          <Input placeholder="部门" value={addDept} onChange={e => setAddDept(e.target.value)} />
+          <Input placeholder="请输入" value={addName} onChange={e => setAddName(e.target.value)} />
+          <Input placeholder="请输入" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} />
+          <Input.Password placeholder="请输入" value={addPassword} onChange={e => setAddPassword(e.target.value)} />
+          <Input addonBefore="+86" placeholder="非必填" value={addPhone} onChange={e => setAddPhone(e.target.value)} />
+          <Input placeholder="非必填" value={addEmail} onChange={e => setAddEmail(e.target.value)} />
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="请选择"
+            value={addRoleIds}
+            onChange={(v: any) => setAddRoleIds(v)}
+            options={allRoles.filter((r: any) => r.status === 1).map((r: any) => ({ value: r.id, label: r.label }))}
+            style={{ width: '100%' }}
+          />
         </div>
       </Modal>
 
-      <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} footer={null} width={700}>
+      <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} onOk={saveInfo} okText="确定" cancelText="取消" width={500}>
         {editUser && (
-          <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}>
-            <Space size={24}>
-              <span><Text type="secondary">用户名</Text> <strong>{editUser.username}</strong></span>
-              <span><Text type="secondary">姓名</Text> <strong>{editUser.displayName || '—'}</strong></span>
-              <span><Text type="secondary">工号</Text> <strong>{editUser.personCode || '—'}</strong></span>
-              <span><Text type="secondary">部门</Text> <strong>{editUser.department || '—'}</strong></span>
-            </Space>
-          </Card>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ color: '#999', fontSize: 12 }}>用户名: <strong>{editUser.username}</strong>　|　工号: {editUser.personCode || '—'}</div>
+            <Input placeholder="姓名 (请输入)" defaultValue={editUser.displayName} id="edit-displayName" />
+            <Input.Password placeholder="密码 (请输入, 留空不修改)" id="edit-password" />
+            <Input addonBefore="+86" placeholder="手机 (非必填)" defaultValue={editUser.phone} id="edit-phone" />
+            <Input placeholder="邮箱 (非必填)" defaultValue={editUser.email} id="edit-email" />
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="请选择"
+              defaultValue={userRoles}
+              onChange={(v: any) => setUserRoles(v)}
+              options={allRoles.filter((r: any) => r.status === 1).map((r: any) => ({ value: r.id, label: r.label }))}
+              style={{ width: '100%' }}
+            />
+          </div>
         )}
-        <Tabs items={[
-          { key: 'roles', label: '角色分配', children: (
-            <div style={{ padding: '8px 0' }}>
-              <Checkbox.Group value={userRoles} onChange={(v: any) => setUserRoles(v)} style={{ display: 'block', marginBottom: 16 }}>
-                {allRoles.filter((r: any) => r.status === 1).map((r: any) => (
-                  <Checkbox key={r.id} value={r.id} style={{ marginBottom: 8, display: 'block', marginLeft: 0 }}>
-                    <strong>{r.label}</strong> <Text type="secondary">({r.name})</Text>
-                  </Checkbox>
-                ))}
-              </Checkbox.Group>
-              <Button type="primary" onClick={saveRoles}>保存角色</Button>
-            </div>
-          )},
-          { key: 'perms', label: '单独权限', children: (
-            <div style={{ padding: '8px 0' }}>
-              {permModules.map(mod => (
-                <div key={mod} style={{ marginBottom: 16 }}>
-                  <strong style={{ display: 'block', marginBottom: 6, color: '#1677ff' }}>{mod}</strong>
-                  <Checkbox.Group value={userPerms} onChange={(v: any) => setUserPerms(v)}>
-                    {allPerms.filter((p: any) => p.module === mod).map((p: any) => (
-                      <Checkbox key={p.key} value={p.key} style={{ marginRight: 20, marginBottom: 4 }}>{p.label}</Checkbox>
-                    ))}
-                  </Checkbox.Group>
-                </div>
-              ))}
-              <Button type="primary" onClick={savePerms}>保存权限</Button>
-            </div>
-          )},
-        ]} />
       </Modal>
     </>
   )

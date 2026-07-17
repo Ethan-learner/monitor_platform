@@ -161,12 +161,13 @@ async def dev_login(username: str = Form("admin"), password: str = Form("")) -> 
 
 @router.post("/register")
 async def register_user(body: dict) -> dict:
-    """管理员手动创建用户，随机生成密码"""
+    """管理员手动创建用户，密码随机生成或使用指定密码"""
     import secrets, hashlib
     username = body.get("username", "")
     if not username:
         raise HTTPException(status_code=400, detail="username required")
-    rand_pw = secrets.token_urlsafe(8)
+    custom_pw = body.get("password", "")
+    rand_pw = custom_pw if custom_pw else secrets.token_urlsafe(8)
     pw_hash = hashlib.sha256(rand_pw.encode()).hexdigest()
     try:
         from app.db import get_db
@@ -178,7 +179,7 @@ async def register_user(body: dict) -> dict:
             cur.execute("INSERT INTO users (username, password_hash, display_name, department, email, phone) VALUES (%s,%s,%s,%s,%s,%s)",
                         (username, pw_hash, body.get("displayName", ""), body.get("department", ""), body.get("email", ""), body.get("phone", "")))
             cur.close()
-            return {"id": cur.lastrowid, "username": username, "password": rand_pw, "status": "created"}
+            return {"id": cur.lastrowid, "username": username, "password": rand_pw if not custom_pw else "(已设置自定义密码)", "status": "created"}
     except HTTPException:
         raise
     except Exception as e:

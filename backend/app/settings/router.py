@@ -226,6 +226,27 @@ async def update_user_status(uid: int, body: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.put("/users/{uid}/info")
+async def update_user_info(uid: int, body: dict) -> dict:
+    """更新用户基本信息"""
+    import hashlib
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            pw = body.get("password", "")
+            if pw:
+                pw_hash = hashlib.sha256(pw.encode()).hexdigest()
+                cur.execute("UPDATE users SET display_name=%s, department=%s, email=%s, phone=%s, password_hash=%s WHERE id=%s",
+                            (body.get("displayName", ""), body.get("department", ""), body.get("email", ""), body.get("phone", ""), pw_hash, uid))
+            else:
+                cur.execute("UPDATE users SET display_name=%s, department=%s, email=%s, phone=%s WHERE id=%s",
+                            (body.get("displayName", ""), body.get("department", ""), body.get("email", ""), body.get("phone", ""), uid))
+            cur.close()
+            return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/users/{uid}")
 async def delete_user(uid: int) -> dict:
     """删除用户（软删除 status=-1）"""
@@ -237,7 +258,6 @@ async def delete_user(uid: int) -> dict:
             cur.execute("DELETE FROM users WHERE id=%s", (uid,))
             cur.close()
             return {"status": "deleted"}
-    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
