@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Descriptions, Tag, Table, Typography, Spin } from 'antd'
 import { api } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
+import { useLocation } from 'react-router-dom'
 
 const { Title } = Typography
 
@@ -9,16 +10,18 @@ export default function Profile() {
   const { user } = useAuthStore()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const location = useLocation()
 
   useEffect(() => {
+    setLoading(true)
     api.get('/settings/profile').then(r => setProfile(r.data)).catch(() => {}).finally(() => setLoading(false))
-  }, [])
+  }, [location.pathname])
 
   if (loading) return <Spin style={{ display: 'block', margin: '100px auto' }} />
   if (!profile) return <div style={{ padding: 16 }}>加载失败</div>
 
   return (
-    <div style={{ padding: 16, maxWidth: 800 }}>
+    <div style={{ padding: 16 }}>
       <Title level={5} style={{ marginBottom: 16 }}>个人中心</Title>
       <Card size="small" style={{ marginBottom: 16 }}>
         <Descriptions column={2} bordered size="small">

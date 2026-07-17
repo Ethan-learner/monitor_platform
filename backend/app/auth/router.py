@@ -50,8 +50,8 @@ async def login_with_eip(body: dict, request: Request) -> Response:
             row = cur.fetchone()
             cur.close()
             if row and row[0] != 1:
-                _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "用户已被禁用或删除")
-                raise HTTPException(status_code=401, detail="用户已被禁用或删除")
+                _log_login(None, username, full_name, person_code, department, ip, ua, "failed", "用户状态异常")
+                raise HTTPException(status_code=401, detail="用户状态异常")
     except HTTPException:
         raise
     except Exception:
