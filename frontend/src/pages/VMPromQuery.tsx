@@ -1,8 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Input, Button, Space, Typography, Tag, Table, Card, message, Spin, Select } from 'antd'
+import { Input, Button, Typography, Tag, Table, Card, message, Spin, Select, Tooltip, Segmented } from 'antd'
 import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
-import { Tooltip } from 'antd'
-import { api } from '../lib/api'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -16,7 +14,7 @@ export default function VMPromQuery() {
   const [range, setRange] = useState('1h')
   const [history, setHistory] = useState<any[]>([])
   const [keyword, setKeyword] = useState('')
-  const [showChart, setShowChart] = useState(false)
+  const [viewMode, setViewMode] = useState<'table' | 'graph'>('table')
 
   const loadHistory = useCallback(async () => {
     try { const r = await api.get('/vm/history', { params: { keyword, limit: 50 } }); setHistory(r.data || []) } catch {}
@@ -89,7 +87,7 @@ export default function VMPromQuery() {
             style={{ fontFamily: 'monospace', fontSize: 13, resize: 'none', lineHeight: '32px', padding: '4px 11px' }} />
         </Space.Compact>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 400, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 280, flex: 1 }}>
             <Tooltip title="历史查询"><HistoryOutlined style={{ color: '#999', fontSize: 16 }} /></Tooltip>
             <Select showSearch allowClear placeholder="" value={undefined}
               onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
@@ -97,16 +95,16 @@ export default function VMPromQuery() {
               options={Array.from(new Map(history.map(h => [h.promql, h])).values()).map(h => ({ value: h.promql, label: h.promql }))} />
           </div>
           <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
-            style={{ width: 180 }} options={[
+            style={{ width: 170 }} options={[
               { label: '范围 5m', value: 'range|5m' }, { label: '范围 30m', value: 'range|30m' },
               { label: '范围 1h', value: 'range|1h' }, { label: '范围 6h', value: 'range|6h' },
               { label: '范围 1d', value: 'range|1d' }, { label: '范围 7d', value: 'range|7d' },
               { label: '瞬时', value: 'instant|5m' },
             ]} />
-          <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
           {results.length > 0 && mode === 'range' && (
-            <Button onClick={() => setShowChart(!showChart)}>{showChart ? '表格' : '趋势图'}</Button>
+            <Segmented options={[{ value: 'table', label: 'Table' }, { value: 'graph', label: 'Graph' }]} value={viewMode} onChange={v => setViewMode(v as any)} />
           )}
+          <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
         </div>
       </Card>
 
@@ -115,7 +113,7 @@ export default function VMPromQuery() {
 
       {results.length > 0 && (
         <Card size="small" title={`结果 (${results.length} 条时间序列)`}>
-          {showChart && mode === 'range' ? (
+          {viewMode === 'graph' && mode === 'range' ? (
             <div style={{ height: 300 }}><SimpleChart data={results} /></div>
           ) : (
             <Table rowKey={(r, i) => i + ''} dataSource={results} size="small" pagination={false}
