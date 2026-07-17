@@ -27,6 +27,7 @@ function collectKeys(items: MenuItem[]): string[] {
 }
 
 function MenuCheckbox({ items, checked, onChange }: { items: MenuItem[]; checked: string[]; onChange: (keys: string[]) => void }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const allKeys = useMemo(() => collectKeys(items), [items])
 
   const allChecked = allKeys.every(k => checked.includes(k))
@@ -50,59 +51,53 @@ function MenuCheckbox({ items, checked, onChange }: { items: MenuItem[]; checked
     <div>
       {items.map(item => {
         const hasChildren = item.children && item.children.length > 0
-        const itemKeys = hasChildren ? collectKeys(item.children!) : [item.key]
-        const itemChecked = hasChildren ? allItemsChecked(item.children!) : checked.includes(item.key)
-        const itemIndeterminate = hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)
+        const isExpanded = expanded[item.key] ?? false
 
-        if (!hasChildren && item.key === 'overview') return null // skip overview
+        if (item.key === 'overview') return null
 
-        const toggleItem = (v: boolean) => {
-          if (hasChildren) {
-            if (v) { onChange([...new Set([...checked, ...itemKeys])]) }
-            else { onChange(checked.filter(k => !itemKeys.includes(k))) }
-          } else {
-            if (v) { onChange([...checked, item.key]) }
-            else { onChange(checked.filter(k => k !== item.key)) }
-          }
-        }
+        const toggleExpand = () => setExpanded({ ...expanded, [item.key]: !isExpanded })
 
         return (
-          <div key={item.key} style={{ marginBottom: hasChildren ? 14 : 4, marginLeft: 0 }}>
-            <Checkbox checked={itemChecked} indeterminate={itemIndeterminate} onChange={e => toggleItem(e.target.checked)}
-              style={{ fontWeight: hasChildren ? 600 : 400 }}>
-              {item.label}
-            </Checkbox>
-            {hasChildren && (
+          <div key={item.key} style={{ marginBottom: hasChildren ? 12 : 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {hasChildren && (
+                <span onClick={toggleExpand} style={{ cursor: 'pointer', fontSize: 11, color: '#999', userSelect: 'none', width: 16, textAlign: 'center' }}>
+                  {isExpanded ? '▼' : '▶'}
+                </span>
+              )}
+              {!hasChildren && <span style={{ width: 16 }} />}
+              <Checkbox checked={allItemsChecked(item.children || [item] as MenuItem[])} indeterminate={hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)}
+                onChange={e => {
+                  const keys = hasChildren ? collectKeys(item.children!) : [item.key]
+                  if (e.target.checked) { onChange([...new Set([...checked, ...keys])]) }
+                  else { onChange(checked.filter(k => !keys.includes(k))) }
+                }}
+                style={{ fontWeight: hasChildren ? 600 : 400 }}>{item.label}</Checkbox>
+            </div>
+            {hasChildren && isExpanded && (
               <div style={{ paddingLeft: 24, marginTop: 4 }}>
                 {item.children!.map(child => {
                   const grandChildren = child.children && child.children.length > 0
-                  const childKeys = grandChildren ? collectKeys(child.children!) : [child.key]
                   const childChecked = grandChildren ? allItemsChecked(child.children!) : checked.includes(child.key)
                   const childIndeterminate = grandChildren && someItemsChecked(child.children!) && !allItemsChecked(child.children!)
-
-                  const toggleChild = (v: boolean) => {
-                    if (grandChildren) {
-                      if (v) { onChange([...new Set([...checked, ...childKeys])]) }
-                      else { onChange(checked.filter(k => !childKeys.includes(k))) }
-                    } else {
-                      if (v) { onChange([...checked, child.key]) }
-                      else { onChange(checked.filter(k => k !== child.key)) }
-                    }
-                  }
 
                   if (!grandChildren) {
                     return (
                       <div key={child.key} style={{ marginBottom: 2 }}>
-                        <Checkbox checked={childChecked} onChange={e => toggleChild(e.target.checked)} style={{ fontSize: 13 }}>
-                          {child.label}
-                        </Checkbox>
+                        <Checkbox checked={childChecked} onChange={e => {
+                          if (e.target.checked) { onChange([...checked, child.key]) }
+                          else { onChange(checked.filter(k => k !== child.key)) }
+                        }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
                       </div>
                     )
                   }
                   return (
                     <div key={child.key} style={{ marginBottom: 4 }}>
-                      <Checkbox checked={childChecked} indeterminate={childIndeterminate} onChange={e => toggleChild(e.target.checked)}
-                        style={{ fontSize: 13 }}>{child.label}</Checkbox>
+                      <Checkbox checked={childChecked} indeterminate={childIndeterminate} onChange={e => {
+                        const ck = collectKeys(child.children!)
+                        if (e.target.checked) { onChange([...new Set([...checked, ...ck])]) }
+                        else { onChange(checked.filter(k => !ck.includes(k))) }
+                      }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
                       <div style={{ paddingLeft: 24 }}>
                         {child.children!.map(gc => (
                           <div key={gc.key} style={{ marginBottom: 1 }}>
