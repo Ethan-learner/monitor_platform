@@ -68,7 +68,11 @@ export default function VMPromQuery() {
   columns.push({
     title: '值', dataIndex: 'value', width: 100, align: 'center' as const,
     render: (_: any, r: any) => {
-      if (mode === 'range') return <Text>{r.values?.length || 0} 个点</Text>
+      if (mode === 'range') {
+        const vals = r.values
+        if (vals && vals.length > 0) return vals[vals.length - 1][1]
+        return '—'
+      }
       const v = r.value?.[1]
       return v ? v : '—'
     },

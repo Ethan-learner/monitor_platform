@@ -6,13 +6,12 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined,
   FolderOutlined, FolderOpenOutlined, FileOutlined, AppstoreOutlined, FolderAddOutlined, CheckSquareOutlined,
 } from '@ant-design/icons'
-import { fetchTargets, fetchCategories, createTarget, updateTarget, deleteTarget, toggleTarget, syncFromServer, type ScrapeTarget, type CategoryInfo } from '../lib/scrape'
+import { fetchTargets, createTarget, updateTarget, deleteTarget, toggleTarget, syncFromServer, type ScrapeTarget } from '../lib/scrape'
 
 const STATUS_LABEL: Record<number, string> = { 1: '启用', 0: '禁用', '-1': '已删除' }
 
 export default function ScrapeConfig() {
   const [data, setData] = useState<ScrapeTarget[]>([])
-  const [categories, setCategories] = useState<CategoryInfo[]>([])
   const [, forceLoad] = useState(0)
   const [selectedDept, setSelectedDept] = useState<string | null>(null)
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
@@ -25,9 +24,7 @@ export default function ScrapeConfig() {
 
   const load = async () => {
     try {
-      const [t, c] = await Promise.all([fetchTargets(), fetchCategories()])
-      setData(t)
-      setCategories(c)
+      setData(await fetchTargets())
     } catch { forceLoad((n) => n + 1) }
   }
   useEffect(() => { load() }, [])
@@ -51,12 +48,6 @@ export default function ScrapeConfig() {
     if (selectedCat) items = items.filter((t) => t.category === selectedCat)
     return items
   }, [data, selectedDept, selectedCat])
-
-  const catInfo = useMemo(() => {
-    const m: Record<string, CategoryInfo> = {}
-    for (const c of categories) m[`${c.department}/${c.category}`] = c
-    return m
-  }, [categories])
 
   const toggleExpand = (dept: string) => {
     setExpandedDepts((prev) => {
@@ -301,7 +292,7 @@ export default function ScrapeConfig() {
 
       <FolderModal
         open={folderModal}
-        onSave={async (name) => {
+        onSave={async (_name) => {
           message.success('文件夹已创建')
           setFolderModal(false)
         }}
