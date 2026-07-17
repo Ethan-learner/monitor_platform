@@ -100,7 +100,7 @@ export default function MainLayout() {
 
   if (!user) return null;
 
-  const config = roleMenus[user.role];
+  const config = roleMenus['ops'];
   const fullMenus = config?.menus || [];
   // 按权限过滤菜单
   const filterMenus = (items: MenuItem[], perms?: string[]): MenuItem[] => {
