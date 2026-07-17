@@ -79,9 +79,9 @@ export default function VMPromQuery() {
       <Title level={5} style={{ marginBottom: 12 }}>PromQL 查询</Title>
       <Card size="small" style={{ marginBottom: 12 }}>
         <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
-          <TextArea rows={2} value={expr} onChange={e => setExpr(e.target.value)}
+          <TextArea rows={1} value={expr} onChange={e => setExpr(e.target.value)}
             placeholder="输入 PromQL 表达式，如 up{job='node'}" onPressEnter={() => execute()}
-            style={{ fontFamily: 'monospace', fontSize: 13 }} />
+            style={{ fontFamily: 'monospace', fontSize: 13, resize: 'none', lineHeight: '32px', padding: '4px 11px' }} />
         </Space.Compact>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 400, flex: 1 }}>
