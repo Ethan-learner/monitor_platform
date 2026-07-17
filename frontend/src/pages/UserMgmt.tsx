@@ -43,7 +43,7 @@ function UserTab() {
     setLoading(true)
     try {
       const { data } = await api.get('/settings/users', { params: { limit: 200 } })
-      const list = (data.data || []).filter((u: any) => u.username !== 'admin' && u.status !== -1)
+      const list = (data.data || []).filter((u: any) => u.status !== -1)
       if (search) {
         const s = search.toLowerCase()
         setData(list.filter((u: any) => (u.username || '').toLowerCase().includes(s) || (u.displayName || '').toLowerCase().includes(s) || (u.personCode || '').includes(s)))
