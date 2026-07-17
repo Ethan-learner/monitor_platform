@@ -218,7 +218,7 @@ function RoleTab() {
   const [roleSearch, setRoleSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [addLabel, setAddLabel] = useState('')
-  const [addRoleName, setAddRoleName] = useState('')
+  const [addRoleDesc, setAddRoleDesc] = useState('')
 
   const load = async () => {
     try {
@@ -277,9 +277,21 @@ function RoleTab() {
   }
 
   const handleAddRole = async () => {
-    if (!addRoleName || !addLabel) { message.warning('请填写完整'); return }
-    try { await api.post('/settings/roles', { name: addRoleName, label: addLabel }); message.success('已创建'); setAddOpen(false); setAddRoleName(''); setAddLabel(''); load() }
-    catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
+    if (!addLabel) { message.warning('请输入角色名称'); return }
+    try {
+      await api.post('/settings/roles', { name: addLabel, label: addLabel, description: addRoleDesc })
+      message.success('已创建'); setAddOpen(false); setAddLabel(''); setAddRoleDesc(''); load()
+    } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
+  }
+
+  const openEditRole = (role: any) => {
+    setEditRole(role); setPermKeys(role.permissions || []); setEditRoleLabel(role.label || ''); setEditRoleDesc(role.description || '')
+  }
+
+  const saveRoleMeta = async () => {
+    if (!editRole) return
+    try { await api.put(`/settings/roles/${editRole.id}`, { label: editRoleLabel, description: editRoleDesc }); message.success('已更新'); load() }
+    catch { message.error('操作失败') }
   }
 
   const deleteRole = async (rid: number) => {
@@ -303,7 +315,7 @@ function RoleTab() {
                 style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 4, background: selectedRole?.id === r.id ? '#e6f4ff' : '#fff', border: selectedRole?.id === r.id ? '1px solid #1677ff' : '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div><strong>{r.label}</strong><br /><Text type="secondary" style={{ fontSize: 11 }}>{r.name}</Text></div>
                 <Space>
-                  <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={e => { e.stopPropagation(); openEdit(r) }} />
+                  <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={e => { e.stopPropagation(); openEditRole(r) }} />
                   <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} onClick={e => { e.stopPropagation(); deleteRole(r.id) }} />
                 </Space>
               </div>
@@ -352,29 +364,29 @@ function RoleTab() {
 
       <Modal title="新增角色" open={addOpen} onCancel={() => setAddOpen(false)} onOk={handleAddRole} okText="创建">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input placeholder="标识 (英文)" value={addRoleName} onChange={e => setAddRoleName(e.target.value)} />
-          <Input placeholder="显示名" value={addLabel} onChange={e => setAddLabel(e.target.value)} />
+          <Input placeholder="角色名称" value={addLabel} onChange={e => setAddLabel(e.target.value)} />
+          <Input placeholder="角色备注" value={addRoleDesc} onChange={e => setAddRoleDesc(e.target.value)} />
         </div>
       </Modal>
 
-      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} footer={null} width={700}>
-        {editRole && (
-          <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}>
-            <strong>{editRole.label}</strong> <Text type="secondary">({editRole.name})</Text>
+      <Modal title="编辑角色" open={!!editRole} onCancel={() => setEditRole(null)} okText="保存" onOk={async () => { await saveRoleMeta(); await saveRolePerms(); load(); }} okButtonProps={{}} width={700}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input placeholder="角色名称" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} />
+          <Input placeholder="角色备注" value={editRoleDesc} onChange={e => setEditRoleDesc(e.target.value)} />
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <Card size="small" title="权限配置">
+            {permModules.map(mod => (
+              <div key={mod} style={{ marginBottom: 12 }}>
+                <strong style={{ display: 'block', marginBottom: 4, color: '#1677ff' }}>{mod}</strong>
+                <Checkbox.Group value={permKeys} onChange={(v: any) => setPermKeys(v)}>
+                  {allPerms.filter((p: any) => p.module === mod).map((p: any) => (
+                    <Checkbox key={p.key} value={p.key} style={{ marginRight: 16, marginBottom: 2 }}>{p.label}</Checkbox>
+                  ))}
+                </Checkbox.Group>
+              </div>
+            ))}
           </Card>
-        )}
-        <div style={{ padding: '8px 0' }}>
-          {permModules.map(mod => (
-            <div key={mod} style={{ marginBottom: 16 }}>
-              <strong style={{ display: 'block', marginBottom: 6, color: '#1677ff' }}>{mod}</strong>
-              <Checkbox.Group value={permKeys} onChange={(v: any) => setPermKeys(v)}>
-                {allPerms.filter((p: any) => p.module === mod).map((p: any) => (
-                  <Checkbox key={p.key} value={p.key} style={{ marginRight: 20, marginBottom: 4 }}>{p.label}</Checkbox>
-                ))}
-              </Checkbox.Group>
-            </div>
-          ))}
-          <Button type="primary" onClick={saveRolePerms}>保存权限</Button>
         </div>
       </Modal>
     </Row>
