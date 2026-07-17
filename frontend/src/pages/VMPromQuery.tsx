@@ -82,22 +82,24 @@ export default function VMPromQuery() {
             placeholder="输入 PromQL 表达式，如 up{job='node'}" onPressEnter={() => execute()}
             style={{ fontFamily: 'monospace', fontSize: 13 }} />
         </Space.Compact>
-        <Space style={{ width: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
-            style={{ width: 180 }} options={[
-              { label: '范围 5m', value: 'range|5m' },
-              { label: '范围 30m', value: 'range|30m' },
-              { label: '范围 1h', value: 'range|1h' },
-              { label: '范围 6h', value: 'range|6h' },
-              { label: '范围 1d', value: 'range|1d' },
-              { label: '范围 7d', value: 'range|7d' },
-              { label: '瞬时', value: 'instant|5m' },
-            ]} />
-          <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
+        <Space style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <Select showSearch allowClear placeholder="" value={undefined}
             onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
             filterOption={false} style={{ minWidth: 400, flex: 1 }} dropdownMatchSelectWidth={false}
             options={history.map(h => ({ value: h.promql, label: h.promql }))} />
+          <Space>
+            <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
+              style={{ width: 180 }} options={[
+                { label: '范围 5m', value: 'range|5m' },
+                { label: '范围 30m', value: 'range|30m' },
+                { label: '范围 1h', value: 'range|1h' },
+                { label: '范围 6h', value: 'range|6h' },
+                { label: '范围 1d', value: 'range|1d' },
+                { label: '范围 7d', value: 'range|7d' },
+                { label: '瞬时', value: 'instant|5m' },
+              ]} />
+            <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
+          </Space>
         </Space>
       </Card>
 
