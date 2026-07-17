@@ -274,14 +274,15 @@ function RoleTab() {
 
   const saveRolePerms = async () => {
     if (!editRole) return
-    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: permKeys }); message.success('已更新'); load() }
+    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: permKeys }) }
     catch { message.error('操作失败') }
   }
 
   const handleAddRole = async () => {
     if (!addLabel) { message.warning('请输入角色名称'); return }
+    const name = addLabel.replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fff]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
     try {
-      await api.post('/settings/roles', { name: addLabel, label: addLabel, description: addRoleDesc })
+      await api.post('/settings/roles', { name, label: addLabel, description: addRoleDesc })
       message.success('已创建'); setAddOpen(false); setAddLabel(''); setAddRoleDesc(''); load()
     } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
   }
@@ -315,7 +316,7 @@ function RoleTab() {
             {filteredRoles.map(r => (
               <div key={r.id} onClick={() => selectRole(r)}
                 style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 4, background: selectedRole?.id === r.id ? '#e6f4ff' : '#fff', border: selectedRole?.id === r.id ? '1px solid #1677ff' : '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div><strong>{r.label}</strong><br /><Text type="secondary" style={{ fontSize: 11 }}>{r.name}</Text></div>
+                <div><strong>{r.label}</strong><br /><Text type="secondary" style={{ fontSize: 11 }}>{r.description || r.name}</Text></div>
                 <Space>
                   <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={e => { e.stopPropagation(); openEditRole(r) }} />
                   <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} onClick={e => { e.stopPropagation(); deleteRole(r.id) }} />
