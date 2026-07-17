@@ -379,9 +379,38 @@ async def toggle_target(tid: int) -> dict:
     return {"status": "disabled" if new_status == 0 else "enabled"}
 
 
-@router.get("/ping")
-async def ping() -> dict:
-    return {"pong": True, "version": 2}
+@router.get("/scan-test")
+async def scan_test() -> dict:
+    """直接测试扫描（不经过 ensure_synced）"""
+    try:
+        base = settings.prometheus_targets_dir
+        raw = _ssh_exec(f"ls -1 {base}")
+        depts = raw.split("\n") if raw else []
+        results = []
+        for dept in depts:
+            dept = dept.strip()
+            if not dept: continue
+            dp = f"{base}/{dept}"
+            try:
+                out = _ssh_exec(f"test -d '{dp}' && echo 1 || echo 0")
+                if out != "1": continue
+                fr = _ssh_exec(f"ls -1 {dp}/*.yaml 2>/dev/null || true")
+                if not fr: continue
+            except: continue
+            files = []
+            for fn in fr.split("\n"):
+                fn = fn.strip().rsplit("/", 1)[-1]
+                if not fn or not fn.endswith(".yaml"): continue
+                try:
+                    content = _ssh_read_file(f"{dp}/{fn}")
+                    files.append({"name": fn, "size": len(content)})
+                except Exception as e:
+                    files.append({"name": fn, "error": str(e)})
+            if files:
+                results.append({"dept": dept, "files": files})
+        return {"ok": True, "base": base, "departments": depts, "parsed": results}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "type": type(e).__name__}
 
 
 @router.post("/sync")

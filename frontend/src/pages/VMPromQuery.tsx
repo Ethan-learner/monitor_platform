@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Input, Button, Space, Typography, Tag, Table, Card, message, Spin, Select } from 'antd'
-import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
+import { SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
 const { Title, Text } = Typography
@@ -15,15 +15,6 @@ export default function VMPromQuery() {
   const [range, setRange] = useState('1h')
   const [history, setHistory] = useState<any[]>([])
   const [keyword, setKeyword] = useState('')
-
-  const ranges = [
-    { label: '5m', value: '5m' },
-    { label: '30m', value: '30m' },
-    { label: '1h', value: '1h' },
-    { label: '6h', value: '6h' },
-    { label: '1d', value: '1d' },
-    { label: '7d', value: '7d' },
-  ]
 
   const loadHistory = useCallback(async () => {
     try { const r = await api.get('/vm/history', { params: { keyword, limit: 50 } }); setHistory(r.data || []) } catch {}
@@ -78,7 +69,7 @@ export default function VMPromQuery() {
     render: (_: any, r: any) => {
       if (mode === 'range') return <Text>{r.values?.length || 0} 个点</Text>
       const v = r.value?.[1]
-      return v ? parseFloat(v).toFixed(2) : '—'
+      return v ? v : '—'
     },
   })
 
@@ -91,21 +82,21 @@ export default function VMPromQuery() {
             placeholder="输入 PromQL 表达式，如 up{job='node'}" onPressEnter={() => execute()}
             style={{ fontFamily: 'monospace', fontSize: 13 }} />
         </Space.Compact>
-        <Space style={{ marginBottom: 8 }}>
+        <Space style={{ width: '100%', flexWrap: true }}>
+          <Select value={`${mode}|${range}`} onChange={v => { const [m, r] = v.split('|'); setMode(m as any); setRange(r) }}
+            style={{ width: 180 }} options={[
+              { label: '范围 5m', value: 'range|5m' },
+              { label: '范围 30m', value: 'range|30m' },
+              { label: '范围 1h', value: 'range|1h' },
+              { label: '范围 6h', value: 'range|6h' },
+              { label: '范围 1d', value: 'range|1d' },
+              { label: '范围 7d', value: 'range|7d' },
+              { label: '瞬时', value: 'instant|5m' },
+            ]} />
           <Button type="primary" icon={<SearchOutlined />} onClick={() => execute()} loading={loading}>查询</Button>
-          <Button size="small" onClick={() => setMode(mode === 'instant' ? 'range' : 'instant')}>
-            {mode === 'instant' ? '瞬时' : '范围'}
-          </Button>
-          {ranges.map(r => (
-            <Button key={r.value} size="small" type={range === r.value ? 'primary' : 'default'}
-              onClick={() => setRange(r.value)}>{r.label}</Button>
-          ))}
-        </Space>
-        <Space style={{ width: '100%' }}>
-          <HistoryOutlined style={{ color: '#999' }} />
-          <Select showSearch allowClear placeholder="历史查询（支持模糊搜索）"
-            value={undefined} onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
-            filterOption={false} style={{ flex: 1 }}
+          <Select showSearch allowClear placeholder="历史查询（支持模糊搜索）" value={undefined}
+            onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
+            filterOption={false} style={{ minWidth: 300, flex: 1 }} dropdownMatchSelectWidth={false}
             options={history.map(h => ({ value: h.promql, label: h.promql }))} />
         </Space>
       </Card>
