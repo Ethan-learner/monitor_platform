@@ -123,7 +123,7 @@ def _scan_remote_dirs() -> Dict[str, List[dict]]:
                 continue
             category = fname[:-5]
             try:
-                content = _ssh_read_file(os.path.join(dept_path, fname))
+                content = _ssh_read_file(f"{dept_path}/{fname}")
                 parsed = yaml.safe_load(content) or []
                 targets = []
                 labels = {}
@@ -379,23 +379,9 @@ async def toggle_target(tid: int) -> dict:
     return {"status": "disabled" if new_status == 0 else "enabled"}
 
 
-@router.get("/debug")
-async def debug_scan() -> dict:
-    """调试：直接测试 SSH 扫描"""
-    try:
-        base = settings.prometheus_targets_dir
-        # Test basic SSH
-        raw = _ssh_exec(f"ls -1 {base}")
-        return {
-            "ok": True,
-            "targets_dir": base,
-            "ssh_host": settings.ssh_host,
-            "ssh_user": settings.ssh_user,
-            "ls_output": raw,
-            "parsed_dirs": raw.split("\n") if raw else [],
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e), "type": type(e).__name__}
+@router.get("/ping")
+async def ping() -> dict:
+    return {"pong": True, "version": 2}
 
 
 @router.post("/sync")
