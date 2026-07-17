@@ -13,6 +13,48 @@ const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex
 const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ width: '100%', border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }} />
 const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
 
+function AddUserModal({ open, onClose, onSuccess, allRoles }: { open: boolean; onClose: () => void; onSuccess: () => void; allRoles: any[] }) {
+  const [name, setName] = useState('')
+  const [display, setDisplay] = useState('')
+  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [roleIds, setRoleIds] = useState<number[]>([])
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleAdd = async () => {
+    if (!name) { message.warning('请输入用户名'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/auth/register', { username: name, displayName: display, email, phone, password: password || undefined })
+      const newUid = res.data.id
+      if (newUid && roleIds.length > 0) {
+        for (const rid of roleIds) await api.post(`/settings/users/${newUid}/roles`, { role_id: rid })
+      }
+      message.success(password ? '已创建' : `已创建，初始密码: ${res.data.password}`)
+      onClose(); onSuccess()
+    } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }; setSubmitting(false)
+  }
+
+  return (
+    <Modal title="新增用户" open={open} onCancel={onClose} onOk={handleAdd} okText="确定" cancelText="取消" width={520} confirmLoading={submitting}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
+        <LRow label="用户名"><LInput placeholder="请输入" value={name} onChange={e => setName(e.target.value)} /></LRow>
+        <LRow label="姓名"><LInput placeholder="请输入" value={display} onChange={e => setDisplay(e.target.value)} /></LRow>
+        <LRow label="密码">
+          <LPassword placeholder="留空自动生成" value={password} onChange={e => setPassword(e.target.value)} />
+          <Button size="small" onClick={() => setPassword(genPwd())}>生成</Button>
+        </LRow>
+        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={e => setPhone(e.target.value)} /></LRow>
+        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={e => setEmail(e.target.value)} /></LRow>
+        <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" value={roleIds} onChange={v => setRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
+      </div>
+    </Modal>
+  )
+}
+
+function genPwd() { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
+
 export default function UserMgmt() {
   const [tab, setTab] = useState('users')
 
@@ -39,13 +81,6 @@ function UserTab() {
   const [userRoles, setUserRoles] = useState<number[]>([])
   const [userPerms, setUserPerms] = useState<string[]>([])
   const [addOpen, setAddOpen] = useState(false)
-  const [addName, setAddName] = useState('')
-  const [addDisplay, setAddDisplay] = useState('')
-  const [addDept, setAddDept] = useState('')
-  const [addEmail, setAddEmail] = useState('')
-  const [addPhone, setAddPhone] = useState('')
-  const [addPassword, setAddPassword] = useState('')
-  const [addRoleIds, setAddRoleIds] = useState<number[]>([])
 
   const load = async () => {
     setLoading(true)
@@ -114,33 +149,17 @@ function UserTab() {
     catch { message.error('操作失败') }
   }
 
-  const handleAdd = async () => {
-    if (!addName) { message.warning('请输入用户名'); return }
-    try {
-      const res = await api.post('/auth/register', { username: addName, displayName: addDisplay, department: addDept, email: addEmail, phone: addPhone, password: addPassword || undefined })
-      const newUid = res.data.id
-      if (newUid && addRoleIds.length > 0) {
-        for (const rid of addRoleIds) {
-          await api.post(`/settings/users/${newUid}/roles`, { role_id: rid })
-        }
-      }
-      message.success(addPassword ? '已创建' : `已创建，初始密码: ${res.data.password}`)
-      setAddOpen(false); setAddName(''); setAddDisplay(''); setAddDept(''); setAddEmail(''); setAddPhone(''); setAddPassword(''); setAddRoleIds([]); load()
-    } catch (e: any) { message.error(e?.response?.data?.detail || '创建失败') }
   }
 
   const isProtected = (u: any) => u.username === 'admin'
   const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
-
-  const resetAddForm = () => { setAddName(''); setAddDisplay(''); setAddPassword(''); setAddPhone(''); setAddEmail(''); setAddRoleIds([]) }
-  const genPwd = () => { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
 
   return (
     <>
       <style>{`input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;-webkit-text-fill-color:inherit!important;caret-color:inherit!important}.ant-select-selector{box-shadow:none!important;outline:none!important;padding-left:0!important}.ant-select-selection-placeholder{padding-left:0!important}.ant-select-focused .ant-select-selector{box-shadow:none!important;outline:none!important;border-color:transparent!important}.ant-select-open .ant-select-selector{box-shadow:none!important;outline:none!important}.ant-picker{box-shadow:none!important}.ant-input-affix-wrapper:focus,.ant-input-affix-wrapper-focused{box-shadow:none!important;outline:none!important}`}</style>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'flex-end' }}>
         <Input placeholder="搜索" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 160 }} allowClear prefix={<SearchOutlined />} />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { resetAddForm(); setAddOpen(true) }}>新增用户</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>新增用户</Button>
       </Space>
       <Table rowKey="id" dataSource={data} loading={loading} size="middle" bordered pagination={false}
         columns={[
@@ -172,36 +191,7 @@ function UserTab() {
         ]}
       />
 
-      <Modal title="新增用户" open={addOpen} onCancel={() => { setAddOpen(false); resetAddForm() }} onOk={handleAdd} okText="确定" cancelText="取消" width={520} key={addOpen ? 'add-open' : 'add-closed'}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
-          <LRow label="用户名"><LInput placeholder="请输入" value={addName} onChange={e => setAddName(e.target.value)} /></LRow>
-          <LRow label="姓名"><LInput placeholder="请输入" value={addDisplay} onChange={e => setAddDisplay(e.target.value)} /></LRow>
-          <LRow label="密码">
-            <LPassword placeholder="留空自动生成" value={addPassword} onChange={e => setAddPassword(e.target.value)} />
-            <Button size="small" onClick={() => setAddPassword(genPwd())}>生成</Button>
-          </LRow>
-          <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={addPhone} onChange={e => setAddPhone(e.target.value)} /></LRow>
-          <LRow label="邮箱"><LInput placeholder="非必填" value={addEmail} onChange={e => setAddEmail(e.target.value)} /></LRow>
-          <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" value={addRoleIds} onChange={v => setAddRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
-        </div>
-      </Modal>
-
-      <Modal title="编辑用户" open={!!editUser} onCancel={() => setEditUser(null)} onOk={saveInfo} okText="确定" cancelText="取消" width={520}>
-        {editUser && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
-            <LRow label="用户名"><LInput value={editUser.username} disabled /></LRow>
-            <LRow label="工号"><LInput value={editUser.personCode || '—'} disabled /></LRow>
-            <LRow label="姓名"><LInput placeholder="请输入" defaultValue={editUser.displayName} id="edit-displayName" /></LRow>
-            <LRow label="密码">
-              <LPassword placeholder="留空不修改" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
-              <Button size="small" onClick={() => { const p = genPwd(); setEditPassword(p); navigator.clipboard.writeText(p).catch(() => {}); message.success('已生成并复制: ' + p) }}>重置</Button>
-            </LRow>
-            <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" defaultValue={editUser.phone} id="edit-phone" /></LRow>
-            <LRow label="邮箱"><LInput placeholder="非必填" defaultValue={editUser.email} id="edit-email" /></LRow>
-            <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" defaultValue={userRoles} onChange={v => setUserRoles(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
-          </div>
-        )}
-      </Modal>
+      {addOpen && <AddUserModal open={addOpen} onClose={() => setAddOpen(false)} onSuccess={load} allRoles={allRoles} />}
     </>
   )
 }

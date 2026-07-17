@@ -1,14 +1,18 @@
+import { useState, useCallback } from 'react'
 import { Card, Typography, Button, Form, Input, message } from 'antd'
 import {
   LoginOutlined,
   UserOutlined,
   LockOutlined,
+  LoadingOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { api } from '../lib/api'
 
 const { Title, Text } = Typography
+const SAVED_USER_KEY = 'portal_saved_user'
 
 const RING_SLICES = [
   { label: 'Critical', pct: 36, color: '#ff4d4f', offset: 0 },
@@ -99,20 +103,34 @@ const STATUS_BADGES: { label: string; status: keyof typeof SEV_C }[] = [
 
 export default function Login() {
   const { isAuthenticated, init } = useAuthStore()
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [saveUser, setSaveUser] = useState(() => !!localStorage.getItem(SAVED_USER_KEY))
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const handleFinish = async (values: { username: string; password: string }) => {
+  const handleFinish = useCallback(async (values: { username: string; password: string }) => {
+    setSubmitting(true)
+    setErrorMsg(null)
     try {
+      if (saveUser) {
+        localStorage.setItem(SAVED_USER_KEY, values.username)
+      } else {
+        localStorage.removeItem(SAVED_USER_KEY)
+      }
       const { data } = await api.post('/auth/login', values)
       await init()
       message.success(`欢迎回来，${data.displayName}`)
     } catch (e: any) {
-      message.error(e?.response?.data?.detail || '登录失败')
+      const detail = e?.response?.data?.detail
+      const msg = typeof detail === 'string' ? detail : '登录失败，请检查用户名或密码'
+      setErrorMsg(msg)
+    } finally {
+      setSubmitting(false)
     }
-  }
+  }, [saveUser, init])
 
   const renderSpark = (s: typeof SPARK_DATA[number], i: number, w: number, h: number) => {
     const maxV = Math.max(...s.values)
@@ -197,13 +215,47 @@ export default function Login() {
         @keyframes p-dashMove {
           to { stroke-dashoffset: -24; }
         }
+        @keyframes p-borderRotate {
+          0%   { background-position: 0% 0%; }
+          100% { background-position: 200% 0%; }
+        }
+        @keyframes p-shake {
+          0%,100% { transform: translateX(0); }
+          20%     { transform: translateX(-6px); }
+          40%     { transform: translateX(5px); }
+          60%     { transform: translateX(-3px); }
+          80%     { transform: translateX(2px); }
+        }
+        @keyframes p-fadeIn {
+          0%   { opacity: 0; transform: translateY(-6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes p-scanCard {
+          0%   { top: -2px; left: -2px; width: 0; height: 2px; }
+          25%  { top: -2px; left: -2px; width: calc(100% + 4px); height: 2px; }
+          50%  { top: -2px; left: calc(100% - 0px); width: 2px; height: calc(100% + 4px); }
+          75%  { top: calc(100% - 0px); left: -2px; width: calc(100% + 4px); height: 2px; }
+          100% { top: -2px; left: -2px; width: 2px; height: calc(100% + 4px); }
+        }
+        .login-input .ant-input-outlined {
+          transition: border-color 0.3s, box-shadow 0.3s !important;
+        }
+        .login-input .ant-input-outlined:focus-within {
+          border-color: #1677ff !important;
+          box-shadow: 0 0 0 2px rgba(22,119,255,0.25) !important;
+        }
         .login-input input,
         .login-input .ant-input-outlined {
           background: #0a0e1a !important;
           color: #ffffff !important;
+          transition: background 0.3s ease;
         }
         .login-input input::placeholder {
-          color: rgba(180,200,240,0.4) !important;
+          color: rgba(120,160,220,0.35) !important;
+          transition: color 0.3s ease;
+        }
+        .login-input .ant-input-outlined:focus-within input::placeholder {
+          color: rgba(120,160,220,0.55) !important;
         }
         .login-input input:-webkit-autofill,
         .login-input input:-webkit-autofill:hover,
@@ -816,91 +868,208 @@ export default function Login() {
         style={{
           width: 400,
           textAlign: 'center',
-          borderRadius: 8,
-          boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(60,100,180,0.12)',
+          borderRadius: 10,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(60,100,180,0.12)',
           position: 'relative',
           zIndex: 2,
-          background: 'rgba(12,16,30,0.94)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(60,100,180,0.12)',
+          background: 'linear-gradient(160deg, rgba(16,22,42,0.96), rgba(10,14,26,0.98))',
+          backdropFilter: 'blur(16px)',
+          border: 'none',
+          overflow: 'hidden',
+          animation: errorMsg ? 'p-shake 0.4s ease-in-out' : undefined,
         }}
       >
         <div
           aria-hidden
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            marginBottom: 14,
-            color: 'rgba(180,200,240,0.5)',
-            fontSize: 10,
-            letterSpacing: 2,
+            position: 'absolute',
+            top: -2,
+            left: -2,
+            width: 'calc(100% + 4px)',
+            height: 'calc(100% + 4px)',
+            background: 'linear-gradient(90deg, transparent, rgba(22,119,255,0.4), rgba(255,77,79,0.4), transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'p-borderRotate 3s linear infinite',
+            pointerEvents: 'none',
+            mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            maskComposite: 'exclude',
+            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            padding: 1,
+            borderRadius: 10,
           }}
-        >
-          <span
+        />
+
+        <div style={{ position: 'relative', padding: '28px 28px 24px' }}>
+          <div
+            aria-hidden
             style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#ff4d4f',
-              boxShadow: '0 0 8px #ff4d4f',
-              animation: 'p-blink 1.2s ease-in-out infinite',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              marginBottom: 14,
+              color: 'rgba(180,200,240,0.5)',
+              fontSize: 10,
+              letterSpacing: 2,
             }}
-          />
-          MONITORING PORTAL
-        </div>
-        <Title level={3} style={{ marginBottom: 4, color: '#e6f0ff', letterSpacing: 2 }}>
-          统一监控门户
-        </Title>
-        <Text
-          style={{
-            display: 'block',
-            marginBottom: 28,
-            color: 'rgba(140,170,210,0.45)',
-            fontSize: 12,
-            letterSpacing: 4,
-          }}
-        >
-          UNIFIED MONITORING PORTAL
-        </Text>
-        <Form onFinish={handleFinish} layout="vertical" size="large" className="login-input">
-          <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input
-              prefix={<UserOutlined style={{ color: '#ffffff', fontSize: 14 }} />}
-              placeholder="用户名 / 工号"
-              variant="outlined"
-              style={{ background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)', color: '#ffffff' }}
-            />
-          </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password
-              prefix={<LockOutlined style={{ color: '#ffffff', fontSize: 14 }} />}
-              placeholder="密码"
-              autoComplete="current-password"
-              variant="outlined"
-              style={{ background: '#0a0e1a', borderColor: 'rgba(60,100,180,0.25)', color: '#ffffff' }}
-            />
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              icon={<LoginOutlined style={{ color: '#fff' }} />}
+          >
+            <span
               style={{
-                background: 'linear-gradient(135deg, #1677ff, #0958d9)',
-                border: 'none',
-                boxShadow: '0 4px 14px rgba(22,119,255,0.35)',
-                height: 42,
-                fontSize: 14,
-                letterSpacing: 4,
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#ff4d4f',
+                boxShadow: '0 0 8px #ff4d4f',
+                animation: 'p-blink 1.2s ease-in-out infinite',
+              }}
+            />
+            MONITORING PORTAL
+            <span style={{ color: 'rgba(140,170,210,0.3)', marginLeft: 4 }}>v1.0</span>
+          </div>
+
+          <Title level={3} style={{ marginBottom: 4, color: '#e6f0ff', letterSpacing: 2, fontWeight: 700 }}>
+            统一监控门户
+          </Title>
+          <Text
+            style={{
+              display: 'block',
+              marginBottom: 24,
+              color: 'rgba(140,170,210,0.45)',
+              fontSize: 11,
+              letterSpacing: 4,
+            }}
+          >
+            UNIFIED MONITORING PORTAL
+          </Text>
+
+          {errorMsg && (
+            <div
+              style={{
+                animation: 'p-fadeIn 0.3s ease-out',
+                background: 'rgba(255,77,79,0.12)',
+                border: '1px solid rgba(255,77,79,0.3)',
+                borderRadius: 6,
+                padding: '6px 10px',
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: '#ff4d4f',
               }}
             >
-              登 录
-            </Button>
-          </Form.Item>
-        </Form>
+              <ExclamationCircleOutlined />
+              {errorMsg}
+            </div>
+          )}
+
+          <Form
+            onFinish={handleFinish}
+            layout="vertical"
+            size="large"
+            className="login-input"
+            initialValues={{ username: localStorage.getItem(SAVED_USER_KEY) || '' }}
+          >
+            <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
+              <Input
+                prefix={<UserOutlined style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} />}
+                placeholder="用户名 / 工号"
+                variant="outlined"
+                autoFocus
+                style={{
+                  background: '#0a0e1a',
+                  borderColor: 'rgba(60,100,180,0.25)',
+                  color: '#ffffff',
+                  transition: 'border-color 0.3s, box-shadow 0.3s',
+                }}
+              />
+            </Form.Item>
+            <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
+              <Input.Password
+                prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} />}
+                placeholder="密码"
+                autoComplete="current-password"
+                variant="outlined"
+                style={{
+                  background: '#0a0e1a',
+                  borderColor: 'rgba(60,100,180,0.25)',
+                  color: '#ffffff',
+                  transition: 'border-color 0.3s, box-shadow 0.3s',
+                }}
+              />
+            </Form.Item>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 16,
+                marginTop: -8,
+                fontSize: 12,
+              }}
+            >
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: 'rgba(140,170,210,0.55)',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(180,200,240,0.8)' }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(140,170,210,0.55)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={saveUser}
+                  onChange={(e) => setSaveUser(e.target.checked)}
+                  style={{ accentColor: '#1677ff', width: 13, height: 13 }}
+                />
+                记住账号
+              </label>
+              <span
+                style={{
+                  color: 'rgba(140,170,210,0.4)',
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                }}
+              >
+                Enter → 登录
+              </span>
+            </div>
+
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={submitting}
+                icon={submitting ? <LoadingOutlined /> : <LoginOutlined style={{ color: '#fff' }} />}
+                style={{
+                  background: submitting
+                    ? 'linear-gradient(135deg, #1677ff, #0958d9)'
+                    : 'linear-gradient(135deg, #1677ff, #0958d9)',
+                  border: 'none',
+                  boxShadow: submitting
+                    ? '0 4px 14px rgba(22,119,255,0.35)'
+                    : '0 4px 14px rgba(22,119,255,0.35)',
+                  height: 42,
+                  fontSize: 14,
+                  letterSpacing: 4,
+                  opacity: submitting ? 0.8 : 1,
+                  transition: 'opacity 0.3s, transform 0.2s',
+                }}
+                onMouseEnter={(e) => { if (!submitting) (e.target as HTMLElement).style.transform = 'scale(1.02)' }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.transform = 'scale(1)' }}
+              >
+                {submitting ? '验证中...' : '登 录'}
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
       </Card>
     </div>
   )
