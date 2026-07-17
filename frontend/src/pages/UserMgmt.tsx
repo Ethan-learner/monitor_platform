@@ -130,14 +130,14 @@ function UserTab() {
 
   const LInput = (p: any) => <Input {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="new-password" />
   const LPassword = (p: any) => <Input.Password {...p} style={{ ...lineStyle, flex: 1 }} variant="borderless" autoComplete="new-password" />
-  const LSelect = (p: any) => <div style={{ flex: 1, borderBottom: '1px solid #d9d9d9', paddingTop: 2 }}><Select {...p} variant="borderless" style={{ width: '100%', border: 'none', boxShadow: 'none' }} /></div>
+  const LSelect = (p: any) => <Select {...p} variant="borderless" style={{ width: '100%', border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }} />
   const LRow = (p: any) => <div style={{ ...rowS, ...(p.style || {}) }}><span style={labelS}>{p.label}:</span>{p.children}</div>
   const resetAddForm = () => { setAddName(''); setAddDisplay(''); setAddPassword(''); setAddPhone(''); setAddEmail(''); setAddRoleIds([]) }
   const genPwd = () => { const a=new Uint8Array(9); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
 
   return (
     <>
-      <style>{`input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;-webkit-text-fill-color:inherit!important;caret-color:inherit!important}.ant-select-focused .ant-select-selector,.ant-select-selector:focus,.ant-select-selector:active{box-shadow:none!important;outline:none!important;border-color:transparent!important}.ant-select-focused.ant-select.ant-select-borderless .ant-select-selector{box-shadow:none!important}`}</style>
+      <style>{`input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;-webkit-text-fill-color:inherit!important;caret-color:inherit!important}.ant-select-selector{box-shadow:none!important;outline:none!important}.ant-select-focused .ant-select-selector{box-shadow:none!important;outline:none!important;border-color:transparent!important}.ant-select-open .ant-select-selector{box-shadow:none!important;outline:none!important}.ant-picker{box-shadow:none!important}.ant-input-affix-wrapper:focus,.ant-input-affix-wrapper-focused{box-shadow:none!important;outline:none!important}`}</style>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'flex-end' }}>
         <Input placeholder="搜索" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 160 }} allowClear prefix={<SearchOutlined />} />
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { resetAddForm(); setAddOpen(true) }}>新增用户</Button>
