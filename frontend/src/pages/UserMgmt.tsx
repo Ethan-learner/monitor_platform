@@ -137,7 +137,7 @@ function UserTab() {
 
   return (
     <>
-      <style>{`input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;-webkit-text-fill-color:inherit!important;caret-color:inherit!important}`}</style>
+      <style>{`input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;-webkit-text-fill-color:inherit!important;caret-color:inherit!important}.ant-select-focused .ant-select-selector,.ant-select-selector:focus,.ant-select-selector:active{box-shadow:none!important;outline:none!important;border-color:transparent!important}.ant-select-focused.ant-select.ant-select-borderless .ant-select-selector{box-shadow:none!important}`}</style>
       <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'flex-end' }}>
         <Input placeholder="搜索" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 160 }} allowClear prefix={<SearchOutlined />} />
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { resetAddForm(); setAddOpen(true) }}>新增用户</Button>
