@@ -43,16 +43,23 @@ def _read(path: str) -> str:
 
 
 def _write(path: str, content: str) -> None:
+    import base64
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        sftp = ssh.open_sftp()
-        f = sftp.open(path, "w")
-        f.write(content.encode())
-        f.flush()
-        f.close()
-        sftp.close()
+        content_b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
+        parent = '/'.join(path.split('/')[:-1])
+        cmd = f"mkdir -p '{parent}' && echo '{content_b64}' | base64 -d > '{path}'"
+        stdin, stdout, stderr = ssh.exec_command(cmd)
+        channel = stdout.channel
+        channel.settimeout(10)
+        exit_status = channel.recv_exit_status()
+        err = stderr.read().decode('utf-8', errors='replace').strip()
+        if exit_status != 0 or err:
+            raise HTTPException(502, detail=f"write_failed: exit={exit_status} stderr={err}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(502, detail=f"write_failed: {e}")
     finally:
@@ -64,8 +71,8 @@ def _rm(path: str) -> None:
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        _, stdout, stderr = ssh.exec_command(f"rm -rf {path}")
-        stdout.read(); stderr.read()
+        stdin, stdout, stderr = ssh.exec_command(f"rm -f '{path}'")
+        stdout.channel.recv_exit_status()
     except Exception:
         pass
     finally:
@@ -77,35 +84,25 @@ def _mv(src: str, dst: str) -> None:
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        sftp = ssh.open_sftp()
-        try:
-            content = sftp.open(src, "r").read().decode()
-        except Exception:
-            raise HTTPException(502, detail="mv_failed: source not found")
-        # Write to destination
         parent = '/'.join(dst.split('/')[:-1])
-        dirs = []
-        p = parent
-        while p and p != '/':
-            dirs.append(p)
-            p = '/'.join(p.split('/')[:-1])
-        for d in reversed(dirs):
-            try:
-                sftp.stat(d)
-            except FileNotFoundError:
-                try:
-                    sftp.mkdir(d)
-                except Exception:
-                    pass
-        with sftp.open(dst, "w") as f:
-            f.write(content.encode())
-        # Remove source
-        sftp.remove(src)
-        sftp.close()
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(502, detail=f"mv_failed: {e}")
+        stdin, stdout, stderr = ssh.exec_command(f"mkdir -p '{parent}' && mv '{src}' '{dst}'")
+        stdout.channel.recv_exit_status()
+    except Exception:
+        pass
+    finally:
+        ssh.close()
+
+
+def _mv(src: str, dst: str) -> None:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
+    try:
+        parent = '/'.join(dst.split('/')[:-1])
+        _, stdout, stderr = ssh.exec_command(f"mkdir -p '{parent}' && mv '{src}' '{dst}'")
+        stdout.read(); stderr.read()
+    except Exception:
+        pass
     finally:
         ssh.close()
 
