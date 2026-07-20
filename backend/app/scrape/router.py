@@ -750,7 +750,7 @@ async def get_health() -> dict:
     if _HEALTH_CACHE["targets"] is None:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT scrape_target_id, department, category, target, health_status, prometheus_health, last_scrape, last_error, last_check_at FROM scrape_target_health ORDER BY department, category")
+            cur.execute("SELECT h.scrape_target_id, h.department, h.category, h.target, h.health_status, h.prometheus_health, h.last_scrape, h.last_error, h.last_check_at FROM scrape_target_health h JOIN scrape_targets t ON t.id=h.scrape_target_id WHERE t.status=1 ORDER BY h.department, h.category")
             _HEALTH_CACHE["targets"] = [
                 {
                     "id": r[0], "department": r[1], "category": r[2], "target": r[3],
