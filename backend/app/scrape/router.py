@@ -48,23 +48,10 @@ def _write(path: str, content: str) -> None:
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
         sftp = ssh.open_sftp()
-        # Recursively create parent directories via SFTP
-        parent = '/'.join(path.split('/')[:-1])
-        dirs = []
-        p = parent
-        while p and p != '/':
-            dirs.append(p)
-            p = '/'.join(p.split('/')[:-1])
-        for d in reversed(dirs):
-            try:
-                sftp.stat(d)
-            except FileNotFoundError:
-                try:
-                    sftp.mkdir(d)
-                except Exception:
-                    pass
-        with sftp.open(path, "w") as f:
-            f.write(content.encode())
+        f = sftp.open(path, "w")
+        f.write(content.encode())
+        f.flush()
+        f.close()
         sftp.close()
     except Exception as e:
         raise HTTPException(502, detail=f"write_failed: {e}")
@@ -358,13 +345,11 @@ async def delete_directory(did: int) -> dict:
 
 @router.delete("/file/{dept}/{cat}")
 async def delete_file(dept: str, cat: str) -> dict:
-    """删除配置文件（移入 _deleted/ + 级联所有 target）"""
+    """删除配置文件（级联所有 target → -1，文件移入 _deleted/）"""
     base = settings.prometheus_targets_dir
     src = f"{base}/{dept}/{cat}.yaml"
     ts = datetime.now().strftime('%Y%m%d%H%M%S')
     dst = f"{base}/{dept}/_deleted/{cat}_{ts}.yaml"
-
-    _mv(src, dst)
 
     try:
         with get_db(readonly=False) as conn:
@@ -372,6 +357,11 @@ async def delete_file(dept: str, cat: str) -> dict:
             cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND category=%s AND status != -1", (dept, cat))
             cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND category=%s AND enabled != -1", (dept, cat))
             cur.close()
+    except Exception:
+        pass
+
+    try:
+        _mv(src, dst)
     except Exception:
         pass
 
