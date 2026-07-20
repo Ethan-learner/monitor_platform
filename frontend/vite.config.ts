@@ -53,12 +53,29 @@ export default defineConfig({
         },
       },
       '/pmm-ui': {
-        target: 'http://localhost:8001',
+        target: 'https://172.16.10.99',
         changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            proxyReq.setHeader('origin', 'https://172.16.10.99')
+            proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from('admin:123456').toString('base64'))
+            if (req.headers['referer']) proxyReq.setHeader('referer', req.headers['referer'].replace(/localhost:\d+/, '172.16.10.99'))
+          })
+          proxy.on('proxyRes', hideFrameHeaders)
+        },
       },
       '/graph': {
-        target: 'http://localhost:8001',
+        target: 'https://172.16.10.99',
         changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            proxyReq.setHeader('origin', 'https://172.16.10.99')
+            if (req.headers['referer']) proxyReq.setHeader('referer', req.headers['referer'].replace(/localhost:\d+/, '172.16.10.99'))
+          })
+          proxy.on('proxyRes', hideFrameHeaders)
+        },
       },
       '/v1': {
         target: 'https://172.16.10.99',

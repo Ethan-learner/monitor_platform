@@ -9,7 +9,6 @@ from app.webhook.router import router as webhook_router
 from app.settings.router import router as settings_router
 from app.scrape.router import router as scrape_router
 from app.vm.router import router as vm_router
-from app.pmm_proxy import router as pmm_proxy_router
 
 app = FastAPI(title="统一监控门户后端", version="0.1.0")
 app.include_router(auth_router)
@@ -21,7 +20,6 @@ app.include_router(webhook_router)
 app.include_router(settings_router)
 app.include_router(scrape_router)
 app.include_router(vm_router)
-app.include_router(pmm_proxy_router)
 
 
 @app.get("/api/healthz")
