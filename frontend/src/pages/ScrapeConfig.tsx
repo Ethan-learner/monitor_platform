@@ -387,12 +387,14 @@ function OverviewDashboard({ data, dirs }: { data: ScrapeTarget[]; dirs: Directo
       if (!d.category) continue
       fileByDept[d.name] = (fileByDept[d.name] || 0) + 1
     }
-    const targetByDept: Record<string, { active: number; disabled: number }> = {}
+    // 各文件抓取目标状态
+    const targetByFile: Record<string, { dept: string; active: number; disabled: number }> = {}
     for (const t of data) {
       if (t.status === -1) continue
-      if (!targetByDept[t.department]) targetByDept[t.department] = { active: 0, disabled: 0 }
-      if (t.status === 1) targetByDept[t.department].active += 1
-      else targetByDept[t.department].disabled += 1
+      const key = `${t.department}/${t.category}`
+      if (!targetByFile[key]) targetByFile[key] = { dept: t.department, active: 0, disabled: 0 }
+      if (t.status === 1) targetByFile[key].active += 1
+      else targetByFile[key].disabled += 1
     }
     return {
       deptCount: Object.keys(fileByDept).length,
@@ -400,7 +402,7 @@ function OverviewDashboard({ data, dirs }: { data: ScrapeTarget[]; dirs: Directo
       targetActive: activeData.length,
       targetDisabled: disabledData.length,
       fileByDept,
-      targetByDept,
+      targetByFile,
     }
   }, [data, dirs])
 
@@ -409,16 +411,15 @@ function OverviewDashboard({ data, dirs }: { data: ScrapeTarget[]; dirs: Directo
     status: { active: '#52c41a', disabled: '#faad14' },
   }
 
-  // 文件饼图
+  // 文件分布
   const fileEntries = Object.entries(stats.fileByDept).sort((a, b) => b[1] - a[1])
   const fileTotal = fileEntries.reduce((a, [, v]) => a + v, 0) || 1
 
-  // 状态饼图
-  const statusTotal = stats.targetActive + stats.targetDisabled || 1
-
-  // 柱状图
-  const targetEntries = Object.entries(stats.targetByDept).sort((a, b) => (b[1].active + b[1].disabled) - (a[1].active + a[1].disabled))
-  const maxTargets = Math.max(1, ...targetEntries.map(([, v]) => v.active + v.disabled))
+  // 文件目标状态
+  const fileEntries2 = Object.entries(stats.targetByFile)
+    .map(([k, v]) => ({ key: k, ...v, total: v.active + v.disabled }))
+    .sort((a, b) => b.total - a.total)
+  const maxFileTargets = Math.max(1, ...fileEntries2.map((e) => e.total))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -426,143 +427,100 @@ function OverviewDashboard({ data, dirs }: { data: ScrapeTarget[]; dirs: Directo
       <Row gutter={12}>
         <Col span={6}>
           <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-            <Statistic title="部门" value={stats.deptCount} prefix={<FolderOutlined />} valueStyle={{ color: '#1677ff' }} />
+            <Statistic title={<span style={{ color: '#666' }}>文件夹</span>} value={stats.deptCount} prefix={<FolderOutlined style={{ color: '#1677ff' }} />} valueStyle={{ color: '#1677ff' }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-            <Statistic title="配置文件" value={stats.fileCount} prefix={<FileOutlined />} valueStyle={{ color: '#722ed1' }} />
+            <Statistic title={<span style={{ color: '#666' }}>配置文件</span>} value={stats.fileCount} prefix={<FileOutlined style={{ color: '#722ed1' }} />} valueStyle={{ color: '#722ed1' }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-            <Statistic title="目标（启用）" value={stats.targetActive} prefix={<DashboardOutlined />} valueStyle={{ color: '#52c41a' }} />
+            <Statistic title={<span style={{ color: '#666' }}>目标启用</span>} value={stats.targetActive} prefix={<DashboardOutlined style={{ color: '#52c41a' }} />} valueStyle={{ color: '#52c41a' }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-            <Statistic title="目标（禁用）" value={stats.targetDisabled} prefix={<StopOutlined />} valueStyle={{ color: '#faad14' }} />
+            <Statistic title={<span style={{ color: '#666' }}>目标禁用</span>} value={stats.targetDisabled} prefix={<StopOutlined style={{ color: '#faad14' }} />} valueStyle={{ color: '#faad14' }} />
           </Card>
         </Col>
       </Row>
 
-      {/* 饼图组 */}
-      <Row gutter={12}>
-        <Col span={12}>
-          <Card size="small" title="配置文件分布（按部门）" styles={{ body: { padding: 12 } }}>
-            {fileEntries.length === 0 ? (
-              <AntEmpty description="暂无数据" style={{ padding: 24 }} />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <svg width="160" height="160" viewBox="0 0 160 160">
-                  {(() => {
-                    let acc = 0
-                    const r = 56
-                    const c = 2 * Math.PI * r
-                    return fileEntries.map(([name, v], i) => {
-                      const dash = (v / fileTotal) * c
-                      const seg = (
-                        <circle
-                          key={name}
-                          cx="80"
-                          cy="80"
-                          r={r}
-                          fill="none"
-                          stroke={COLORS.file[i % COLORS.file.length]}
-                          strokeWidth="22"
-                          strokeDasharray={`${dash} ${c - dash}`}
-                          strokeDashoffset={-acc}
-                          transform="rotate(-90 80 80)"
-                        />
-                      )
-                      acc += dash
-                      return seg
-                    })
-                  })()}
-                  <text x="80" y="78" textAnchor="middle" fill="#e6f0ff" fontSize="22" fontWeight="700">{fileTotal}</text>
-                  <text x="80" y="98" textAnchor="middle" fill="rgba(140,170,210,0.5)" fontSize="10">文件数</text>
-                </svg>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {fileEntries.map(([name, v], i) => (
-                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: COLORS.file[i % COLORS.file.length] }} />
-                      <span style={{ flex: 1, color: 'rgba(180,200,240,0.85)' }}>{name}</span>
-                      <span style={{ color: '#e6f0ff', fontWeight: 600 }}>{v}</span>
-                      <span style={{ color: 'rgba(140,170,210,0.5)', fontSize: 11, width: 36, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card size="small" title="目标状态（启用 / 禁用）" styles={{ body: { padding: 12 } }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <svg width="160" height="160" viewBox="0 0 160 160">
+      {/* 环形图：配置文件分布 + 每文件夹数量标注 */}
+      <Card size="small" title={<span style={{ color: '#333' }}>配置文件分布</span>} styles={{ body: { padding: 12 } }}>
+        {fileEntries.length === 0 ? (
+          <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <svg width="180" height="180" viewBox="0 0 180 180">
                 {(() => {
-                  const r = 56
+                  let acc = 0
+                  const r = 64
                   const c = 2 * Math.PI * r
-                  const a1 = (stats.targetActive / statusTotal) * c
-                  const a2 = (stats.targetDisabled / statusTotal) * c
-                  return (
-                    <>
-                      <circle cx="80" cy="80" r={r} fill="none" stroke={COLORS.status.active} strokeWidth="22"
-                        strokeDasharray={`${a1} ${c - a1}`} strokeDashoffset={0} transform="rotate(-90 80 80)" />
-                      <circle cx="80" cy="80" r={r} fill="none" stroke={COLORS.status.disabled} strokeWidth="22"
-                        strokeDasharray={`${a2} ${c - a2}`} strokeDashoffset={-a1} transform="rotate(-90 80 80)" />
-                      <text x="80" y="78" textAnchor="middle" fill="#e6f0ff" fontSize="22" fontWeight="700">{statusTotal}</text>
-                      <text x="80" y="98" textAnchor="middle" fill="rgba(140,170,210,0.5)" fontSize="10">目标总数</text>
-                    </>
-                  )
+                  return fileEntries.map(([name, v], i) => {
+                    const dash = (v / fileTotal) * c
+                    const seg = (
+                      <circle
+                        key={name}
+                        cx="90"
+                        cy="90"
+                        r={r}
+                        fill="none"
+                        stroke={COLORS.file[i % COLORS.file.length]}
+                        strokeWidth="24"
+                        strokeDasharray={`${dash} ${c - dash}`}
+                        strokeDashoffset={-acc}
+                        transform="rotate(-90 90 90)"
+                      >
+                        <title>{`${name}：${v} 个文件`}</title>
+                      </circle>
+                    )
+                    acc += dash
+                    return seg
+                  })
                 })()}
+                <text x="90" y="86" textAnchor="middle" fill="#333" fontSize="26" fontWeight="700">{fileTotal}</text>
+                <text x="90" y="106" textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
               </svg>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'rgba(180,200,240,0.7)', marginBottom: 4 }}>
-                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: COLORS.status.active, marginRight: 4 }} />启用</span>
-                    <span style={{ color: '#e6f0ff', fontWeight: 600 }}>{stats.targetActive}</span>
-                  </div>
-                  <div style={{ height: 6, background: 'rgba(60,100,180,0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(stats.targetActive / statusTotal) * 100}%`, height: '100%', background: COLORS.status.active }} />
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'rgba(180,200,240,0.7)', marginBottom: 4 }}>
-                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: COLORS.status.disabled, marginRight: 4 }} />禁用</span>
-                    <span style={{ color: '#e6f0ff', fontWeight: 600 }}>{stats.targetDisabled}</span>
-                  </div>
-                  <div style={{ height: 6, background: 'rgba(60,100,180,0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(stats.targetDisabled / statusTotal) * 100}%`, height: '100%', background: COLORS.status.disabled }} />
-                  </div>
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(140,170,210,0.5)' }}>
-                  启用率 {((stats.targetActive / statusTotal) * 100).toFixed(1)}%
-                </div>
-              </div>
             </div>
-          </Card>
-        </Col>
-      </Row>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>每文件夹文件数：</div>
+              {fileEntries.map(([name, v], i) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: COLORS.file[i % COLORS.file.length] }} />
+                  <span style={{ flex: 1, color: '#333' }}>{name}</span>
+                  <span style={{ color: COLORS.file[i % COLORS.file.length], fontWeight: 600 }}>{v} 个</span>
+                  <span style={{ color: '#999', fontSize: 11, width: 40, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
 
-      {/* 柱状图：各部门目标数 */}
-      <Card size="small" title="各部门目标数（堆叠：启用 / 禁用）" styles={{ body: { padding: 12 } }}>
-        {targetEntries.length === 0 ? (
-          <AntEmpty description="暂无数据" style={{ padding: 24 }} />
+      {/* 各文件抓取目标状态分布 */}
+      <Card size="small" title={<span style={{ color: '#333' }}>各文件抓取目标状态分布</span>} styles={{ body: { padding: 12 } }}>
+        {fileEntries2.length === 0 ? (
+          <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {targetEntries.map(([name, v]) => {
-              const total = v.active + v.disabled
-              const activePct = (v.active / maxTargets) * 100
-              const disabledPct = (v.disabled / maxTargets) * 100
+            {fileEntries2.map((e) => {
+              const activePct = (e.active / maxFileTargets) * 100
+              const disabledPct = (e.disabled / maxFileTargets) * 100
               return (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ width: 90, color: 'rgba(180,200,240,0.85)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                  <div style={{ flex: 1, height: 18, position: 'relative', background: 'rgba(60,100,180,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 130, color: '#333', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.key}>{e.key}.yaml</span>
+                  <div style={{ flex: 1, height: 18, position: 'relative', background: '#f5f5f5', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${activePct}%`, background: COLORS.status.active, transition: 'width 0.3s' }} />
                     <div style={{ position: 'absolute', left: `${activePct}%`, top: 0, height: '100%', width: `${disabledPct}%`, background: COLORS.status.disabled, transition: 'left 0.3s, width 0.3s' }} />
                   </div>
-                  <span style={{ width: 60, color: '#e6f0ff', fontWeight: 600, textAlign: 'right' }}>{total}</span>
+                  <span style={{ width: 70, color: '#333', fontWeight: 600, textAlign: 'right' }}>
+                    <span style={{ color: COLORS.status.active }}>{e.active}</span>
+                    <span style={{ color: '#999' }}> / </span>
+                    <span style={{ color: COLORS.status.disabled }}>{e.disabled}</span>
+                  </span>
                 </div>
               )
             })}
