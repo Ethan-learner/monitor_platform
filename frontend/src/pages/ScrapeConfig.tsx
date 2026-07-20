@@ -485,11 +485,11 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                   const outX = cx + (r + 16) * Math.cos(midAngle)
                   const outY = cy + (r + 16) * Math.sin(midAngle)
                   // 折弯点
-                  const bendX = cx + (r + 45) * Math.cos(midAngle)
-                  const bendY = cy + (r + 45) * Math.sin(midAngle)
-                  // 标签点：限制在画布内
-                  const labelX = side > 0 ? Math.min(bendX + 30, 400) : Math.max(bendX - 30, 20)
-                  const labelY = Math.max(16, Math.min(bendY, 204))
+                  const bendX = side > 0 ? 360 : 80
+                  const bendY = cy + (r + 30) * Math.sin(midAngle)
+                  // 标签位置：右侧排右栏，左侧排左栏（文字向右）
+                  const labelY = Math.max(22, Math.min(bendY, 198))
+                  const labelX = side > 0 ? 270 : 10
 
                   return (
                     <g key={name}>
@@ -498,10 +498,10 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                         strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
                       <polyline points={`${outX},${outY} ${bendX},${bendY} ${labelX},${labelY}`}
                         fill="none" stroke={color} strokeWidth="1.2" opacity="0.8" />
-                      <circle cx={labelX} cy={labelY} r="3" fill={color} />
-                      <text x={labelX + side * 10} y={labelY + 4} textAnchor={side > 0 ? 'start' : 'end'}
+                      <circle cx={labelX + (side > 0 ? 0 : 14)} cy={labelY} r="3" fill={color} />
+                      <text x={labelX + (side > 0 ? 8 : 22)} y={labelY + 4} textAnchor="start"
                         fill="#333" fontSize="12" fontWeight="500">{name}</text>
-                      <text x={labelX + side * 10} y={labelY + 18} textAnchor={side > 0 ? 'start' : 'end'}
+                      <text x={labelX + (side > 0 ? 8 : 22)} y={labelY + 18} textAnchor="start"
                         fill={color} fontSize="11" fontWeight="600">{v} 个</text>
                     </g>
                   )
