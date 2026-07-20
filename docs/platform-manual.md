@@ -447,3 +447,219 @@ Dashboard 组件对每个 menuKey 保留最多 5 个 iframe (LRU), 切换不重�
 | 8 | 告警风暴防护 | 表达式校验 + 预览匹配实例数 + 确认弹窗 | 待实施 |
 | 9 | OIDC 单点登录 | 对接公司统一身份平台 (域控已替代) | 低优先级 |
 | 10 | 审计日志查询页 | audit_log 表已写入，前端查询页面待开发 | 待实施 |
+| 11 | 抓取配置管理 | 按部门管理抓取目标 CRUD + 采集效果监控 | ✅ 已完成 |
+
+---
+
+## 15. 指标采集 > 抓取配置 架构设计
+
+### 15.1 模块定位
+
+管理 Prometheus 抓取目标（`file_sd_configs`）的完整生命周期，替代人工编辑 YAML。
+
+**三层结构**：文件夹 (部门) → 配置文件 (`.yaml`) → 抓取目标 (单条 target)
+
+### 15.2 数据流架构
+
+```
+                ┌─────────────────────────┐
+用户 操作        │ 前端 ScrapeConfig.tsx   │
+                │ 左栏：文件夹/文件树      │
+                │ 右栏：Dashboard/目标列表  │
+                └─────────┬───────────────┘
+                          │ axios POST/PUT/DELETE
+                          ▼
+                ┌─────────────────────────┐
+API 层          │ /api/scrape/*           │
+                │ 后端 scrape/router.py   │
+                └───┬──────────┬──────────┘
+                    │          │
+         ┌──────────▼──┐  ┌───▼──────────────┐
+存储层   │ MySQL       │  │ SSH → 服务器      │
+         │ scrape_     │  │ prometheus_       │
+         │ directories │  │ targets/          │
+         │ targets     │  │  <部门>/           │
+         │ health      │  │  <分类>.yaml      │
+         └─────────────┘  └───┬───────────────┘
+                              │ file_sd_configs 自动发现
+                              ▼
+                    ┌─────────────────┐
+                    │  Prometheus     │
+                    │  采集 / 监控    │
+                    └─────────────────┘
+```
+
+### 15.3 MySQL 表结构
+
+#### scrape_directories（文件列表）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| name | VARCHAR(255) | 文件夹名（部门） |
+| category | VARCHAR(100) | 文件名（空=文件夹，非空=配置） |
+| label | VARCHAR(200) | 展示名 |
+| description | VARCHAR(500) | 备注 |
+| enabled | TINYINT | 1=启用 0=禁用 -1=删除 |
+
+#### scrape_targets（抓取目标）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| department | VARCHAR(255) | 部门 |
+| category | VARCHAR(255) | 文件名 |
+| target | VARCHAR(500) | 目标地址 `host:port` |
+| labels | JSON | 标签 |
+| status | TINYINT | 1=启用 0=禁用 -1=删除 |
+
+#### scrape_target_health（采集效果快照）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| scrape_target_id | BIGINT UNIQUE | 关联 scrape_targets.id |
+| health_status | VARCHAR(20) | effective/ineffective/invalid |
+| prometheus_health | VARCHAR(20) | up/down/unknown |
+| last_scrape | DATETIME | 最近采集时间 |
+| last_error | TEXT | 采集错误 |
+| last_check_at | DATETIME | 本系统检查时间 |
+
+### 15.4 服务器文件结构
+
+```
+/data/software/prometheus/prometheus_targets/
+├── 系统配置/
+│   ├── prometheus.yaml
+│   ├── nginx.yaml
+│   └── ...
+├── 数据治理部/
+│   ├── node.yaml
+│   ├── api.yaml
+│   ├── _disabled/          ← 禁用文件移入（无时间戳）
+│   └── _deleted/           ← 删除文件移入（带时间戳）
+├── _deleted/               ← 删除的整个文件夹移入
+└── ...
+```
+
+**YAML 文件格式**（每文件含多个 target 块）：
+```yaml
+- targets:
+    - '172.16.10.27:9100'
+  labels:
+    instance: sh-ioc-monitor01
+    service: node_exporter
+- targets:
+    - '172.16.10.28:9100'
+  labels:
+    instance: sh-ioc-monitor02
+    service: node_exporter
+```
+
+**prometheus.yml 引用**：
+```yaml
+scrape_configs:
+  - job_name: '系统配置'
+    file_sd_configs:
+      - files:
+          - '/data/software/prometheus/prometheus_targets/系统配置/*.yaml'
+```
+
+### 15.5 API 路由表
+
+| 方法 | 路径 | 用途 | 写操作链路 |
+|------|------|------|-----------|
+| GET | `/api/scrape/directories` | 文件树列表 | — |
+| POST | `/api/scrape/directories` | 新建文件夹/配置文件 | MySQL → SSH 创建空 YAML |
+| DELETE | `/api/scrape/directories/{id}` | 删除文件夹 | 移入 `_deleted/` → 级联所有 target→-1 + health 清除 |
+| PUT | `/api/scrape/directories/{id}` | 更新文件夹信息 | MySQL |
+| GET | `/api/scrape/targets` | 目标列表 | — |
+| POST | `/api/scrape/targets` | 新增目标 | MySQL → `_sync_file` → SSH 写 YAML |
+| PUT | `/api/scrape/targets/{id}` | 编辑目标 | MySQL → `_sync_file` → SSH 重写 YAML |
+| DELETE | `/api/scrape/targets/{id}` | 删除目标 | status→-1 → `_sync_file` → YAML 移入 `_deleted/` |
+| POST | `/api/scrape/targets/{id}/toggle` | 禁用/启用 | status 切换 → `_sync_file` → YAML 移入 `_disabled/` |
+| GET | `/api/scrape/health` | 采集效果查询 | 缓存 30s，JOIN scrape_targets 过滤 |
+| POST | `/api/scrape/health/refresh` | 强制刷新 | 拉 Prometheus API → 对比 → 写入 health 表 |
+| POST | `/api/scrape/sync` | 从服务器同步 | SSH 扫描目录 → 写入 DB |
+
+### 15.6 核心写入链路（新增目标）
+
+```
+前端表单
+  ↓ POST /api/scrape/targets {department, category, target, labels}
+后端 create_target()
+  ↓ MySQL INSERT → scrape_targets
+  ↓ _sync_file(dept, cat)
+  ↓   SELECT all active targets for this dept+cat
+  ↓   生成 YAML：yaml.dump([{targets, labels}, ...])
+  ↓   _write(path, yaml) → SSH SFTP 写入服务器
+  ↓
+服务器文件更新
+  ↓ file_sd_configs 自动发现
+Prometheus 开始采集
+```
+
+### 15.7 禁用/删除文件流转
+
+```
+禁用操作                     删除操作
+  ↓                            ↓
+status=0                     status=-1
+  ↓                            ↓
+_sync_file → 主 YAML 移除     _sync_file → 主 YAML 移除
+  该 target                    该 target
+  ↓                            ↓
+写入 _disabled/               写入 _deleted/
+  {cat}_target_{id}.yaml       {cat}_target_{id}_{ts}.yaml
+  (无时间戳，可恢复)            (带时间戳)
+```
+
+### 15.8 采集效果监控链路
+
+```
+GET /api/scrape/health
+  ↓ 缓存过期（>30s）？
+  ↓ YES → _sync_health()
+  ↓   SELECT scrape_targets WHERE status=1
+  ↓   拉 Prometheus /api/v1/targets?state=active
+  ↓   构建多维度匹配索引（scrapeUrl提取host:port）
+  ↓   对比判定：effective / ineffective / invalid
+  ↓   UPSERT → scrape_target_health
+  ↓ NO  → 直接从 DB 查
+  ↓ JOIN scrape_targets WHERE status=1 过滤已删除/禁用
+  ↓
+前端 Dashboard
+  ↓ 3 卡片：生效 / 未生效 / 失效
+  ↓ 未生效列表：目标地址 + 所属文件夹 + 配置文件 + 状态 + 错误
+  ↓ 目标列表：每行追加「生效」列
+```
+
+### 15.9 目标匹配策略（Prometheus ↔ DB）
+
+Prometheus `file_sd_configs` 目标的 `__address__` 为 None，真实地址在 `scrapeUrl` 中。
+
+```
+scrapeUrl: "http://172.16.10.27:9100/metrics"
+              ↓ 提取 host:port
+           "172.16.10.27:9100"
+              ↓ 与 DB scrape_targets.target 对比
+           ✅ 匹配成功 → effective
+```
+
+构建多维度匹配索引：`scrapeUrl 提取` > `__address__` > `instance` > `__param_target`
+
+### 15.10 前端页面组件
+
+| 组件 | 文件 | 功能 |
+|------|------|------|
+| ScrapeConfig | `pages/ScrapeConfig.tsx` | 主页面：左栏树 + 右栏列表/Dashboard |
+| OverviewDashboard | 同上（内联） | "全部"视图：统计卡片 + 饼图 + 柱状图 + 采集监控 |
+| TargetModal | 同上（内联） | 新增/编辑目标弹窗 |
+| ConfigFileModal | 同上（内联） | 新增配置文件弹窗（文件夹 + 按钮） |
+| FolderModal | 同上（内联） | 新建文件夹弹窗 |
+| scrape.ts | `lib/scrape.ts` | API 接口定义 |
+
+### 15.11 菜单路径
+
+```
+指标采集
+├── 抓取目标 (已废弃，功能由 Dashboard 替代)
+└── 抓取配置 → ScrapeConfig.tsx
+```
