@@ -74,37 +74,56 @@ def _rm(path: str) -> None:
         pass
 
 
-# ── 同步 YAML 文件（支持 _disabled / _deleted） ──────────────
+# ── 同步 YAML 文件（每个 target 独立 _disabled / _deleted）──
 
 def _sync_file(dept: str, cat: str) -> None:
     base = settings.prometheus_targets_dir
     yp = f"{base}/{dept}/{cat}.yaml"
-    dp = f"{base}/{dept}/_disabled/{cat}.yaml"
 
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT target, labels FROM scrape_targets WHERE department=%s AND category=%s AND status=1", (dept, cat))
-            active = [{"target": r[0], "labels": json.loads(r[1]) if r[1] else {}} for r in cur.fetchall()]
-            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=0", (dept, cat))
-            has_disabled = cur.fetchone()[0] > 0
+            cur.execute("SELECT id, target, labels, status FROM scrape_targets WHERE department=%s AND category=%s AND status IN (1,0,-1)", (dept, cat))
+            rows = cur.fetchall()
             cur.close()
 
-        if active:
-            docs = [{"targets": [e["target"]], "labels": e["labels"]} for e in active]
-            _write(yp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
-            _rm(dp)
-        elif has_disabled:
-            _rm(yp)
-            if not _exists(dp):
-                _write(dp, "[]\n")
+        active_docs = []
+        for tid, target, labels_raw, status in rows:
+            labels = json.loads(labels_raw) if labels_raw else {}
+            entry = {"targets": [target], "labels": labels}
+
+            if status == 1:
+                active_docs.append(entry)
+                # 清除旧的 _disabled 和 _deleted 文件
+                dp = f"{base}/{dept}/_disabled/{cat}_target_{tid}.yaml"
+                glob = f"{base}/{dept}/_deleted/{cat}_target_{tid}_*.yaml"
+                try:
+                    ssh = paramiko.SSHClient()
+                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
+                    ssh.exec_command(f"rm -f {dp} {glob}")
+                    ssh.close()
+                except Exception:
+                    pass
+            elif status == 0:
+                # 禁用 → 写入 _disabled/
+                dp = f"{base}/{dept}/_disabled/{cat}_target_{tid}.yaml"
+                _write(dp, yaml.dump([entry], default_flow_style=False, allow_unicode=True))
+            elif status == -1:
+                # 删除 → 写入 _deleted/ 带时间戳
+                ts = datetime.now().strftime('%Y%m%d%H%M%S')
+                rp = f"{base}/{dept}/_deleted/{cat}_target_{tid}_{ts}.yaml"
+                # 清除旧的 _disabled 文件
+                dp = f"{base}/{dept}/_disabled/{cat}_target_{tid}.yaml"
+                _rm(dp)
+                if not _exists(rp):
+                    _write(rp, yaml.dump([entry], default_flow_style=False, allow_unicode=True))
+
+        # 写入主 YAML（仅活跃目标）
+        if active_docs:
+            _write(yp, yaml.dump(active_docs, default_flow_style=False, allow_unicode=True))
         else:
-            # 所有 target 被删除 → 移入 _deleted/ 带时间戳
             _rm(yp)
-            _rm(dp)
-            rp = f"{base}/{dept}/_deleted/{cat}_{datetime.now().strftime('%Y%m%d%H%M%S')}.yaml"
-            if not _exists(rp):
-                _write(rp, "[]\n")
     except Exception:
         pass
 
