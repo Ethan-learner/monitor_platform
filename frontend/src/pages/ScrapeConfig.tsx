@@ -461,42 +461,79 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         </Col>
       </Row>
 
-      {/* 环形图：配置文件分布 + 每文件夹数量标注 */}
+      {/* 环形图：配置文件分布（无图例，标签外置） */}
       <Card size="small" title={<span style={{ color: '#333' }}>配置文件分布</span>} styles={{ body: { padding: 12 } }}>
         {fileEntries.length === 0 ? (
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flexShrink: 0 }}>
-              <svg width="120" height="120" viewBox="0 0 120 120">
-                {(() => {
-                  let acc = 0
-                  const r = 40
-                  const c = 2 * Math.PI * r
-                  return fileEntries.map(([name, v], i) => {
-                    const dash = (v / fileTotal) * c
-                    const el = (
-                      <circle key={name} cx="60" cy="60" r={r} fill="none" stroke={COLORS.file[i % COLORS.file.length]}
-                        strokeWidth="16" strokeDasharray={`${dash} ${c - dash}`}
-                        strokeDashoffset={-acc} transform="rotate(-90 60 60)" />
-                    )
-                    acc += dash
-                    return el
-                  })
-                })()}
-                <text x="60" y="57" textAnchor="middle" fill="#333" fontSize="20" fontWeight="700">{fileTotal}</text>
-                <text x="60" y="73" textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
-              </svg>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, fontSize: 12 }}>
-              {fileEntries.map(([name, v], i) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: COLORS.file[i % COLORS.file.length], flexShrink: 0 }} />
-                  <span style={{ flex: 1, color: '#333' }}>{name}</span>
-                  <span style={{ color: '#333', fontWeight: 600 }}>{v} 个</span>
-                  <span style={{ color: '#999', width: 32, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
-                </div>
-              ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, justifyContent: 'center' }}>
+            {/* 环形图 */}
+            <svg width="160" height="160" viewBox="0 0 160 160" style={{ flexShrink: 0 }}>
+              {(() => {
+                const centerX = 80, centerY = 80;
+                const ringRadius = 60;
+                const strokeWidth = 22;
+                const circumference = 2 * Math.PI * ringRadius;
+
+                let acc = 0;
+
+                return fileEntries.map(([name, v], index) => {
+                  const dash = (v / fileTotal) * circumference;
+                  const color = COLORS.file[index % COLORS.file.length];
+
+                  const circle = (
+                    <circle
+                      key={name}
+                      cx={centerX}
+                      cy={centerY}
+                      r={ringRadius}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={`${dash} ${circumference - dash}`}
+                      strokeDashoffset={-acc}
+                      transform={`rotate(-90 ${centerX} ${centerY})`}
+                    />
+                  );
+
+                  acc += dash;
+                  return circle;
+                });
+              })()}
+
+              {/* 中心统计数字 */}
+              <text x="80" y="76" textAnchor="middle" fill="#333" fontSize="20" fontWeight="700">
+                {fileTotal}
+              </text>
+              <text x="80" y="94" textAnchor="middle" fill="#999" fontSize="10">
+                配置文件
+              </text>
+            </svg>
+
+            {/* 右侧图例 - 一列排布 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              {fileEntries.map(([name, v], index) => {
+                const color = COLORS.file[index % COLORS.file.length];
+                const percent = ((v / fileTotal) * 100).toFixed(0);
+                return (
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ 
+                      width: 14, 
+                      height: 14, 
+                      borderRadius: 3, 
+                      backgroundColor: color,
+                      flexShrink: 0
+                    }} />
+                    <span style={{ color: '#333', minWidth: 60 }}>{name}</span>
+                    <span style={{ color: '#333', fontWeight: 600, minWidth: 30, textAlign: 'right' }}>
+                      {v}
+                    </span>
+                    <span style={{ color: '#999', minWidth: 36, textAlign: 'right' }}>
+                      {percent}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -528,7 +565,7 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                     const disabledPct = (e.disabled / maxFileTargets) * 100
                     return (
                       <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, paddingLeft: 18, marginBottom: 3 }}>
-                        <span style={{ width: 80, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.key}>{e.key.split('/')[1] || e.key}.yaml</span>
+                        <span style={{ width: 110, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.key}>{e.key.split('/')[1] || e.key}.yaml</span>
                         <div style={{ flex: 1, height: 14, position: 'relative', background: '#f5f5f5', borderRadius: 2, overflow: 'hidden' }}>
                           <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${activePct}%`, background: COLORS.status.active }} />
                           <div style={{ position: 'absolute', left: `${activePct}%`, top: 0, height: '100%', width: `${disabledPct}%`, background: COLORS.status.disabled }} />
