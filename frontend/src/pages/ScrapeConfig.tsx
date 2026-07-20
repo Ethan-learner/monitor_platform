@@ -319,10 +319,10 @@ export default function ScrapeConfig() {
               rowKey="id" size="small"
               dataSource={paginated}
               columns={[
-                { title: '文件夹', dataIndex: 'department', width: 120 },
-                { title: '分类', dataIndex: 'category', width: 100 },
-                { title: '目标地址', dataIndex: 'target', ellipsis: true },
-                { title: '状态', dataIndex: 'status', width: 70, render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
+                { title: '文件夹', dataIndex: 'department', width: 120, align: 'center'},
+                { title: '分类', dataIndex: 'category', width: 100, align: 'center' },
+                { title: '目标地址', dataIndex: 'target', ellipsis: true , align: 'center'},
+                { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
               ]}
               pagination={{
                 current: page,
@@ -467,32 +467,34 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <svg width="280" height="180" viewBox="0 0 280 180">
+            <div style={{ position: 'relative', flexShrink: 0, margin: '0 auto' }}>
+              <svg width="300" height="170" viewBox="0 0 300 170">
                 {(() => {
                   let acc = 0
-                  const r = 52
+                  const r = 48
                   const c = 2 * Math.PI * r
-                  const cx = 80, cy = 90
-                  const labelX = 170
+                  const cx = 75, cy = 85
+                  const labelX = 150
+                  const labelStep = 32
                   const els = fileEntries.map(([name, v], i) => {
                     const dash = (v / fileTotal) * c
                     const midAngle = ((acc + dash / 2) / c) * 2 * Math.PI - Math.PI / 2
-                    const x1 = cx + (r + 12) * Math.cos(midAngle)
-                    const y1 = cy + (r + 12) * Math.sin(midAngle)
-                    const labelY = 34 + i * 36
+                    const dotR = r + 20
+                    const x1 = cx + dotR * Math.cos(midAngle)
+                    const y1 = cy + dotR * Math.sin(midAngle)
+                    const labelY = 26 + i * labelStep
                     const offset = -acc
                     acc += dash
                     const color = COLORS.file[i % COLORS.file.length]
                     return (
                       <g key={name}>
                         <circle cx={cx} cy={cy} r={r} fill="none" stroke={color}
-                          strokeWidth="18" strokeDasharray={`${dash} ${c - dash}`}
+                          strokeWidth="20" strokeDasharray={`${dash} ${c - dash}`}
                           strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
-                        <line x1={x1} y1={y1} x2={labelX} y2={labelY}
-                          stroke={color} strokeWidth="1.5" opacity="0.6" />
-                        <circle cx={labelX} cy={labelY} r="3" fill={color} />
-                        <text x={labelX + 10} y={labelY + 4} fill="#333" fontSize="12" fontWeight="500">{name}</text>
+                        <polyline points={`${x1},${y1} ${160},${labelY} ${labelX},${labelY}`}
+                          fill="none" stroke={color} strokeWidth="1.2" opacity="0.7" />
+                        <circle cx={labelX + 6} cy={labelY} r="4" fill={color} />
+                        <text x={labelX + 16} y={labelY + 4} fill="#333" fontSize="12" fontWeight="500">{name}</text>
                         <text x={labelX + 100} y={labelY + 4} fill={color} fontSize="12" fontWeight="600">{v} 个</text>
                         <text x={labelX + 140} y={labelY + 4} fill="#999" fontSize="11">{((v / fileTotal) * 100).toFixed(0)}%</text>
                       </g>
@@ -500,7 +502,7 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                   })
                   els.push(
                     <g key="center">
-                      <text x={cx} y={cy - 4} textAnchor="middle" fill="#333" fontSize="24" fontWeight="700">{fileTotal}</text>
+                      <text x={cx} y={cy - 5} textAnchor="middle" fill="#333" fontSize="26" fontWeight="700">{fileTotal}</text>
                       <text x={cx} y={cy + 16} textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
                     </g>
                   )
@@ -583,18 +585,18 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                 <Table rowKey="id" size="small" pagination={false}
                   dataSource={health.targets.filter((t) => t.health !== 'effective')}
                   columns={[
-                    { title: '目标地址', dataIndex: 'target', width: 200 },
-                    { title: '所属文件夹', dataIndex: 'department', width: 90 },
-                    { title: '配置文件', dataIndex: 'category', width: 90, render: (v: string) => v ? `${v}.yaml` : '' },
-                    { title: '状态', dataIndex: 'health', width: 80, render: (h: string) => (
+                    { title: '目标地址', dataIndex: 'target', width: 200, align: 'center' },
+                    { title: '所属文件夹', dataIndex: 'department', width: 200, align: 'center' },
+                    { title: '配置文件', dataIndex: 'category', width: 200, align: 'center', render: (v: string) => v ? `${v}.yaml` : '' },
+                    { title: '状态', dataIndex: 'health', width: 200, align: 'center', render: (h: string) => (
                         <Tag color={h === 'ineffective' ? '#faad14' : '#ff4d4f'}>
                           {h === 'ineffective' ? '未生效' : h === 'invalid' ? '失效' : h}
                         </Tag>
                       )},
-                    { title: '最近采集', dataIndex: 'lastScrape', width: 140, render: (v: string | null) => (
+                    { title: '最近采集', dataIndex: 'lastScrape', width: 140, align: 'center', render: (v: string | null) => (
                         v ? <span style={{ fontSize: 11, color: '#999' }}>{v}</span> : <span style={{ color: '#faad14', fontSize: 11 }}>从未采集</span>
                       )},
-                    { title: '错误', dataIndex: 'lastError', ellipsis: true, render: (v: string | null) => (
+                    { title: '错误', dataIndex: 'lastError', align: 'center', ellipsis: true, render: (v: string | null) => (
                         v ? <span style={{ fontSize: 11, color: '#ff4d4f' }} title={v}>{v}</span> : <span style={{ color: '#999', fontSize: 11 }}>无</span>
                       )},
                   ]} />
