@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from pathlib import Path
 from typing import List
 
 import paramiko
@@ -48,7 +47,8 @@ def _write(path: str, content: str) -> None:
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        _ssh(f"mkdir -p {Path(path).parent}")
+        parent = '/'.join(path.split('/')[:-1])
+        ssh.exec_command(f"mkdir -p {parent}")
         sftp = ssh.open_sftp()
         with sftp.open(path, "w") as f:
             f.write(content.encode())
@@ -61,7 +61,8 @@ def _write(path: str, content: str) -> None:
 
 def _mv(src: str, dst: str) -> None:
     try:
-        _ssh(f"mkdir -p {Path(dst).parent} && mv {src} {dst}")
+        parent = '/'.join(dst.split('/')[:-1])
+        _ssh(f"mkdir -p {parent} && mv {src} {dst}")
     except Exception:
         raise HTTPException(502, detail="mv_failed")
 
@@ -249,12 +250,17 @@ async def create_directory(body: dict) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    # 在服务器创建目录
+    # 在服务器创建空 YAML 文件（如果是配置文件而非文件夹）
     base = settings.prometheus_targets_dir
-    try:
-        _ssh(f"mkdir -p '{base}/{name}'")
-    except Exception:
-        pass
+    if category:
+        yp = f"{base}/{name}/{category}.yaml"
+        if not _exists(yp):
+            _write(yp, "# Prometheus file_sd config\n[]\n")
+    else:
+        try:
+            _ssh(f"mkdir -p '{base}/{name}'")
+        except Exception:
+            pass
 
     return {"id": new_id, "status": "created"}
 
