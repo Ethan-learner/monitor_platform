@@ -466,49 +466,47 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         {fileEntries.length === 0 ? (
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <svg width="140" height="140" viewBox="0 0 140 140">
+              <svg width="280" height="180" viewBox="0 0 280 180">
                 {(() => {
                   let acc = 0
-                  const r = 50
+                  const r = 52
                   const c = 2 * Math.PI * r
-                  return fileEntries.map(([name, v], i) => {
+                  const cx = 80, cy = 90
+                  const labelX = 170
+                  const els = fileEntries.map(([name, v], i) => {
                     const dash = (v / fileTotal) * c
-                    const seg = (
-                      <circle
-                        key={name}
-                        cx="70"
-                        cy="70"
-                        r={r}
-                        fill="none"
-                        stroke={COLORS.file[i % COLORS.file.length]}
-                        strokeWidth="20"
-                        strokeDasharray={`${dash} ${c - dash}`}
-                        strokeDashoffset={-acc}
-                        transform="rotate(-90 70 70)"
-                      >
-                        <title>{`${name}：${v} 个文件`}</title>
-                      </circle>
-                    )
+                    const midAngle = ((acc + dash / 2) / c) * 2 * Math.PI - Math.PI / 2
+                    const x1 = cx + (r + 12) * Math.cos(midAngle)
+                    const y1 = cy + (r + 12) * Math.sin(midAngle)
+                    const labelY = 34 + i * 36
+                    const offset = -acc
                     acc += dash
-                    return seg
+                    const color = COLORS.file[i % COLORS.file.length]
+                    return (
+                      <g key={name}>
+                        <circle cx={cx} cy={cy} r={r} fill="none" stroke={color}
+                          strokeWidth="18" strokeDasharray={`${dash} ${c - dash}`}
+                          strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
+                        <line x1={x1} y1={y1} x2={labelX} y2={labelY}
+                          stroke={color} strokeWidth="1.5" opacity="0.6" />
+                        <circle cx={labelX} cy={labelY} r="3" fill={color} />
+                        <text x={labelX + 10} y={labelY + 4} fill="#333" fontSize="12" fontWeight="500">{name}</text>
+                        <text x={labelX + 100} y={labelY + 4} fill={color} fontSize="12" fontWeight="600">{v} 个</text>
+                        <text x={labelX + 140} y={labelY + 4} fill="#999" fontSize="11">{((v / fileTotal) * 100).toFixed(0)}%</text>
+                      </g>
+                    )
                   })
+                  els.push(
+                    <g key="center">
+                      <text x={cx} y={cy - 4} textAnchor="middle" fill="#333" fontSize="24" fontWeight="700">{fileTotal}</text>
+                      <text x={cx} y={cy + 16} textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
+                    </g>
+                  )
+                  return els
                 })()}
-                <text x="70" y="68" textAnchor="middle" fill="#333" fontSize="22" fontWeight="700">{fileTotal}</text>
-                <text x="70" y="85" textAnchor="middle" fill="#999" fontSize="9">配置文件</text>
               </svg>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>每文件夹文件数：</div>
-              {fileEntries.map(([name, v], i) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: COLORS.file[i % COLORS.file.length] }} />
-                  <span style={{ flex: 1, color: '#333' }}>{name}</span>
-                  <span style={{ color: COLORS.file[i % COLORS.file.length], fontWeight: 600 }}>{v} 个</span>
-                  <span style={{ color: '#999', fontSize: 11, width: 40, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -548,9 +546,7 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
           size="small"
           title={<span style={{ color: '#333' }}>采集效果监控</span>}
           extra={
-            <Button size="small" icon={<ReloadOutlined />} onClick={onRefreshHealth}>
-              {health.stale ? '已过期，点击刷新' : '刷新'}
-            </Button>
+            <Button size="small" icon={<ReloadOutlined />} onClick={onRefreshHealth}>刷新</Button>
           }
           styles={{ body: { padding: 12 } }}
         >
