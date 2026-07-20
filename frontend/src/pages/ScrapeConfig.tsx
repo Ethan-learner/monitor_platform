@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons'
 import {
   fetchTargets, fetchDirectories, createTarget, updateTarget, deleteTarget as apiDeleteTarget,
-  toggleTarget, createDirectory, type ScrapeTarget, type DirectoryItem,
+  toggleTarget, createDirectory, deleteDirectory, type ScrapeTarget, type DirectoryItem,
 } from '../lib/scrape'
 
 const STATUS_LABEL: Record<number, string> = { 1: '启用', 0: '禁用', '-1': '已删除' }
@@ -25,6 +25,7 @@ export default function ScrapeConfig() {
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<number>>(new Set())
   const [pageSize, setPageSize] = useState(20)
   const [page, setPage] = useState(1)
 
@@ -52,12 +53,6 @@ export default function ScrapeConfig() {
     }
     return Object.entries(deptMap).sort(([a], [b]) => a.localeCompare(b))
   }, [dirs])
-
-  // Get target count for a department+category
-  const targetCount = (dept: string, cat?: string) => {
-    if (!cat) return data.filter((t) => t.department === dept && t.status !== -1).length
-    return data.filter((t) => t.department === dept && t.category === cat && t.status !== -1).length
-  }
 
   const filtered = useMemo(() => {
     let items = data.filter((t) => t.status !== -1)
@@ -140,17 +135,23 @@ export default function ScrapeConfig() {
             <Space style={{ width: '100%', justifyContent: 'space-between' }} size={0}>
               {selectMode ? (
                 <Space size={4}>
-                  <Button size="small" danger icon={<DeleteOutlined />} disabled={selectedIds.size === 0} onClick={async () => {
+                  <Button size="small" danger icon={<DeleteOutlined />} disabled={selectedIds.size + selectedFolderIds.size === 0} onClick={async () => {
+                    // delete folders
+                    for (const fid of selectedFolderIds) {
+                      try { await deleteDirectory(fid) } catch {}
+                    }
+                    // delete targets
                     for (const id of selectedIds) {
                       const t = data.find((x) => x.id === id)
                       if (t) await apiDeleteTarget(id)
                     }
-                    message.success(`已删除 ${selectedIds.size} 项`)
+                    message.success(`已删除 ${selectedFolderIds.size + selectedIds.size} 项`)
                     setSelectedIds(new Set())
+                    setSelectedFolderIds(new Set())
                     setSelectMode(false)
                     await loadAll()
                   }}>删除</Button>
-                  <Button size="small" onClick={() => { setSelectMode(false); setSelectedIds(new Set()) }}>取消</Button>
+                  <Button size="small" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); setSelectedFolderIds(new Set()) }}>取消</Button>
                 </Space>
               ) : (
                 <>
@@ -184,7 +185,7 @@ export default function ScrapeConfig() {
           </div>
 
           <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 0', paddingTop: 4 }}>
-            {tree.map(([dept, { files }]) => {
+            {tree.map(([dept, { item, files }]) => {
               const expanded = expandedDepts.has(dept)
               const activeFolder = selectedDept === dept && !selectedCat
               return (
@@ -200,22 +201,12 @@ export default function ScrapeConfig() {
                   >
                     {selectMode ? (
                       <Checkbox
-                        checked={files.length > 0 && files.every((f) => {
-                          const count = targetCount(dept, f.category)
-                          return count > 0 && data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1).every((t) => selectedIds.has(t.id))
-                        })}
-                        indeterminate={files.some((f) => {
-                          const items = data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1)
-                          return items.some((t) => selectedIds.has(t.id)) && !items.every((t) => selectedIds.has(t.id))
-                        })}
+                        checked={selectedFolderIds.has(item?.id || 0)}
                         onChange={(e) => {
                           e.stopPropagation()
-                          const next = new Set(selectedIds)
-                          for (const f of files) {
-                            const items = data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1)
-                            for (const t of items) e.target.checked ? next.add(t.id) : next.delete(t.id)
-                          }
-                          setSelectedIds(next)
+                          const next = new Set(selectedFolderIds)
+                          e.target.checked ? next.add(item?.id || 0) : next.delete(item?.id || 0)
+                          setSelectedFolderIds(next)
                         }}
                       />
                     ) : (
@@ -223,7 +214,7 @@ export default function ScrapeConfig() {
                     )}
                     <span style={{ flex: 1, fontSize: 13 }}>{dept}</span>
                     {!selectMode && (
-                      <Tooltip title="新增目标">
+                      <Tooltip title="新增配置">
                         <Button size="small" type="text" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={(e) => {
                           e.stopPropagation(); handleAddTarget(dept, '')
                         }} />
@@ -259,13 +250,6 @@ export default function ScrapeConfig() {
                           <FileOutlined style={{ fontSize: 13 }} />
                         )}
                         <span style={{ flex: 1 }}>{f.category}.yaml</span>
-                        {!selectMode && (
-                          <Tooltip title="新增目标">
-                            <Button size="small" type="text" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={(e) => {
-                              e.stopPropagation(); handleAddTarget(dept, f.category)
-                            }} />
-                          </Tooltip>
-                        )}
                       </div>
                     )
                   })}

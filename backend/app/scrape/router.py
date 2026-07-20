@@ -79,7 +79,6 @@ def _sync_file(dept: str, cat: str) -> None:
     base = settings.prometheus_targets_dir
     yp = f"{base}/{dept}/{cat}.yaml"
     dp = f"{base}/{dept}/_disabled/{cat}.yaml"
-    rp = f"{base}/{dept}/_deleted/{cat}_{datetime.now().strftime('%Y%m%d%H%M%S')}.yaml"
 
     try:
         with get_db(readonly=True) as conn:
@@ -88,37 +87,31 @@ def _sync_file(dept: str, cat: str) -> None:
             active = [{"target": r[0], "labels": json.loads(r[1]) if r[1] else {}} for r in cur.fetchall()]
             cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=0", (dept, cat))
             has_disabled = cur.fetchone()[0] > 0
-            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=-1", (dept, cat))
-            has_deleted = cur.fetchone()[0] > 0
             cur.close()
 
         if active:
             docs = [{"targets": [e["target"]], "labels": e["labels"]} for e in active]
             _write(yp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
             _rm(dp)
-            _rm(rp)
         elif has_disabled:
             _rm(yp)
-            _rm(rp)
-            docs = [{"targets": [""], "labels": {}}]
-            _write(dp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
-        elif has_deleted:
-            _rm(yp)
-            _rm(dp)
-            if not _exists(rp):
-                docs = [{"targets": [""], "labels": {}}]
-                _write(rp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
+            if not _exists(dp):
+                _write(dp, "[]\n")
         else:
+            # 所有 target 被删除 → 移入 _deleted/ 带时间戳
             _rm(yp)
             _rm(dp)
+            rp = f"{base}/{dept}/_deleted/{cat}_{datetime.now().strftime('%Y%m%d%H%M%S')}.yaml"
+            if not _exists(rp):
+                _write(rp, "[]\n")
     except Exception:
         pass
 
 
 def _exists(path: str) -> bool:
     try:
-        _ssh(f"test -f {path} && echo 1 || echo 0")
-        return True
+        out = _ssh(f"test -f '{path}' && echo 1 || echo 0")
+        return out == "1"
     except Exception:
         return False
 
@@ -142,7 +135,6 @@ def _delete_folder(name: str) -> None:
             # 级联删除该部门下的所有 target
             cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND status != -1", (name,))
             # 禁用目录表中的记录
-            cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s", (name,))
             cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND enabled != -1", (name,))
             cur.close()
     except Exception:
