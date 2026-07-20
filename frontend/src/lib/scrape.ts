@@ -12,10 +12,15 @@ export interface ScrapeTarget {
   createdAt: string
 }
 
-export interface CategoryInfo {
-  department: string
+export interface DirectoryItem {
+  id: number
+  name: string
   category: string
-  count: number
+  label: string
+  description: string
+  owner: string
+  enabled: number
+  createdAt: string
 }
 
 export async function fetchTargets(): Promise<ScrapeTarget[]> {
@@ -23,14 +28,22 @@ export async function fetchTargets(): Promise<ScrapeTarget[]> {
   return data || []
 }
 
-export async function fetchDepartments(): Promise<string[]> {
-  const { data } = await api.get<string[]>('/scrape/departments')
+export async function fetchDirectories(): Promise<DirectoryItem[]> {
+  const { data } = await api.get<DirectoryItem[]>('/scrape/directories')
   return data || []
 }
 
-export async function fetchCategories(): Promise<CategoryInfo[]> {
-  const { data } = await api.get<CategoryInfo[]>('/scrape/categories')
-  return data || []
+export async function createDirectory(data: { name: string; description: string }): Promise<{ id: number }> {
+  const { data: res } = await api.post('/scrape/directories', data)
+  return res
+}
+
+export async function deleteDirectory(id: number): Promise<void> {
+  await api.delete(`/scrape/directories/${id}`)
+}
+
+export async function updateDirectory(id: number, data: { description: string }): Promise<void> {
+  await api.put(`/scrape/directories/${id}`, data)
 }
 
 export async function createTarget(data: {

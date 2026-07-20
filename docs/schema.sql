@@ -123,10 +123,10 @@ CREATE TABLE IF NOT EXISTS platform_config (
 -- 9. Prometheus 抓取目标配置（每条记录一个目标地址）
 CREATE TABLE IF NOT EXISTS scrape_targets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    department VARCHAR(255) NOT NULL COMMENT '部门（对应服务器目录名）',
-    category VARCHAR(255) NOT NULL COMMENT '分类（文件名，不含 .yaml）',
-    target VARCHAR(500) NOT NULL COMMENT '单个目标地址 host:port',
-    labels JSON COMMENT '该分类的标签（同 department+category 共用）',
+    department VARCHAR(255) NOT NULL COMMENT '部门',
+    category VARCHAR(255) NOT NULL COMMENT '分类（文件名）',
+    target VARCHAR(500) NOT NULL COMMENT '目标地址 host:port',
+    labels JSON COMMENT '标签',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用 -1=删除',
     description VARCHAR(500) COMMENT '备注',
     operator VARCHAR(100) NOT NULL COMMENT '操作人',
@@ -135,4 +135,19 @@ CREATE TABLE IF NOT EXISTS scrape_targets (
     UNIQUE KEY uk_target (department, category, target(255)),
     INDEX idx_dept_cat (department, category),
     INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prometheus 抓取目标配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prometheus 抓取目标';
+
+-- 10. 抓取目录文件列表
+CREATE TABLE IF NOT EXISTS scrape_directories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL COMMENT '文件夹名/部门名',
+    category VARCHAR(100) NOT NULL DEFAULT '' COMMENT '分类（文件名），空=文件夹',
+    label VARCHAR(200) COMMENT '展示名',
+    description VARCHAR(500) COMMENT '备注',
+    owner VARCHAR(100) COMMENT '创建人',
+    enabled TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用 -1=删除',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_name (name),
+    INDEX idx_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抓取文件列表';

@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 import paramiko
 import yaml
@@ -12,19 +12,12 @@ from app.db import get_db
 
 router = APIRouter(prefix="/api/scrape", tags=["scrape"])
 
-
 # ── SSH ──────────────────────────────────────────────────────
 
-def _ssh_connect() -> paramiko.SSHClient:
+def _ssh(cmd: str) -> str:
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(settings.ssh_host, settings.ssh_port or 22,
-                settings.ssh_user, settings.ssh_password, timeout=10)
-    return ssh
-
-
-def _ssh_exec(cmd: str) -> str:
-    ssh = _ssh_connect()
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     _, stdout, stderr = ssh.exec_command(cmd)
     out = stdout.read().decode().strip()
     err = stderr.read().decode().strip()
@@ -34,8 +27,10 @@ def _ssh_exec(cmd: str) -> str:
     return out
 
 
-def _ssh_read(path: str) -> str:
-    ssh = _ssh_connect()
+def _read(path: str) -> str:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
         sftp = ssh.open_sftp()
         with sftp.open(path, "r") as f:
@@ -43,51 +38,120 @@ def _ssh_read(path: str) -> str:
     except FileNotFoundError:
         raise HTTPException(404, "file_not_found")
     except Exception as e:
-        raise HTTPException(502, detail=f"ssh_read_failed: {e}")
+        raise HTTPException(502, detail=f"read_failed: {e}")
     finally:
         ssh.close()
 
 
-def _ssh_write(path: str, content: str) -> None:
-    ssh = _ssh_connect()
+def _write(path: str, content: str) -> None:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        _ssh_exec(f"mkdir -p {Path(path).parent}")
+        _ssh(f"mkdir -p {Path(path).parent}")
         sftp = ssh.open_sftp()
         with sftp.open(path, "w") as f:
             f.write(content.encode())
         sftp.close()
     except Exception as e:
-        raise HTTPException(502, detail=f"ssh_write_failed: {e}")
+        raise HTTPException(502, detail=f"write_failed: {e}")
     finally:
         ssh.close()
 
 
-def _ssh_rm(path: str) -> None:
+def _mv(src: str, dst: str) -> None:
     try:
-        _ssh_exec(f"rm -f {path}")
+        _ssh(f"mkdir -p {Path(dst).parent} && mv {src} {dst}")
+    except Exception:
+        raise HTTPException(502, detail="mv_failed")
+
+
+def _rm(path: str) -> None:
+    try:
+        _ssh(f"rm -rf {path}")
     except Exception:
         pass
 
 
-def _ssh_mv(src: str, dst: str) -> None:
+# ── 同步 YAML 文件（支持 _disabled / _deleted） ──────────────
+
+def _sync_file(dept: str, cat: str) -> None:
+    base = settings.prometheus_targets_dir
+    yp = f"{base}/{dept}/{cat}.yaml"
+    dp = f"{base}/{dept}/_disabled/{cat}.yaml"
+    rp = f"{base}/{dept}/_deleted/{cat}_{datetime.now().strftime('%Y%m%d%H%M%S')}.yaml"
+
     try:
-        _ssh_exec(f"mkdir -p {Path(dst).parent} && mv {src} {dst}")
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT target, labels FROM scrape_targets WHERE department=%s AND category=%s AND status=1", (dept, cat))
+            active = [{"target": r[0], "labels": json.loads(r[1]) if r[1] else {}} for r in cur.fetchall()]
+            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=0", (dept, cat))
+            has_disabled = cur.fetchone()[0] > 0
+            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=-1", (dept, cat))
+            has_deleted = cur.fetchone()[0] > 0
+            cur.close()
+
+        if active:
+            docs = [{"targets": [e["target"]], "labels": e["labels"]} for e in active]
+            _write(yp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
+            _rm(dp)
+            _rm(rp)
+        elif has_disabled:
+            _rm(yp)
+            _rm(rp)
+            docs = [{"targets": [""], "labels": {}}]
+            _write(dp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
+        elif has_deleted:
+            _rm(yp)
+            _rm(dp)
+            if not _exists(rp):
+                docs = [{"targets": [""], "labels": {}}]
+                _write(rp, yaml.dump(docs, default_flow_style=False, allow_unicode=True))
+        else:
+            _rm(yp)
+            _rm(dp)
     except Exception:
-        raise HTTPException(502, detail="ssh_move_failed")
+        pass
 
 
-# ── YAML ─────────────────────────────────────────────────────
+def _exists(path: str) -> bool:
+    try:
+        _ssh(f"test -f {path} && echo 1 || echo 0")
+        return True
+    except Exception:
+        return False
 
-def _build_yaml(entries: List[dict]) -> str:
-    """生成 YAML，每条记录一个 - targets: [...] 块"""
-    docs = []
-    for e in entries:
-        docs.append({"targets": [e["target"]], "labels": e.get("labels", {}) or {}})
-    return yaml.dump(docs, default_flow_style=False, allow_unicode=True)
 
+# ── 删除整个文件夹（移入根级 _deleted/ + 级联） ──────────────
+
+def _delete_folder(name: str) -> None:
+    base = settings.prometheus_targets_dir
+    src = f"{base}/{name}"
+    ts = datetime.now().strftime('%Y%m%d%H%M%S')
+    dst = f"{base}/_deleted/{name}_{ts}"
+
+    try:
+        _mv(src, dst)
+    except Exception:
+        raise HTTPException(502, detail="folder_move_failed")
+
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            # 级联删除该部门下的所有 target
+            cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND status != -1", (name,))
+            # 禁用目录表中的记录
+            cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s", (name,))
+            cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND enabled != -1", (name,))
+            cur.close()
+    except Exception:
+        pass
+
+
+# ── 解析服务器 YAML ──────────────────────────────────────────
 
 def _parse_yaml_entries(content: str) -> List[dict]:
-    """解析 YAML，返回 [{target: str, labels: dict}] 每条一个 target"""
     try:
         parsed = yaml.safe_load(content) or []
         result = []
@@ -104,13 +168,11 @@ def _parse_yaml_entries(content: str) -> List[dict]:
         return []
 
 
-# ── SSH 扫描目录，按单条 target 返回 ─────────────────────────
-
 def _scan_remote() -> List[dict]:
-    """返回 [{department, category, target, labels}]"""
+    """扫描服务器所有 YAML，返回 [{department, category, target, labels}]"""
     base = settings.prometheus_targets_dir
     try:
-        raw = _ssh_exec(f"ls -1 {base}")
+        raw = _ssh(f"ls -1 {base}")
     except Exception:
         return []
     if not raw:
@@ -119,70 +181,129 @@ def _scan_remote() -> List[dict]:
     rows = []
     for line in raw.split("\n"):
         dept = line.strip()
-        if not dept:
+        if not dept or dept.startswith('_'):
             continue
         dp = f"{base}/{dept}"
         try:
-            if _ssh_exec(f"test -d '{dp}' && echo 1 || echo 0") != "1":
+            if _ssh(f"test -d '{dp}' && echo 1 || echo 0") != "1":
                 continue
-            files_raw = _ssh_exec(f"ls -1 {dp}/*.yaml 2>/dev/null || true")
-            if not files_raw:
+            raw_files = _ssh(f"ls -1 '{dp}'/*.yaml 2>/dev/null || true")
+            if not raw_files:
                 continue
         except Exception:
             continue
 
-        for fn in files_raw.split("\n"):
+        for fn in raw_files.split("\n"):
             fn = fn.strip().rsplit("/", 1)[-1]
             if not fn or not fn.endswith(".yaml"):
                 continue
             cat = fn[:-5]
             try:
-                content = _ssh_read(f"{dp}/{fn}")
+                content = _read(f"{dp}/{fn}")
                 entries = _parse_yaml_entries(content)
             except Exception:
                 continue
             for e in entries:
-                rows.append({
-                    "department": dept,
-                    "category": cat,
-                    "target": e["target"],
-                    "labels": e["labels"],
-                })
+                rows.append({"department": dept, "category": cat, "target": e["target"], "labels": e["labels"]})
     return rows
 
 
-# ── 按 department+category 聚合后写 YAML ───────────────────
+# ── 目录文件列表 API ─────────────────────────────────────────
 
-def _sync_yaml(dept: str, cat: str) -> None:
-    base = settings.prometheus_targets_dir
-    yp = f"{base}/{dept}/{cat}.yaml"
-    dp = f"{base}/{dept}/{cat}.yaml.disabled"
-
+@router.get("/directories")
+async def list_directories() -> List[dict]:
+    """返回文件列表树结构"""
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT target, labels FROM scrape_targets WHERE department=%s AND category=%s AND status=1",
-                         (dept, cat))
-            active = [{"target": r[0], "labels": json.loads(r[1]) if r[1] else {}}
-                      for r in cur.fetchall()]
-            cur.execute("SELECT COUNT(*) FROM scrape_targets WHERE department=%s AND category=%s AND status=0",
-                         (dept, cat))
-            has_disabled = cur.fetchone()[0] > 0
+            cur.execute("SELECT id, name, category, label, description, owner, enabled, created_at FROM scrape_directories ORDER BY name, category")
+            rows = cur.fetchall()
             cur.close()
+            return [{
+                "id": r[0], "name": r[1], "category": r[2] or "", "label": r[3] or "",
+                "description": r[4] or "", "owner": r[5] or "", "enabled": r[6],
+                "createdAt": str(r[7] or ""),
+            } for r in rows]
+    except Exception as e:
+        raise HTTPException(502, detail=f"db_error: {e}")
 
-        if active:
-            _ssh_write(yp, _build_yaml(active))
-            _ssh_rm(dp)
-        elif has_disabled:
-            _ssh_rm(yp)
-        else:
-            _ssh_rm(yp)
-            _ssh_rm(dp)
+
+@router.post("/directories")
+async def create_directory(body: dict) -> dict:
+    """新建文件夹"""
+    name = body.get("name", "").strip()
+    description = body.get("description", "") or ""
+    if not name:
+        raise HTTPException(400, detail="name required")
+    if ".." in name or "/" in name:
+        raise HTTPException(400, detail="invalid name")
+
+    now = datetime.now()
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            # 检查是否已存在
+            cur.execute("SELECT id FROM scrape_directories WHERE name=%s AND category='' AND enabled != -1", (name,))
+            if cur.fetchone():
+                raise HTTPException(409, detail="folder already exists")
+            cur.execute(
+                "INSERT INTO scrape_directories (name, category, label, description, owner, enabled, created_at, updated_at) "
+                "VALUES (%s,'',%s,%s,%s,1,%s,%s)",
+                (name, name, description, "admin", now, now))
+            new_id = cur.lastrowid
+            cur.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, detail=str(e))
+
+    # 在服务器创建目录
+    base = settings.prometheus_targets_dir
+    try:
+        _ssh(f"mkdir -p '{base}/{name}'")
     except Exception:
         pass
 
+    return {"id": new_id, "status": "created"}
 
-# ── 首次同步 ────────────────────────────────────────────────
+
+@router.delete("/directories/{did}")
+async def delete_directory(did: int) -> dict:
+    """删除文件夹（移入 _deleted + 级联）"""
+    try:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM scrape_directories WHERE id=%s", (did,))
+            row = cur.fetchone()
+            cur.close()
+            if not row:
+                raise HTTPException(404, detail="not found")
+            name = row[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, detail=str(e))
+
+    _delete_folder(name)
+    return {"status": "deleted"}
+
+
+@router.put("/directories/{did}")
+async def update_directory(did: int, body: dict) -> dict:
+    """更新文件夹信息（description等）"""
+    description = body.get("description", "")
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE scrape_directories SET description=%s, updated_at=%s WHERE id=%s",
+                         (description, datetime.now(), did))
+            cur.close()
+        return {"status": "updated"}
+    except Exception as e:
+        raise HTTPException(400, detail=str(e))
+
+
+# ── 抓取目标 API ─────────────────────────────────────────────
 
 def _ensure_synced() -> None:
     try:
@@ -194,11 +315,9 @@ def _ensure_synced() -> None:
             cur.close()
     except Exception:
         pass
-
     rows = _scan_remote()
     if not rows:
         return
-
     now = datetime.now()
     with get_db(readonly=False) as conn:
         cur = conn.cursor()
@@ -209,14 +328,11 @@ def _ensure_synced() -> None:
                     "VALUES (%s,%s,%s,%s,1,%s,%s,%s,%s)",
                     (r["department"], r["category"], r["target"],
                      json.dumps(r["labels"], ensure_ascii=False),
-                     "首次扫描同步", "system", now, now),
-                )
+                     "首次扫描同步", "system", now, now))
             except Exception:
                 pass
         cur.close()
 
-
-# ── API ──────────────────────────────────────────────────────
 
 @router.get("/targets")
 async def list_targets() -> List[dict]:
@@ -227,14 +343,12 @@ async def list_targets() -> List[dict]:
             cur.execute(
                 "SELECT id, department, category, target, labels, status, description, operator, created_at "
                 "FROM scrape_targets WHERE status != -1 ORDER BY department, category, id")
-            return [
-                {"id": r[0], "department": r[1], "category": r[2],
-                 "target": r[3],
-                 "labels": json.loads(r[4]) if r[4] else {},
-                 "status": r[5], "description": r[6] or "",
-                 "operator": r[7] or "", "createdAt": str(r[8] or "")}
-                for r in cur.fetchall()
-            ]
+            return [{
+                "id": r[0], "department": r[1], "category": r[2], "target": r[3],
+                "labels": json.loads(r[4]) if r[4] else {},
+                "status": r[5], "description": r[6] or "",
+                "operator": r[7] or "", "createdAt": str(r[8] or ""),
+            } for r in cur.fetchall()]
     except Exception as e:
         raise HTTPException(502, detail=f"db_error: {e}")
 
@@ -253,22 +367,6 @@ async def list_departments() -> List[str]:
         raise HTTPException(502, detail=f"db_error: {e}")
 
 
-@router.get("/categories")
-async def list_categories() -> List[dict]:
-    """返回所有 {department, category, count}"""
-    _ensure_synced()
-    try:
-        with get_db(readonly=True) as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT department, category, COUNT(*) as cnt FROM scrape_targets WHERE status != -1 GROUP BY department, category ORDER BY department, category")
-            rows = [{"department": r[0], "category": r[1], "count": r[2]} for r in cur.fetchall()]
-            cur.close()
-            return rows
-    except Exception as e:
-        raise HTTPException(502, detail=f"db_error: {e}")
-
-
 @router.post("/targets")
 async def create_target(body: dict) -> dict:
     department = body.get("department", "").strip()
@@ -279,38 +377,26 @@ async def create_target(body: dict) -> dict:
 
     if not department or not category or not target:
         raise HTTPException(400, detail="department, category and target required")
-    if ".." in target or "/" in target:
-        raise HTTPException(400, detail="invalid target")
 
     now = datetime.now()
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            # 检查同 department+category 是否有 labels 记录，没有则用新传入的
-            cur.execute("SELECT labels FROM scrape_targets WHERE department=%s AND category=%s AND status != -1 LIMIT 1",
-                         (department, category))
-            existing = cur.fetchone()
-            labels_json = existing[0] if existing and existing[0] else json.dumps(labels, ensure_ascii=False)
-
             cur.execute(
                 "INSERT INTO scrape_targets (department, category, target, labels, status, description, operator, created_at, updated_at) "
                 "VALUES (%s,%s,%s,%s,1,%s,%s,%s,%s)",
-                (department, category, target, labels_json, description, "admin", now, now))
+                (department, category, target, json.dumps(labels, ensure_ascii=False), description, "admin", now, now))
             new_id = cur.lastrowid
             cur.close()
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    _sync_yaml(department, category)
+    _sync_file(department, category)
     return {"id": new_id, "status": "created"}
 
 
 @router.put("/targets/{tid}")
 async def update_target(tid: int, body: dict) -> dict:
-    target = body.get("target", "").strip()
-    labels = body.get("labels")
-    description = body.get("description")
-
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
@@ -322,20 +408,18 @@ async def update_target(tid: int, body: dict) -> dict:
 
             sets = []
             params = []
-            if target:
+            if body.get("target"):
                 sets.append("target=%s")
-                params.append(target)
-            if labels is not None:
-                labels_json = json.dumps(labels, ensure_ascii=False)
+                params.append(body["target"])
+            if "labels" in body:
                 sets.append("labels=%s")
-                params.append(labels_json)
-            if description is not None:
+                params.append(json.dumps(body["labels"], ensure_ascii=False))
+            if "description" in body:
                 sets.append("description=%s")
-                params.append(description)
+                params.append(body["description"])
             sets.append("updated_at=%s")
             params.append(datetime.now())
             params.append(tid)
-
             cur.execute(f"UPDATE scrape_targets SET {','.join(sets)} WHERE id=%s", params)
             cur.close()
     except HTTPException:
@@ -343,7 +427,7 @@ async def update_target(tid: int, body: dict) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    _sync_yaml(dept, cat)
+    _sync_file(dept, cat)
     return {"status": "updated"}
 
 
@@ -364,7 +448,7 @@ async def delete_target(tid: int) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    _sync_yaml(dept, cat)
+    _sync_file(dept, cat)
     return {"status": "deleted"}
 
 
@@ -386,7 +470,7 @@ async def toggle_target(tid: int) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    _sync_yaml(dept, cat)
+    _sync_file(dept, cat)
     return {"status": "disabled" if new_st == 0 else "enabled"}
 
 
@@ -395,7 +479,6 @@ async def sync_from_server() -> dict:
     rows = _scan_remote()
     if not rows:
         return {"synced": 0, "departments": 0}
-
     now = datetime.now()
     depts = set()
     synced = 0
@@ -407,9 +490,9 @@ async def sync_from_server() -> dict:
                     "SELECT id FROM scrape_targets WHERE department=%s AND category=%s AND target=%s AND status != -1",
                     (r["department"], r["category"], r["target"]))
                 if cur.fetchone():
-                    cur.execute("UPDATE scrape_targets SET labels=%s, updated_at=%s WHERE department=%s AND category=%s AND target=%s",
-                                 (json.dumps(r["labels"], ensure_ascii=False), now,
-                                  r["department"], r["category"], r["target"]))
+                    cur.execute(
+                        "UPDATE scrape_targets SET labels=%s, updated_at=%s WHERE department=%s AND category=%s AND target=%s",
+                        (json.dumps(r["labels"], ensure_ascii=False), now, r["department"], r["category"], r["target"]))
                 else:
                     cur.execute(
                         "INSERT INTO scrape_targets (department, category, target, labels, status, description, operator, created_at, updated_at) "
