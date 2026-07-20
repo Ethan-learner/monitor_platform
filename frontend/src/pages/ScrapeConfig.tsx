@@ -461,89 +461,6 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         </Col>
       </Row>
 
-      {/* 采集效果监控 */}
-      {health && health.summary && (
-        <Card
-          size="small"
-          title={<span style={{ color: '#333' }}>采集效果监控</span>}
-          extra={
-            <Button size="small" icon={<ReloadOutlined />} onClick={onRefreshHealth}>
-              {health.stale ? '已过期，点击刷新' : '刷新'}
-            </Button>
-          }
-          styles={{ body: { padding: 12 } }}
-        >
-          <Row gutter={12} style={{ marginBottom: 12 }}>
-            <Col span={8}>
-              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
-                <Statistic
-                  title={<span style={{ color: '#666', fontSize: 12 }}>生效</span>}
-                  value={health.summary.effective}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />}
-                  valueStyle={{ color: '#52c41a', fontSize: 22 }}
-                />
-              </Card>
-            </Col>
-            <Col span={8}>
-              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
-                <Statistic
-                  title={<span style={{ color: '#666', fontSize: 12 }}>未生效</span>}
-                  value={health.summary.ineffective}
-                  prefix={<WarningOutlined style={{ color: '#faad14', fontSize: 16 }} />}
-                  valueStyle={{ color: '#faad14', fontSize: 22 }}
-                />
-              </Card>
-            </Col>
-            <Col span={8}>
-              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
-                <Statistic
-                  title={<span style={{ color: '#666', fontSize: 12 }}>失效</span>}
-                  value={health.summary.invalid}
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />}
-                  valueStyle={{ color: '#ff4d4f', fontSize: 22 }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* 未生效 / 失效目标列表 */}
-          {health.targets && health.targets.filter((t) => t.health !== 'effective').length > 0 && (
-            <div>
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                未生效 / 失效目标（需关注）
-              </div>
-              <div style={{ maxHeight: 200, overflow: 'auto' }}>
-                <Table
-                  rowKey="id"
-                  size="small"
-                  pagination={false}
-                  dataSource={health.targets.filter((t) => t.health !== 'effective')}
-                  columns={[
-                    { title: '目标地址', dataIndex: 'target', width: 200 },
-                    {
-                      title: '状态', dataIndex: 'health', width: 80,
-                      render: (h: string) => (
-                        <Tag color={h === 'ineffective' ? '#faad14' : '#ff4d4f'}>
-                          {h === 'ineffective' ? '未生效' : h === 'invalid' ? '失效' : h}
-                        </Tag>
-                      ),
-                    },
-                    {
-                      title: '最近采集', dataIndex: 'lastScrape', width: 140,
-                      render: (v: string | null) => v ? <span style={{ fontSize: 11, color: '#999' }}>{v}</span> : <span style={{ color: '#faad14', fontSize: 11 }}>从未采集</span>,
-                    },
-                    {
-                      title: '错误', dataIndex: 'lastError', ellipsis: true,
-                      render: (v: string | null) => v ? <span style={{ fontSize: 11, color: '#ff4d4f' }} title={v}>{v}</span> : <span style={{ color: '#999', fontSize: 11 }}>无</span>,
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-          )}
-        </Card>
-      )}
-
       {/* 环形图：配置文件分布 + 每文件夹数量标注 */}
       <Card size="small" title={<span style={{ color: '#333' }}>配置文件分布</span>} styles={{ body: { padding: 12 } }}>
         {fileEntries.length === 0 ? (
@@ -624,6 +541,70 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
           </div>
         )}
       </Card>
+
+      {/* 采集效果监控 */}
+      {health && health.summary && (
+        <Card
+          size="small"
+          title={<span style={{ color: '#333' }}>采集效果监控</span>}
+          extra={
+            <Button size="small" icon={<ReloadOutlined />} onClick={onRefreshHealth}>
+              {health.stale ? '已过期，点击刷新' : '刷新'}
+            </Button>
+          }
+          styles={{ body: { padding: 12 } }}
+        >
+          <Row gutter={12} style={{ marginBottom: 12 }}>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
+                <Statistic title={<span style={{ color: '#666', fontSize: 12 }}>生效</span>}
+                  value={health.summary.effective}
+                  prefix={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />}
+                  valueStyle={{ color: '#52c41a', fontSize: 22 }} />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
+                <Statistic title={<span style={{ color: '#666', fontSize: 12 }}>未生效</span>}
+                  value={health.summary.ineffective}
+                  prefix={<WarningOutlined style={{ color: '#faad14', fontSize: 16 }} />}
+                  valueStyle={{ color: '#faad14', fontSize: 22 }} />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
+                <Statistic title={<span style={{ color: '#666', fontSize: 12 }}>失效</span>}
+                  value={health.summary.invalid}
+                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />}
+                  valueStyle={{ color: '#ff4d4f', fontSize: 22 }} />
+              </Card>
+            </Col>
+          </Row>
+          {health.targets && health.targets.filter((t) => t.health !== 'effective').length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 8, fontWeight: 500 }}>未生效 / 失效目标（需关注）</div>
+              <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                <Table rowKey="id" size="small" pagination={false}
+                  dataSource={health.targets.filter((t) => t.health !== 'effective')}
+                  columns={[
+                    { title: '目标地址', dataIndex: 'target', width: 200 },
+                    { title: '状态', dataIndex: 'health', width: 80, render: (h: string) => (
+                        <Tag color={h === 'ineffective' ? '#faad14' : '#ff4d4f'}>
+                          {h === 'ineffective' ? '未生效' : h === 'invalid' ? '失效' : h}
+                        </Tag>
+                      )},
+                    { title: '最近采集', dataIndex: 'lastScrape', width: 140, render: (v: string | null) => (
+                        v ? <span style={{ fontSize: 11, color: '#999' }}>{v}</span> : <span style={{ color: '#faad14', fontSize: 11 }}>从未采集</span>
+                      )},
+                    { title: '错误', dataIndex: 'lastError', ellipsis: true, render: (v: string | null) => (
+                        v ? <span style={{ fontSize: 11, color: '#ff4d4f' }} title={v}>{v}</span> : <span style={{ color: '#999', fontSize: 11 }}>无</span>
+                      )},
+                  ]} />
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   )
 }
