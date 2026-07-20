@@ -21,6 +21,7 @@ export default function ScrapeConfig() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ScrapeTarget | null>(null)
+  const [configModal, setConfigModal] = useState(false)
   const [folderModal, setFolderModal] = useState(false)
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
@@ -76,11 +77,9 @@ export default function ScrapeConfig() {
     })
   }
 
-  const handleAddTarget = (dept: string, cat: string) => {
+  const handleAddConfigFile = (dept: string) => {
     setSelectedDept(dept)
-    setSelectedCat(cat)
-    setEditTarget(null)
-    setModalOpen(true)
+    setConfigModal(true)
   }
 
   const handleDeleteTarget = async (id: number) => {
@@ -216,7 +215,7 @@ export default function ScrapeConfig() {
                     {!selectMode && (
                       <Tooltip title="新增配置">
                         <Button size="small" type="text" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={(e) => {
-                          e.stopPropagation(); handleAddTarget(dept, '')
+                          e.stopPropagation(); handleAddConfigFile(dept)
                         }} />
                       </Tooltip>
                     )}
@@ -264,9 +263,12 @@ export default function ScrapeConfig() {
         <Card
           size="small"
           title={
-            <Space>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <span>{selectedDept || '全部'}{selectedCat ? ` / ${selectedCat}.yaml` : ''}</span>
-            </Space>
+              {selectedCat && (
+                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setEditTarget(null); setModalOpen(true) }}>新增目标</Button>
+              )}
+            </div>
           }
           style={{ height: '100%' }}
           styles={{ body: { padding: 12, overflow: 'auto', height: 'calc(100% - 38px)' } }}
@@ -330,6 +332,18 @@ export default function ScrapeConfig() {
           await loadAll()
         }}
         onClose={() => { setModalOpen(false); setEditTarget(null) }}
+      />
+
+      <ConfigFileModal
+        open={configModal}
+        dept={selectedDept || ''}
+        onSave={async (cat, desc) => {
+          await createDirectory({ name: selectedDept || '', category: cat, description: desc })
+          message.success('配置文件已创建')
+          setConfigModal(false)
+          await loadAll()
+        }}
+        onClose={() => setConfigModal(false)}
       />
 
       <FolderModal
@@ -436,6 +450,40 @@ function TargetModal({ open, editTarget, dirs, contextDept, contextCat, onSave, 
         <div>
           <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>备注</div>
           <Input placeholder="非必填" value={desc} onChange={(e) => setDesc(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ConfigFileModal({ open, dept, onSave, onClose }: {
+  open: boolean
+  dept: string
+  onSave: (category: string, description: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [category, setCategory] = useState('')
+  const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => { if (open) { setCategory(''); setDescription('') } }, [open])
+
+  const handleOk = async () => {
+    if (!category.trim()) { message.warning('请输入文件名'); return }
+    setSubmitting(true)
+    try { await onSave(category.trim(), description.trim()) } finally { setSubmitting(false) }
+  }
+
+  return (
+    <Modal title={`新增配置文件 - ${dept}`} open={open} onCancel={onClose} onOk={handleOk} okText="创建" confirmLoading={submitting} width={400}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}>
+        <div>
+          <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>文件名</div>
+          <Input value={category} onChange={(e) => setCategory(e.target.value)} autoFocus addonAfter=".yaml" placeholder="例：node、api、redis" />
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>描述</div>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
       </div>
     </Modal>

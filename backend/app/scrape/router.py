@@ -222,26 +222,26 @@ async def list_directories() -> List[dict]:
 
 @router.post("/directories")
 async def create_directory(body: dict) -> dict:
-    """新建文件夹"""
+    """新建文件夹或配置文件"""
     name = body.get("name", "").strip()
+    category = body.get("category", "").strip()
     description = body.get("description", "") or ""
     if not name:
         raise HTTPException(400, detail="name required")
-    if ".." in name or "/" in name:
+    if ".." in name or "/" in name or (category and ".." in category) or (category and "/" in category):
         raise HTTPException(400, detail="invalid name")
 
     now = datetime.now()
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
-            # 检查是否已存在
-            cur.execute("SELECT id FROM scrape_directories WHERE name=%s AND category='' AND enabled != -1", (name,))
+            cur.execute("SELECT id FROM scrape_directories WHERE name=%s AND category=%s AND enabled != -1", (name, category))
             if cur.fetchone():
-                raise HTTPException(409, detail="folder already exists")
+                raise HTTPException(409, detail="already exists")
             cur.execute(
                 "INSERT INTO scrape_directories (name, category, label, description, owner, enabled, created_at, updated_at) "
-                "VALUES (%s,'',%s,%s,%s,1,%s,%s)",
-                (name, name, description, "admin", now, now))
+                "VALUES (%s,%s,%s,%s,%s,1,%s,%s)",
+                (name, category, category or name, description, "admin", now, now))
             new_id = cur.lastrowid
             cur.close()
     except HTTPException:

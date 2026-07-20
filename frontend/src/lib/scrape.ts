@@ -33,7 +33,7 @@ export async function fetchDirectories(): Promise<DirectoryItem[]> {
   return data || []
 }
 
-export async function createDirectory(data: { name: string; description: string }): Promise<{ id: number }> {
+export async function createDirectory(data: { name: string; category?: string; description: string }): Promise<{ id: number }> {
   const { data: res } = await api.post('/scrape/directories', data)
   return res
 }
