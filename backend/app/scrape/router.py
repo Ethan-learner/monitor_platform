@@ -603,44 +603,74 @@ _HEALTH_CACHE_TTL = 30  # 秒
 
 
 def _normalize_target(t: str) -> str:
-    """去掉协议和路径，只保留 host:port 部分用于匹配"""
+    """提取 host:port 用于匹配，不保留协议和路径"""
     t = t.strip()
-    for prefix in ("http://", "https://"):
+    for prefix in ("https://", "http://"):
         if t.startswith(prefix):
             t = t[len(prefix):]
             break
-    # 去掉路径部分
     if "/" in t:
         t = t.split("/", 1)[0]
     return t
 
 
+def _build_target_index(targets: list) -> Dict[str, dict]:
+    """构建多维度目标索引（__address__, instance, 端口去掉等）"""
+    index: Dict[str, dict] = {}
+    for t in targets:
+        labels = t.get("labels", {}) or {}
+        keys = set()
+        # 1. __address__ 原始值
+        addr = (labels.get("__address__") or "").strip()
+        if addr:
+            keys.add(addr)
+            # 去掉端口也试试（如 172.16.10.27:9100 → 172.16.10.27）
+            if ":" in addr:
+                host = addr.rsplit(":", 1)[0]
+                if host:
+                    keys.add(host)
+        # 2. instance 标签
+        inst = (labels.get("instance") or "").strip()
+        if inst:
+            keys.add(_normalize_target(inst))
+        # 3. __param_target（黑盒探测的目标地址）
+        param_target = (labels.get("__param_target") or "").strip()
+        if param_target:
+            keys.add(param_target)
+        # 4. scrapeUrl 中提取 target
+        scrape_url = (t.get("scrapeUrl") or "")
+        if "/target?scrape=" in scrape_url:
+            params_part = scrape_url.split("/target?scrape=", 1)[1].split("&")[0]
+            if params_part:
+                keys.add(params_part)
+        # 5. host
+        tmp_host = (labels.get("host") or labels.get("__meta_host") or "").strip()
+        if tmp_host:
+            keys.add(tmp_host)
+
+        item = {
+            "health": t.get("health", "unknown"),
+            "lastScrape": t.get("lastScrape", ""),
+            "lastError": t.get("lastError", ""),
+            "scrapeUrl": t.get("scrapeUrl", ""),
+        }
+        for k in keys:
+            if k not in index:
+                index[k] = item
+    return index
+
+
 def _fetch_prometheus_targets() -> Dict[str, dict]:
-    """从 Prometheus 拉取 activeTargets，返回 {normalized_target: {health, lastScrape, lastError}}"""
-    base = settings.prometheus_url.rstrip("/")
-    if base.endswith("/api/v1"):
-        url = f"{base}/targets?state=active"
-    else:
-        url = f"{base}/api/v1/targets?state=active"
+    """从 Prometheus 拉取 activeTargets，构建多维度匹配索引"""
     result: Dict[str, dict] = {}
     try:
         with httpx.Client(timeout=10.0, verify=False) as cli:
-            r = cli.get(url)
-            data = r.json() if r.status_code == 200 else {}
-            for t in data.get("data", {}).get("activeTargets", []):
-                labels = t.get("labels", {}) or {}
-                # Prometheus target 用 __address__ 做匹配
-                addr = labels.get("__address__", "")
-                if not addr:
-                    continue
-                # 把 addr 也规范化（去掉端口和路径，但保留 host:port）
-                norm = addr.strip()
-                result[norm] = {
-                    "health": t.get("health", "unknown"),
-                    "lastScrape": t.get("lastScrape", ""),
-                    "lastError": t.get("lastError", ""),
-                    "scrapeUrl": t.get("scrapeUrl", ""),
-                }
+            r = cli.get(f"{settings.prometheus_url}/api/v1/targets", params={"state": "active"})
+            if r.status_code != 200:
+                return result
+            data = r.json()
+            active = data.get("data", {}).get("activeTargets", [])
+            result = _build_target_index(active)
     except Exception as e:
         print(f"[health] prometheus fetch error: {e}")
     return result
@@ -665,6 +695,15 @@ def _sync_health() -> Dict:
         for tid, dept, cat, tgt in rows:
             norm = _normalize_target(tgt)
             prom = prom_targets.get(norm)
+            # 尝试多种匹配策略
+            if prom is None:
+                # host 匹配（不带端口）
+                if ":" in norm:
+                    host = norm.rsplit(":", 1)[0]
+                    prom = prom_targets.get(host)
+            if prom is None:
+                # 原始 target 字符串匹配（用于 HTTP 黑盒探测）
+                prom = prom_targets.get(tgt)
             if prom is None:
                 status = "ineffective"
                 p_health = None
