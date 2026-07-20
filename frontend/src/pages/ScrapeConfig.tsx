@@ -466,35 +466,35 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         {fileEntries.length === 0 ? (
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flexShrink: 0 }}>
-              <svg width="140" height="140" viewBox="0 0 140 140">
+              <svg width="120" height="120" viewBox="0 0 120 120">
                 {(() => {
                   let acc = 0
-                  const r = 48
+                  const r = 40
                   const c = 2 * Math.PI * r
                   return fileEntries.map(([name, v], i) => {
                     const dash = (v / fileTotal) * c
                     const el = (
-                      <circle key={name} cx="70" cy="70" r={r} fill="none" stroke={COLORS.file[i % COLORS.file.length]}
-                        strokeWidth="20" strokeDasharray={`${dash} ${c - dash}`}
-                        strokeDashoffset={-acc} transform="rotate(-90 70 70)" />
+                      <circle key={name} cx="60" cy="60" r={r} fill="none" stroke={COLORS.file[i % COLORS.file.length]}
+                        strokeWidth="16" strokeDasharray={`${dash} ${c - dash}`}
+                        strokeDashoffset={-acc} transform="rotate(-90 60 60)" />
                     )
                     acc += dash
                     return el
                   })
                 })()}
-                <text x="70" y="66" textAnchor="middle" fill="#333" fontSize="24" fontWeight="700">{fileTotal}</text>
-                <text x="70" y="84" textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
+                <text x="60" y="57" textAnchor="middle" fill="#333" fontSize="20" fontWeight="700">{fileTotal}</text>
+                <text x="60" y="73" textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
               </svg>
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, fontSize: 12 }}>
               {fileEntries.map(([name, v], i) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 3, background: COLORS.file[i % COLORS.file.length], flexShrink: 0 }} />
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: COLORS.file[i % COLORS.file.length], flexShrink: 0 }} />
                   <span style={{ flex: 1, color: '#333' }}>{name}</span>
-                  <span style={{ color: '#333', fontWeight: 600, minWidth: 36, textAlign: 'right' }}>{v} 个</span>
-                  <span style={{ color: '#999', minWidth: 36, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
+                  <span style={{ color: '#333', fontWeight: 600 }}>{v} 个</span>
+                  <span style={{ color: '#999', width: 32, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
                 </div>
               ))}
             </div>
