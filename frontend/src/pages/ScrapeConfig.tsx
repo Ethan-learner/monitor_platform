@@ -310,7 +310,7 @@ export default function ScrapeConfig() {
               rowKey="id" size="small"
               dataSource={paginated}
               columns={[
-                { title: '部门', dataIndex: 'department', width: 120 },
+                { title: '文件夹', dataIndex: 'department', width: 120 },
                 { title: '分类', dataIndex: 'category', width: 100 },
                 { title: '目标地址', dataIndex: 'target', ellipsis: true },
                 { title: '状态', dataIndex: 'status', width: 70, render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
