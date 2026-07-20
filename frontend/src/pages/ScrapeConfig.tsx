@@ -466,49 +466,38 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         {fileEntries.length === 0 ? (
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <svg width="380" height="210" viewBox="0 0 380 210">
-              {(() => {
-                let acc = 0
-                const r = 44
-                const c = 2 * Math.PI * r
-                const cx = 140, cy = 105
-                const els = fileEntries.map(([name, v], i) => {
-                  const dash = (v / fileTotal) * c
-                  const midAngle = ((acc + dash / 2) / c) * 2 * Math.PI - Math.PI / 2
-                  const offset = -acc
-                  acc += dash
-                  const color = COLORS.file[i % COLORS.file.length]
-                  const side = Math.cos(midAngle) > 0 ? 1 : -1
-                  // 环形外缘
-                  const ox = cx + (r + 10) * Math.cos(midAngle)
-                  const oy = cy + (r + 10) * Math.sin(midAngle)
-                  // 短折线：向外→弯折→标签
-                  const bx = side > 0 ? cx + r + 40 : cx - r - 40
-                  const by = oy
-                  const lx = side > 0 ? cx + r + 45 : cx - r - 120
-                  const ly = by
-                  return (
-                    <g key={name}>
-                      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ flexShrink: 0 }}>
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                {(() => {
+                  let acc = 0
+                  const r = 48
+                  const c = 2 * Math.PI * r
+                  return fileEntries.map(([name, v], i) => {
+                    const dash = (v / fileTotal) * c
+                    const el = (
+                      <circle key={name} cx="70" cy="70" r={r} fill="none" stroke={COLORS.file[i % COLORS.file.length]}
                         strokeWidth="20" strokeDasharray={`${dash} ${c - dash}`}
-                        strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
-                      <polyline points={`${ox},${oy} ${bx},${by} ${lx},${ly}`}
-                        fill="none" stroke={color} strokeWidth="1.5" opacity="0.8" />
-                      <circle cx={lx + (side > 0 ? -4 : 120)} cy={ly} r="4" fill={color} />
-                      <text x={lx + (side > 0 ? 6 : 130)} y={ly + 4} textAnchor="start" fill="#333" fontSize="12" fontWeight="500">{`${name}  ${v} 个  ${((v / fileTotal) * 100).toFixed(0)}%`}</text>
-                    </g>
-                  )
-                })
-                els.push(
-                  <g key="center">
-                    <text x={cx} y={cy - 4} textAnchor="middle" fill="#333" fontSize="24" fontWeight="700">{fileTotal}</text>
-                    <text x={cx} y={cy + 16} textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
-                  </g>
-                )
-                return els
-              })()}
-            </svg>
+                        strokeDashoffset={-acc} transform="rotate(-90 70 70)" />
+                    )
+                    acc += dash
+                    return el
+                  })
+                })()}
+                <text x="70" y="66" textAnchor="middle" fill="#333" fontSize="24" fontWeight="700">{fileTotal}</text>
+                <text x="70" y="84" textAnchor="middle" fill="#999" fontSize="10">配置文件</text>
+              </svg>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {fileEntries.map(([name, v], i) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: COLORS.file[i % COLORS.file.length], flexShrink: 0 }} />
+                  <span style={{ flex: 1, color: '#333' }}>{name}</span>
+                  <span style={{ color: '#333', fontWeight: 600, minWidth: 36, textAlign: 'right' }}>{v} 个</span>
+                  <span style={{ color: '#999', minWidth: 36, textAlign: 'right' }}>{((v / fileTotal) * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
