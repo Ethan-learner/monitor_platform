@@ -1,7 +1,8 @@
 import json
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Optional
 
+import httpx
 import paramiko
 import yaml
 from fastapi import APIRouter, HTTPException
@@ -527,6 +528,7 @@ async def delete_target(tid: int) -> dict:
                 raise HTTPException(404, detail="not found")
             dept, cat = row
             cur.execute("UPDATE scrape_targets SET status=-1 WHERE id=%s", (tid,))
+            cur.execute("DELETE FROM scrape_target_health WHERE scrape_target_id=%s", (tid,))
             cur.close()
     except HTTPException:
         raise
@@ -591,3 +593,159 @@ async def sync_from_server() -> dict:
                 pass
         cur.close()
     return {"synced": synced, "departments": len(depts)}
+
+
+# ── 抓取效果监控（Prometheus 同步 + 查询） ─────────
+
+# 缓存上次同步结果（避免频繁拉 Prometheus）
+_HEALTH_CACHE: Dict = {"checked_at": None, "summary": None, "targets": None, "by_target": {}}
+_HEALTH_CACHE_TTL = 30  # 秒
+
+
+def _normalize_target(t: str) -> str:
+    """去掉协议和路径，只保留 host:port 部分用于匹配"""
+    t = t.strip()
+    for prefix in ("http://", "https://"):
+        if t.startswith(prefix):
+            t = t[len(prefix):]
+            break
+    # 去掉路径部分
+    if "/" in t:
+        t = t.split("/", 1)[0]
+    return t
+
+
+def _fetch_prometheus_targets() -> Dict[str, dict]:
+    """从 Prometheus 拉取 activeTargets，返回 {normalized_target: {health, lastScrape, lastError}}"""
+    base = settings.prometheus_url.rstrip("/")
+    if base.endswith("/api/v1"):
+        url = f"{base}/targets?state=active"
+    else:
+        url = f"{base}/api/v1/targets?state=active"
+    result: Dict[str, dict] = {}
+    try:
+        with httpx.Client(timeout=10.0, verify=False) as cli:
+            r = cli.get(url)
+            data = r.json() if r.status_code == 200 else {}
+            for t in data.get("data", {}).get("activeTargets", []):
+                labels = t.get("labels", {}) or {}
+                # Prometheus target 用 __address__ 做匹配
+                addr = labels.get("__address__", "")
+                if not addr:
+                    continue
+                # 把 addr 也规范化（去掉端口和路径，但保留 host:port）
+                norm = addr.strip()
+                result[norm] = {
+                    "health": t.get("health", "unknown"),
+                    "lastScrape": t.get("lastScrape", ""),
+                    "lastError": t.get("lastError", ""),
+                    "scrapeUrl": t.get("scrapeUrl", ""),
+                }
+    except Exception as e:
+        print(f"[health] prometheus fetch error: {e}")
+    return result
+
+
+def _sync_health() -> Dict:
+    """从 DB 拉所有 status=1 目标，与 Prometheus 对比，写入 scrape_target_health 表"""
+    with get_db(readonly=True) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, department, category, target FROM scrape_targets WHERE status=1")
+        rows = cur.fetchall()
+        cur.close()
+    if not rows:
+        return {"effective": 0, "ineffective": 0, "invalid": 0, "synced": 0}
+
+    prom_targets = _fetch_prometheus_targets()
+    now = datetime.now()
+    summary = {"effective": 0, "ineffective": 0, "invalid": 0, "synced": 0}
+
+    with get_db(readonly=False) as conn:
+        cur = conn.cursor()
+        for tid, dept, cat, tgt in rows:
+            norm = _normalize_target(tgt)
+            prom = prom_targets.get(norm)
+            if prom is None:
+                status = "ineffective"
+                p_health = None
+                last_scrape = None
+                last_error = "Prometheus 未发现该目标（可能未配置或已被丢弃）"
+            elif prom["health"] == "up":
+                status = "effective"
+                p_health = "up"
+                last_scrape = prom.get("lastScrape")
+                last_error = None
+            else:
+                status = "invalid"
+                p_health = prom["health"]
+                last_scrape = prom.get("lastScrape")
+                last_error = prom.get("lastError", "")
+            try:
+                cur.execute(
+                    "INSERT INTO scrape_target_health (scrape_target_id, department, category, target, health_status, prometheus_health, last_scrape, last_error, last_check_at, updated_at) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                    "ON DUPLICATE KEY UPDATE department=VALUES(department), category=VALUES(category), target=VALUES(target), "
+                    "health_status=VALUES(health_status), prometheus_health=VALUES(prometheus_health), "
+                    "last_scrape=VALUES(last_scrape), last_error=VALUES(last_error), last_check_at=VALUES(last_check_at), updated_at=VALUES(updated_at)",
+                    (tid, dept, cat, tgt, status, p_health, last_scrape, last_error, now, now))
+                summary[status] += 1
+                summary["synced"] += 1
+            except Exception:
+                pass
+        cur.close()
+    return summary
+
+
+@router.get("/health")
+async def get_health() -> dict:
+    """查当前采集效果快照（带缓存）"""
+    now = datetime.now()
+    cache_age = (now - _HEALTH_CACHE["checked_at"]).total_seconds() if _HEALTH_CACHE["checked_at"] else 999
+    if cache_age > _HEALTH_CACHE_TTL or _HEALTH_CACHE["targets"] is None:
+        summary = _sync_health()
+        _HEALTH_CACHE["checked_at"] = now
+        _HEALTH_CACHE["summary"] = {k: v for k, v in summary.items() if k != "synced"}
+
+    if _HEALTH_CACHE["targets"] is None:
+        with get_db(readonly=True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT scrape_target_id, department, category, target, health_status, prometheus_health, last_scrape, last_error, last_check_at FROM scrape_target_health ORDER BY department, category")
+            _HEALTH_CACHE["targets"] = [
+                {
+                    "id": r[0], "department": r[1], "category": r[2], "target": r[3],
+                    "health": r[4], "prometheusHealth": r[5],
+                    "lastScrape": str(r[6]) if r[6] else None,
+                    "lastError": r[7], "lastCheckAt": str(r[8]) if r[8] else None,
+                }
+                for r in cur.fetchall()
+            ]
+            cur.close()
+
+    return {
+        "summary": _HEALTH_CACHE["summary"],
+        "targets": _HEALTH_CACHE["targets"],
+        "checkedAt": str(_HEALTH_CACHE["checked_at"]) if _HEALTH_CACHE["checked_at"] else None,
+        "stale": cache_age > _HEALTH_CACHE_TTL,
+    }
+
+
+@router.post("/health/refresh")
+async def refresh_health() -> dict:
+    """强制刷新缓存（拉取 Prometheus 重新同步）"""
+    _HEALTH_CACHE["checked_at"] = None
+    _HEALTH_CACHE["targets"] = None
+    _HEALTH_CACHE["summary"] = None
+    return await get_health()
+
+
+@router.delete("/health/by-target/{tid}")
+async def delete_health_by_target(tid: int) -> dict:
+    """删除目标时级联删除其 health 记录"""
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM scrape_target_health WHERE scrape_target_id=%s", (tid,))
+            cur.close()
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(400, detail=str(e))

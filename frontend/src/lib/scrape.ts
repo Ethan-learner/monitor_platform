@@ -105,3 +105,32 @@ export async function syncFromServer(): Promise<{ synced: number }> {
   const { data } = await api.post('/scrape/sync')
   return data
 }
+
+export interface TargetHealth {
+  id: number
+  department: string
+  category: string
+  target: string
+  health: 'effective' | 'ineffective' | 'invalid'
+  prometheusHealth: 'up' | 'down' | 'unknown' | null
+  lastScrape: string | null
+  lastError: string | null
+  lastCheckAt: string | null
+}
+
+export interface HealthReport {
+  summary: { effective: number; ineffective: number; invalid: number }
+  targets: TargetHealth[]
+  checkedAt: string | null
+  stale: boolean
+}
+
+export async function fetchHealth(): Promise<HealthReport> {
+  const { data } = await api.get<HealthReport>('/scrape/health')
+  return data
+}
+
+export async function refreshHealth(): Promise<HealthReport> {
+  const { data } = await api.post('/scrape/health/refresh')
+  return data
+}

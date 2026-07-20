@@ -151,3 +151,21 @@ CREATE TABLE IF NOT EXISTS scrape_directories (
     INDEX idx_name (name),
     INDEX idx_enabled (enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抓取文件列表';
+
+-- 11. 抓取目标采集效果快照（每条记录一个目标的最新健康状态）
+CREATE TABLE IF NOT EXISTS scrape_target_health (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    scrape_target_id BIGINT NOT NULL COMMENT '关联 scrape_targets.id',
+    department VARCHAR(255) NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    target VARCHAR(500) NOT NULL,
+    health_status VARCHAR(20) NOT NULL COMMENT 'effective/ineffective/invalid',
+    prometheus_health VARCHAR(20) COMMENT 'up/down/unknown',
+    last_scrape DATETIME COMMENT 'Prometheus 最近采集时间',
+    last_error TEXT COMMENT 'Prometheus 采集错误信息',
+    last_check_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '本系统最近检查时间',
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_target_id (scrape_target_id),
+    INDEX idx_status (health_status),
+    INDEX idx_dept_cat (department, category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抓取目标采集效果快照';
