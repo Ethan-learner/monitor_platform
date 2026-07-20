@@ -663,3 +663,157 @@ scrapeUrl: "http://172.16.10.27:9100/metrics"
 ├── 抓取目标 (已废弃，功能由 Dashboard 替代)
 └── 抓取配置 → ScrapeConfig.tsx
 ```
+
+### 15.12 前端 ↔ DB ↔ 服务器同步机制
+
+#### 15.12.1 同步方向总览
+
+```
+┌──────────┐   CRUD API    ┌────────┐   _sync_file()   ┌──────────┐
+│  前端     │ ────────────→ │  MySQL  │ ──────────────→ │  服务器   │
+│          │               │        │   SSH/SFTP       │  .yaml   │
+└──────────┘               └────────┘                  └──────────┘
+                                 ↑                          │
+                                 │    POST /api/scrape/sync  │
+                                 │    SSH 扫描目录 + 解析    │
+                                 └──────────────────────────┘
+
+                        ┌──────────────┐
+                        │  Prometheus  │
+                        │  /api/v1/    │
+                        │  targets     │
+                        └──────┬───────┘
+                               │ _sync_health()
+                               │ httpx 拉取 + 匹配
+                               ▼
+                        ┌──────────────┐
+                        │  MySQL       │
+                        │  scrape_     │
+                        │  target_     │
+                        │  health      │
+                        └──────────────┘
+```
+
+#### 15.12.2 正向同步：MySQL → 服务器（写操作）
+
+**触发时机**：每次前端增/改/删/禁用目标后，后端自动调用 `_sync_file()`。
+
+**`_sync_file(dept, cat)` 逻辑**：
+1. 从 MySQL 查询该 `department + category` 下所有 target（status=1/0/-1）
+2. **活跃目标（status=1）**：聚合写入 `{dept}/{cat}.yaml`
+3. **禁用目标（status=0）**：分别写入 `{dept}/_disabled/{cat}_target_{id}.yaml`（无时间戳）
+4. **删除目标（status=-1）**：分别写入 `{dept}/_deleted/{cat}_target_{id}_{ts}.yaml`（带时间戳）
+5. **清理旧文件**：重新启用时自动删除对应的 `_disabled/` 文件
+
+**关键技术细节**：
+- `_write(path, content)`：SSH → sftp.open(path, "w") → 写入 YAML 内容
+- `_rm(path)`：SSH → exec_command("rm -f path") → 删除文件
+- `_mv(src, dst)`：SSH → exec_command("mv src dst") → 移动文件
+- `_exists(path)`：SSH → test -f path → 判断文件存在
+- 路径分隔符使用 `/`（非 `os.path.join`，避免 Windows `\\` 问题）
+
+**写同步流程图**：
+```
+前端点击「新增目标」
+  ↓ POST /api/scrape/targets
+  ↓ {dept:"系统配置", cat:"nginx", target:"172.16.10.27:9113", labels:{...}}
+后端 create_target()
+  ↓ INSERT INTO scrape_targets (status=1)
+  ↓ _sync_file("系统配置", "nginx")
+  ↓   SELECT * FROM scrape_targets WHERE dept="系统配置" AND cat="nginx"
+  ↓   status=1 → 写入 /prometheus_targets/系统配置/nginx.yaml
+  ↓   status=0 → 写入 /prometheus_targets/系统配置/_disabled/nginx_target_{id}.yaml
+  ↓   status=-1 → 写入 /prometheus_targets/系统配置/_deleted/nginx_target_{id}_{ts}.yaml
+  ↓
+服务器 nginx.yaml 已更新
+  ↓ Prometheus file_sd_configs 自动发现（无需 reload）
+Prometheus 开始采集新目标
+```
+
+#### 15.12.3 反向同步：服务器 → MySQL（扫描导入）
+
+**触发时机**：
+- 手动调用 `POST /api/scrape/sync`
+- `GET /api/scrape/targets` 首次调用时（`_ensure_synced` 自动触发）
+
+**`_scan_remote()` 逻辑**：
+1. SSH 列出 `/prometheus_targets/` 下所有子目录
+2. 遍历每个部门目录下的 `*.yaml` 文件
+3. `yaml.safe_load` 解析每个 YAML 文件
+4. 提取 targets 数组 + labels
+5. 去重对比 MySQL：已存在则 UPDATE labels，不存在则 INSERT
+
+**反向同步流程图**：
+```
+POST /api/scrape/sync
+  ↓
+_scan_remote()
+  ↓ SSH: ls /prometheus_targets/
+  ↓   系统配置/  数据治理部/  产品一部/  ...
+  ↓ SSH: ls /prometheus_targets/系统配置/*.yaml
+  ↓   nginx.yaml  prometheus.yaml  ...
+  ↓ SSH: sftp open → 读取 YAML 内容
+  ↓ yaml.safe_load → 解析 targets + labels
+  ↓
+MySQL: INSERT/UPDATE scrape_targets
+  ↓ (如果已存在) UPDATE labels WHERE dept+cat+target
+  ↓ (如果不存在) INSERT new record (status=1)
+```
+
+#### 15.12.4 健康同步：Prometheus → MySQL
+
+**触发时机**：
+- `GET /api/scrape/health`（缓存过期 >30s 或首次请求）
+- `POST /api/scrape/health/refresh`（强制刷新）
+
+**`_sync_health()` 逻辑**：
+1. 从 MySQL 查所有 `status=1` 的目标
+2. `httpx` 拉 `{prometheus_url}/api/v1/targets?state=active`
+3. 构建多维度匹配索引（scrapeUrl 提取 host:port 优先）
+4. 逐条对比判定 effective / ineffective / invalid
+5. `INSERT ... ON DUPLICATE KEY UPDATE` 写入 `scrape_target_health`
+6. JOIN `scrape_targets WHERE status=1` 过滤已删除/禁用的目标
+
+**匹配策略（优先级）**：
+1. **scrapeUrl 提取** `http://host:port/metrics` → `host:port`
+2. **`__address__`** 标签
+3. **`instance`** 标签
+4. **`__param_target`** 标签（黑盒探测）
+
+**健康同步流程图**：
+```
+GET /api/scrape/health (缓存过期)
+  ↓
+_sync_health()
+  ↓ SELECT id, dept, cat, target FROM scrape_targets WHERE status=1
+  ↓ httpx GET {prometheus_url}/api/v1/targets?state=active
+  ↓ _build_target_index(activeTargets)
+  ↓   对每个 target：
+  ↓     scrapeUrl:"http://172.16.10.27:9100/metrics"
+  ↓                        ↓ 提取
+  ↓                   "172.16.10.27:9100" ← 作为匹配 key
+  ↓   对比 DB target "172.16.10.27:9100" → 匹配成功 → effective
+  ↓   没匹配到 → ineffective
+  ↓   匹配到但 health!=up → invalid
+  ↓ UPSERT → scrape_target_health
+  ↓
+  ↓ GET /api/scrape/health (缓存未过期)
+  ↓ SELECT h.* FROM scrape_target_health h
+  ↓   JOIN scrape_targets t ON t.id=h.scrape_target_id
+  ↓   WHERE t.status=1  ← 过滤已删除/禁用的目标
+  ↓
+前端 Display Dashboard
+```
+
+#### 15.12.5 同步时机总结
+
+| 操作 | 同步方向 | 触发方式 | 同步对象 |
+|------|---------|---------|---------|
+| 新增目标 | MySQL → 服务器 | 自动（`_sync_file`） | `.yaml` 文件 |
+| 编辑目标 | MySQL → 服务器 | 自动（`_sync_file`） | `.yaml` 文件 |
+| 删除目标 | MySQL → 服务器 | 自动（`_sync_file`） | 移入 `_deleted/` |
+| 禁用/启用 | MySQL → 服务器 | 自动（`_sync_file`） | 移入 `_disabled/` 或恢复 |
+| 删除文件夹 | MySQL → 服务器 | 自动（`_delete_folder`） | 移入根 `_deleted/` |
+| 删除配置文件 | MySQL → 服务器 | 自动（`_delete_file`） | 移入 `_deleted/` + 级联 targets |
+| 服务器已有文件 | 服务器 → MySQL | 手动/首次（sync） | scrape_targets 表 |
+| 采集效果 | Prometheus → MySQL | 定时/强制（health） | scrape_target_health 表 |
