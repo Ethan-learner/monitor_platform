@@ -467,38 +467,42 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <svg width="360" height="200" viewBox="0 0 360 200">
+            <svg width="420" height="220" viewBox="0 0 420 220">
               {(() => {
                 let acc = 0
-                const r = 50
+                const r = 48
                 const c = 2 * Math.PI * r
-                const cx = 120, cy = 100
+                const cx = 140, cy = 110
                 const els = fileEntries.map(([name, v], i) => {
                   const dash = (v / fileTotal) * c
                   const midAngle = ((acc + dash / 2) / c) * 2 * Math.PI - Math.PI / 2
                   const offset = -acc
                   acc += dash
                   const color = COLORS.file[i % COLORS.file.length]
-
-                  // 标签放在扇区外侧同角度位置，分左右两侧避免交叉
                   const side = Math.cos(midAngle) > 0 ? 1 : -1
-                  const outR = r + 30
-                  const labelR = r + 60
-                  const lx = cx + labelR * Math.cos(midAngle)
-                  const ly = cy + labelR * Math.sin(midAngle)
-                  const anchor = side > 0 ? 'start' : 'end'
-                  const textX = lx + side * 8
+
+                  // 环形外缘坐标
+                  const outX = cx + (r + 16) * Math.cos(midAngle)
+                  const outY = cy + (r + 16) * Math.sin(midAngle)
+                  // 折弯点
+                  const bendX = cx + (r + 45) * Math.cos(midAngle)
+                  const bendY = cy + (r + 45) * Math.sin(midAngle)
+                  // 标签点：限制在画布内
+                  const labelX = side > 0 ? Math.min(bendX + 30, 400) : Math.max(bendX - 30, 20)
+                  const labelY = Math.max(16, Math.min(bendY, 204))
 
                   return (
                     <g key={name}>
                       <circle cx={cx} cy={cy} r={r} fill="none" stroke={color}
-                        strokeWidth="22" strokeDasharray={`${dash} ${c - dash}`}
+                        strokeWidth="20" strokeDasharray={`${dash} ${c - dash}`}
                         strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
-                      <line x1={cx + outR * Math.cos(midAngle)} y1={cy + outR * Math.sin(midAngle)}
-                        x2={lx} y2={ly} stroke={color} strokeWidth="1.2" opacity="0.8" />
-                      <circle cx={lx} cy={ly} r="3" fill={color} />
-                      <text x={textX} y={ly + 4} textAnchor={anchor} fill="#333" fontSize="12" fontWeight="500">{name}</text>
-                      <text x={textX} y={ly + 18} textAnchor={anchor} fill={color} fontSize="11" fontWeight="600">{v} 个</text>
+                      <polyline points={`${outX},${outY} ${bendX},${bendY} ${labelX},${labelY}`}
+                        fill="none" stroke={color} strokeWidth="1.2" opacity="0.8" />
+                      <circle cx={labelX} cy={labelY} r="3" fill={color} />
+                      <text x={labelX + side * 10} y={labelY + 4} textAnchor={side > 0 ? 'start' : 'end'}
+                        fill="#333" fontSize="12" fontWeight="500">{name}</text>
+                      <text x={labelX + side * 10} y={labelY + 18} textAnchor={side > 0 ? 'start' : 'end'}
+                        fill={color} fontSize="11" fontWeight="600">{v} 个</text>
                     </g>
                   )
                 })
