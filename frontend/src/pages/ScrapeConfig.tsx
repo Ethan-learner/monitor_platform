@@ -120,6 +120,14 @@ export default function ScrapeConfig() {
       render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag>,
     },
     {
+      title: '生效', key: 'health', width: 70,
+      render: (_: any, r: ScrapeTarget) => {
+        const h = health?.targets?.find((t) => t.id === r.id)
+        if (!h) return <Tag color="default">未知</Tag>
+        return <Tag color={h.health === 'effective' ? 'green' : h.health === 'ineffective' ? '#faad14' : 'red'}>{h.health === 'effective' ? '生效' : h.health === 'ineffective' ? '未生效' : '失效'}</Tag>
+      },
+    },
+    {
       title: '操作', width: 130,
       render: (_: any, r: ScrapeTarget) => (
         <Space>
