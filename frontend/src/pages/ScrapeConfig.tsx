@@ -584,6 +584,8 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                   dataSource={health.targets.filter((t) => t.health !== 'effective')}
                   columns={[
                     { title: '目标地址', dataIndex: 'target', width: 200 },
+                    { title: '所属文件夹', dataIndex: 'department', width: 90 },
+                    { title: '配置文件', dataIndex: 'category', width: 90, render: (v: string) => v ? `${v}.yaml` : '' },
                     { title: '状态', dataIndex: 'health', width: 80, render: (h: string) => (
                         <Tag color={h === 'ineffective' ? '#faad14' : '#ff4d4f'}>
                           {h === 'ineffective' ? '未生效' : h === 'invalid' ? '失效' : h}
