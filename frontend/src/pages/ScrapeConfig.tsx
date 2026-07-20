@@ -62,7 +62,14 @@ export default function ScrapeConfig() {
         deptMap[d.name].files.push(d)
       }
     }
-    return Object.entries(deptMap).sort(([a], [b]) => a.localeCompare(b))
+    const ORDER = ['系统配置', '产品一部', '产品二部', '运维中心', '数据治理部']
+    return Object.entries(deptMap).sort(([a], [b]) => {
+      const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b)
+      if (ia >= 0 && ib >= 0) return ia - ib
+      if (ia >= 0) return -1
+      if (ib >= 0) return 1
+      return a.localeCompare(b)
+    })
   }, [dirs])
 
   const filtered = useMemo(() => {
@@ -327,10 +334,10 @@ export default function ScrapeConfig() {
               rowKey="id" size="small"
               dataSource={paginated}
               columns={[
-                { title: '文件夹', align: 'center', dataIndex: 'department', width: 120},
-                { title: '分类', align: 'center', dataIndex: 'category', width: 100},
-                { title: '目标地址', align: 'center', dataIndex: 'target', ellipsis: true},
-                { title: '状态', align: 'center', dataIndex: 'status', width: 120, render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
+                { title: '文件夹', dataIndex: 'department', width: 120},
+                { title: '分类', dataIndex: 'category', width: 100},
+                { title: '目标地址', dataIndex: 'target', ellipsis: true},
+                { title: '状态', dataIndex: 'status', width: 120, render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
               ]}
               pagination={{
                 current: page,
