@@ -106,7 +106,7 @@ export default function ScrapeConfig() {
   }
 
   const columns = [
-    { title: '目标地址', dataIndex: 'target', width: 300 },
+    { title: '目标地址', dataIndex: 'target', width: 250 },
     {
       title: '标签', key: 'labels', render: (_: any, r: ScrapeTarget) => (
         <Space size={4} wrap>
@@ -114,7 +114,7 @@ export default function ScrapeConfig() {
         </Space>
       ),
     },
-    { title: '描述', dataIndex: 'description', ellipsis: true },
+    { title: '描述', dataIndex: 'description', ellipsis: true, width: 150 },
     {
       title: '状态', dataIndex: 'status', width: 70,
       render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag>,
@@ -128,7 +128,7 @@ export default function ScrapeConfig() {
       },
     },
     {
-      title: '操作', width: 130,
+      title: '操作', width: 130, key: 'action',
       render: (_: any, r: ScrapeTarget) => (
         <Space>
           <Button size="small" type="text" icon={<EditOutlined style={{ color: '#1677ff' }} />} onClick={() => { setEditTarget(r); setSelectedDept(r.department); setSelectedCat(r.category); setModalOpen(true) }} />
@@ -254,7 +254,7 @@ export default function ScrapeConfig() {
                     )}
                   </div>
                   {expanded && files.map((f) => {
-                    const activeCat = selectedCat === f.category
+                    const activeCat = selectedDept === dept && selectedCat === f.category
                     return (
                       <div
                         key={f.category}
@@ -327,10 +327,10 @@ export default function ScrapeConfig() {
               rowKey="id" size="small"
               dataSource={paginated}
               columns={[
-                { title: '文件夹', dataIndex: 'department', width: 120, align: 'center'},
-                { title: '分类', dataIndex: 'category', width: 100, align: 'center' },
-                { title: '目标地址', dataIndex: 'target', ellipsis: true , align: 'center'},
-                { title: '状态', dataIndex: 'status', width: 70, align: 'center', render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
+                { title: '文件夹', align: 'center', dataIndex: 'department', width: 120},
+                { title: '分类', align: 'center', dataIndex: 'category', width: 100},
+                { title: '目标地址', align: 'center', dataIndex: 'target', ellipsis: true},
+                { title: '状态', align: 'center', dataIndex: 'status', width: 120, render: (s: number) => <Tag color={s === 1 ? 'green' : 'orange'}>{STATUS_LABEL[s]}</Tag> },
               ]}
               pagination={{
                 current: page,
@@ -636,7 +636,7 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                 <Table rowKey="id" size="small" pagination={false}
                   dataSource={health.targets.filter((t) => t.health !== 'effective')}
                   columns={[
-                    { title: '目标地址', dataIndex: 'target', width: 200, align: 'center' },
+                    { title: '目标地址', dataIndex: 'target', width: 200 },
                     { title: '所属文件夹', dataIndex: 'department', width: 200, align: 'center' },
                     { title: '配置文件', dataIndex: 'category', width: 200, align: 'center', render: (v: string) => v ? `${v}.yaml` : '' },
                     { title: '状态', dataIndex: 'health', width: 200, align: 'center', render: (h: string) => (
