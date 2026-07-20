@@ -55,7 +55,7 @@ export const roleMenus: Record<string, RoleConfig> = {
       },
       {
         key: 'db', label: '数据库监控', icon: 'DatabaseOutlined', children: [
-          { key: 'pmm-overview', label: '总览', url: '/pmm-ui/graph/d/mysql-instance-overview/mysql-instances-overview' },
+          { key: 'pmm-overview', label: '总览', url: '/grafana/d/mysql-instance-overview/mysql-instances-overview?orgId=1&kiosk' },
           {
             key: 'mysql', label: 'MySQL', children: [
               { key: 'mysql-overview', label: 'Overview', url: '/grafana/d/mysql-instance-overview/mysql-instances-overview?orgId=1&kiosk' },
