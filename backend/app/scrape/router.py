@@ -291,6 +291,14 @@ async def create_directory(body: dict) -> dict:
             cur.execute("SELECT id FROM scrape_directories WHERE name=%s AND category=%s AND enabled != -1", (name, category))
             if cur.fetchone():
                 raise HTTPException(409, detail="already exists")
+            # 如果是创建配置文件，确保部门文件夹记录也存在
+            if category:
+                cur.execute("SELECT id FROM scrape_directories WHERE name=%s AND category='' AND enabled != -1", (name,))
+                if not cur.fetchone():
+                    cur.execute(
+                        "INSERT INTO scrape_directories (name, category, label, description, owner, enabled, created_at, updated_at) "
+                        "VALUES (%s,'',%s,%s,%s,1,%s,%s)",
+                        (name, name, "", "admin", now, now))
             cur.execute(
                 "INSERT INTO scrape_directories (name, category, label, description, owner, enabled, created_at, updated_at) "
                 "VALUES (%s,%s,%s,%s,%s,1,%s,%s)",

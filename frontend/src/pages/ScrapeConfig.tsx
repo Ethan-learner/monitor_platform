@@ -192,7 +192,7 @@ export default function ScrapeConfig() {
           </div>
 
           <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 0', paddingTop: 4 }}>
-            {tree.map(([dept, { files }]) => {
+            {tree.map(([dept, { item, files }]) => {
               const expanded = expandedDepts.has(dept)
               const activeFolder = selectedDept === dept && !selectedCat
               return (
@@ -208,15 +208,12 @@ export default function ScrapeConfig() {
                   >
                     {selectMode ? (
                       <Checkbox
-                        checked={files.length > 0 && files.every((f) => selectedFileKeys.has(`${dept}|${f.category}`))}
-                        indeterminate={files.some((f) => selectedFileKeys.has(`${dept}|${f.category}`)) && !files.every((f) => selectedFileKeys.has(`${dept}|${f.category}`))}
+                        checked={selectedFolderIds.has(item?.id || -1)}
                         onChange={(e) => {
                           e.stopPropagation()
-                          const next = new Set(selectedFileKeys)
-                          for (const f of files) {
-                            e.target.checked ? next.add(`${dept}|${f.category}`) : next.delete(`${dept}|${f.category}`)
-                          }
-                          setSelectedFileKeys(next)
+                          const next = new Set(selectedFolderIds)
+                          e.target.checked ? next.add(item?.id || -1) : next.delete(item?.id || -1)
+                          setSelectedFolderIds(next)
                         }}
                       />
                     ) : (
