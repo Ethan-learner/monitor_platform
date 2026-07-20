@@ -188,6 +188,7 @@ def _delete_folder(name: str) -> None:
             cur = conn.cursor()
             # 级联删除该部门下的所有 target
             cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND status != -1", (name,))
+            cur.execute("DELETE FROM scrape_target_health WHERE department=%s", (name,))
             # 禁用目录表中的记录
             cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND enabled != -1", (name,))
             cur.close()
@@ -361,6 +362,7 @@ async def delete_file(dept: str, cat: str) -> dict:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
             cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND category=%s AND status != -1", (dept, cat))
+            cur.execute("DELETE FROM scrape_target_health WHERE department=%s AND category=%s", (dept, cat))
             cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND category=%s AND enabled != -1", (dept, cat))
             cur.close()
     except Exception:
