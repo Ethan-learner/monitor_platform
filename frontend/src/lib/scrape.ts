@@ -42,6 +42,10 @@ export async function deleteDirectory(id: number): Promise<void> {
   await api.delete(`/scrape/directories/${id}`)
 }
 
+export async function deleteFile(dept: string, cat: string): Promise<void> {
+  await api.delete(`/scrape/file/${encodeURIComponent(dept)}/${encodeURIComponent(cat)}`)
+}
+
 export async function updateDirectory(id: number, data: { description: string }): Promise<void> {
   await api.put(`/scrape/directories/${id}`, data)
 }

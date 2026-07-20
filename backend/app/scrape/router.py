@@ -47,9 +47,22 @@ def _write(path: str, content: str) -> None:
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        parent = '/'.join(path.split('/')[:-1])
-        ssh.exec_command(f"mkdir -p {parent}")
         sftp = ssh.open_sftp()
+        # Recursively create parent directories via SFTP
+        parent = '/'.join(path.split('/')[:-1])
+        dirs = []
+        p = parent
+        while p and p != '/':
+            dirs.append(p)
+            p = '/'.join(p.split('/')[:-1])
+        for d in reversed(dirs):
+            try:
+                sftp.stat(d)
+            except FileNotFoundError:
+                try:
+                    sftp.mkdir(d)
+                except Exception:
+                    pass
         with sftp.open(path, "w") as f:
             f.write(content.encode())
         sftp.close()
@@ -59,19 +72,46 @@ def _write(path: str, content: str) -> None:
         ssh.close()
 
 
-def _mv(src: str, dst: str) -> None:
-    try:
-        parent = '/'.join(dst.split('/')[:-1])
-        _ssh(f"mkdir -p {parent} && mv {src} {dst}")
-    except Exception:
-        raise HTTPException(502, detail="mv_failed")
-
-
 def _rm(path: str) -> None:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
-        _ssh(f"rm -rf {path}")
+        _, stdout, stderr = ssh.exec_command(f"rm -rf {path}")
+        stdout.read(); stderr.read()
     except Exception:
         pass
+    finally:
+        ssh.close()
+
+
+def _mv(src: str, dst: str) -> None:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
+    try:
+        sftp = ssh.open_sftp()
+        # Create parent directories
+        parent = '/'.join(dst.split('/')[:-1])
+        dirs = []
+        p = parent
+        while p and p != '/':
+            dirs.append(p)
+            p = '/'.join(p.split('/')[:-1])
+        for d in reversed(dirs):
+            try:
+                sftp.stat(d)
+            except FileNotFoundError:
+                try:
+                    sftp.mkdir(d)
+                except Exception:
+                    pass
+        sftp.rename(src, dst)
+        sftp.close()
+    except Exception:
+        raise HTTPException(502, detail="mv_failed")
+    finally:
+        ssh.close()
 
 
 # ── 同步 YAML 文件（每个 target 独立 _disabled / _deleted）──
@@ -124,8 +164,8 @@ def _sync_file(dept: str, cat: str) -> None:
             _write(yp, yaml.dump(active_docs, default_flow_style=False, allow_unicode=True))
         else:
             _rm(yp)
-    except Exception:
-        pass
+    except Exception as e:
+        raise HTTPException(502, detail=f"sync_failed: {e}")
 
 
 def _exists(path: str) -> bool:
@@ -136,7 +176,7 @@ def _exists(path: str) -> bool:
         return False
 
 
-# ── 删除整个文件夹（移入根级 _deleted/ + 级联） ──────────────
+# ── 删除整个文件夹 ──
 
 def _delete_folder(name: str) -> None:
     base = settings.prometheus_targets_dir
@@ -269,12 +309,11 @@ async def create_directory(body: dict) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    # 在服务器创建空 YAML 文件（如果是配置文件而非文件夹）
+    # 创建空 YAML 文件
     base = settings.prometheus_targets_dir
     if category:
         yp = f"{base}/{name}/{category}.yaml"
-        if not _exists(yp):
-            _write(yp, "# Prometheus file_sd config\n[]\n")
+        _write(yp, "[]\n")
     else:
         try:
             _ssh(f"mkdir -p '{base}/{name}'")
@@ -302,6 +341,28 @@ async def delete_directory(did: int) -> dict:
         raise HTTPException(400, detail=str(e))
 
     _delete_folder(name)
+    return {"status": "deleted"}
+
+
+@router.delete("/file/{dept}/{cat}")
+async def delete_file(dept: str, cat: str) -> dict:
+    """删除配置文件（移入 _deleted/ + 级联所有 target）"""
+    base = settings.prometheus_targets_dir
+    src = f"{base}/{dept}/{cat}.yaml"
+    ts = datetime.now().strftime('%Y%m%d%H%M%S')
+    dst = f"{base}/{dept}/_deleted/{cat}_{ts}.yaml"
+
+    _mv(src, dst)
+
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE scrape_targets SET status=-1 WHERE department=%s AND category=%s AND status != -1", (dept, cat))
+            cur.execute("UPDATE scrape_directories SET enabled=-1 WHERE name=%s AND category=%s AND enabled != -1", (dept, cat))
+            cur.close()
+    except Exception:
+        pass
+
     return {"status": "deleted"}
 
 

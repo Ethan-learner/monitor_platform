@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons'
 import {
   fetchTargets, fetchDirectories, createTarget, updateTarget, deleteTarget as apiDeleteTarget,
-  toggleTarget, createDirectory, deleteDirectory, type ScrapeTarget, type DirectoryItem,
+  toggleTarget, createDirectory, deleteDirectory, deleteFile, type ScrapeTarget, type DirectoryItem,
 } from '../lib/scrape'
 
 const STATUS_LABEL: Record<number, string> = { 1: '启用', 0: '禁用', '-1': '已删除' }
@@ -27,6 +27,7 @@ export default function ScrapeConfig() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<number>>(new Set())
+  const [selectedFileKeys, setSelectedFileKeys] = useState<Set<string>>(new Set())
   const [pageSize, setPageSize] = useState(20)
   const [page, setPage] = useState(1)
 
@@ -134,23 +135,30 @@ export default function ScrapeConfig() {
             <Space style={{ width: '100%', justifyContent: 'space-between' }} size={0}>
               {selectMode ? (
                 <Space size={4}>
-                  <Button size="small" danger icon={<DeleteOutlined />} disabled={selectedIds.size + selectedFolderIds.size === 0} onClick={async () => {
-                    // delete folders
+                  <Button size="small" danger icon={<DeleteOutlined />} disabled={selectedIds.size + selectedFolderIds.size + selectedFileKeys.size === 0} onClick={async () => {
+                    // Delete files
+                    for (const key of selectedFileKeys) {
+                      const [dept, cat] = key.split('|')
+                      try { await deleteFile(dept, cat) } catch {}
+                    }
+                    // Delete folders
                     for (const fid of selectedFolderIds) {
                       try { await deleteDirectory(fid) } catch {}
                     }
-                    // delete targets
+                    // Delete targets
                     for (const id of selectedIds) {
                       const t = data.find((x) => x.id === id)
                       if (t) await apiDeleteTarget(id)
                     }
-                    message.success(`已删除 ${selectedFolderIds.size + selectedIds.size} 项`)
+                    const total = selectedFolderIds.size + selectedIds.size + selectedFileKeys.size
+                    message.success(`已删除 ${total} 项`)
                     setSelectedIds(new Set())
                     setSelectedFolderIds(new Set())
+                    setSelectedFileKeys(new Set())
                     setSelectMode(false)
                     await loadAll()
                   }}>删除</Button>
-                  <Button size="small" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); setSelectedFolderIds(new Set()) }}>取消</Button>
+                  <Button size="small" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); setSelectedFolderIds(new Set()); setSelectedFileKeys(new Set()) }}>取消</Button>
                 </Space>
               ) : (
                 <>
@@ -235,14 +243,13 @@ export default function ScrapeConfig() {
                       >
                         {selectMode ? (
                           <Checkbox
-                            checked={data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1).every((t) => selectedIds.has(t.id))}
-                            indeterminate={data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1).some((t) => selectedIds.has(t.id)) && !data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1).every((t) => selectedIds.has(t.id))}
+                            checked={selectedFileKeys.has(`${dept}|${f.category}`)}
                             onChange={(e) => {
                               e.stopPropagation()
-                              const next = new Set(selectedIds)
-                              const items = data.filter((t) => t.department === dept && t.category === f.category && t.status !== -1)
-                              for (const t of items) e.target.checked ? next.add(t.id) : next.delete(t.id)
-                              setSelectedIds(next)
+                              const key = `${dept}|${f.category}`
+                              const next = new Set(selectedFileKeys)
+                              e.target.checked ? next.add(key) : next.delete(key)
+                              setSelectedFileKeys(next)
                             }}
                           />
                         ) : (
