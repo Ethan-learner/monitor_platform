@@ -426,7 +426,7 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
       else targetByFile[key].disabled += 1
     }
     return {
-      deptCount: Object.keys(fileByDept).length,
+      deptCount: dirs.filter((d) => !d.category && d.enabled !== -1).length,
       fileCount: Object.values(fileByDept).reduce((a, b) => a + b, 0),
       targetActive: activeData.length,
       targetDisabled: disabledData.length,
