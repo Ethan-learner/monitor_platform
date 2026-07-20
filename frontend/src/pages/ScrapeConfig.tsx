@@ -211,9 +211,17 @@ export default function ScrapeConfig() {
                         checked={selectedFolderIds.has(item?.id || -1)}
                         onChange={(e) => {
                           e.stopPropagation()
+                          const fid = item?.id || -1
                           const next = new Set(selectedFolderIds)
-                          e.target.checked ? next.add(item?.id || -1) : next.delete(item?.id || -1)
+                          e.target.checked ? next.add(fid) : next.delete(fid)
                           setSelectedFolderIds(next)
+                          // 单向级联：勾选文件夹 → 自动勾选所有子文件；取消文件夹 → 取消所有子文件
+                          const fileNext = new Set(selectedFileKeys)
+                          for (const f of files) {
+                            const key = `${dept}|${f.category}`
+                            e.target.checked ? fileNext.add(key) : fileNext.delete(key)
+                          }
+                          setSelectedFileKeys(fileNext)
                         }}
                       />
                     ) : (
