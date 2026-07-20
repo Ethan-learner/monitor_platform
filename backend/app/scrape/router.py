@@ -615,34 +615,34 @@ def _normalize_target(t: str) -> str:
 
 
 def _build_target_index(targets: list) -> Dict[str, dict]:
-    """构建多维度目标索引（__address__, instance, 端口去掉等）"""
+    """构建多维度目标索引"""
     index: Dict[str, dict] = {}
     for t in targets:
         labels = t.get("labels", {}) or {}
         keys = set()
-        # 1. __address__ 原始值
+        # 1. 从 scrapeUrl 中提取 host:port（最可靠）
+        scrape_url = (t.get("scrapeUrl") or "")
+        if "://" in scrape_url:
+            url_part = scrape_url.split("://", 1)[1].split("/", 1)[0]
+            if url_part:
+                keys.add(url_part)
+                # host only
+                if ":" in url_part:
+                    keys.add(url_part.rsplit(":", 1)[0])
+        # 2. __address__
         addr = (labels.get("__address__") or "").strip()
         if addr:
             keys.add(addr)
-            # 去掉端口也试试（如 172.16.10.27:9100 → 172.16.10.27）
             if ":" in addr:
-                host = addr.rsplit(":", 1)[0]
-                if host:
-                    keys.add(host)
-        # 2. instance 标签
+                keys.add(addr.rsplit(":", 1)[0])
+        # 3. instance
         inst = (labels.get("instance") or "").strip()
         if inst:
-            keys.add(_normalize_target(inst))
-        # 3. __param_target（黑盒探测的目标地址）
-        param_target = (labels.get("__param_target") or "").strip()
-        if param_target:
-            keys.add(param_target)
-        # 4. scrapeUrl 中提取 target
-        scrape_url = (t.get("scrapeUrl") or "")
-        if "/target?scrape=" in scrape_url:
-            params_part = scrape_url.split("/target?scrape=", 1)[1].split("&")[0]
-            if params_part:
-                keys.add(params_part)
+            keys.add(inst)
+        # 4. __param_target
+        pt = (labels.get("__param_target") or "").strip()
+        if pt:
+            keys.add(_normalize_target(pt))
         # 5. host
         tmp_host = (labels.get("host") or labels.get("__meta_host") or "").strip()
         if tmp_host:
@@ -655,7 +655,7 @@ def _build_target_index(targets: list) -> Dict[str, dict]:
             "scrapeUrl": t.get("scrapeUrl", ""),
         }
         for k in keys:
-            if k not in index:
+            if k and k not in index:
                 index[k] = item
     return index
 
