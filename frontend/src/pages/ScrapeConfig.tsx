@@ -507,25 +507,43 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
         {fileEntries2.length === 0 ? (
           <AntEmpty description={<span style={{ color: '#999' }}>暂无数据</span>} style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {fileEntries2.map((e) => {
-              const activePct = (e.active / maxFileTargets) * 100
-              const disabledPct = (e.disabled / maxFileTargets) * 100
-              return (
-                <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ width: 130, color: '#333', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.key}>{e.key}.yaml</span>
-                  <div style={{ flex: 1, height: 18, position: 'relative', background: '#f5f5f5', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${activePct}%`, background: COLORS.status.active, transition: 'width 0.3s' }} />
-                    <div style={{ position: 'absolute', left: `${activePct}%`, top: 0, height: '100%', width: `${disabledPct}%`, background: COLORS.status.disabled, transition: 'left 0.3s, width 0.3s' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {(() => {
+              const grouped: Record<string, typeof fileEntries2> = {}
+              for (const e of fileEntries2) {
+                grouped[e.dept] = grouped[e.dept] || []
+                grouped[e.dept].push(e)
+              }
+              return Object.entries(grouped).map(([dept, items]) => (
+                <div key={dept}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <FolderOutlined style={{ color: '#1677ff', fontSize: 13 }} />
+                    <span style={{ color: '#333', fontWeight: 600, fontSize: 12 }}>{dept}</span>
+                    <span style={{ color: '#999', fontSize: 11 }}>
+                      {items.reduce((s, e) => s + e.active + e.disabled, 0)} 个目标
+                    </span>
                   </div>
-                  <span style={{ width: 70, color: '#333', fontWeight: 600, textAlign: 'right' }}>
-                    <span style={{ color: COLORS.status.active }}>{e.active}</span>
-                    <span style={{ color: '#999' }}> / </span>
-                    <span style={{ color: COLORS.status.disabled }}>{e.disabled}</span>
-                  </span>
+                  {items.map((e) => {
+                    const activePct = (e.active / maxFileTargets) * 100
+                    const disabledPct = (e.disabled / maxFileTargets) * 100
+                    return (
+                      <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, paddingLeft: 18, marginBottom: 3 }}>
+                        <span style={{ width: 80, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.key}>{e.key.split('/')[1] || e.key}.yaml</span>
+                        <div style={{ flex: 1, height: 14, position: 'relative', background: '#f5f5f5', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${activePct}%`, background: COLORS.status.active }} />
+                          <div style={{ position: 'absolute', left: `${activePct}%`, top: 0, height: '100%', width: `${disabledPct}%`, background: COLORS.status.disabled }} />
+                        </div>
+                        <span style={{ width: 50, color: '#333', fontWeight: 600, textAlign: 'right', fontSize: 11 }}>
+                          <span style={{ color: COLORS.status.active }}>{e.active}</span>
+                          <span style={{ color: '#999' }}>/</span>
+                          <span style={{ color: COLORS.status.disabled }}>{e.disabled}</span>
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              ))
+            })()}
           </div>
         )}
       </Card>
