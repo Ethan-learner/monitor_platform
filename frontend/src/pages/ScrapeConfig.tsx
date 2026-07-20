@@ -472,37 +472,33 @@ function OverviewDashboard({ data, dirs, health, onRefreshHealth }: {
                 let acc = 0
                 const r = 48
                 const c = 2 * Math.PI * r
-                const cx = 140, cy = 110
+                const cx = 110, cy = 110
                 const els = fileEntries.map(([name, v], i) => {
                   const dash = (v / fileTotal) * c
                   const midAngle = ((acc + dash / 2) / c) * 2 * Math.PI - Math.PI / 2
                   const offset = -acc
                   acc += dash
                   const color = COLORS.file[i % COLORS.file.length]
-                  const side = Math.cos(midAngle) > 0 ? 1 : -1
-
-                  // 环形外缘坐标
-                  const outX = cx + (r + 16) * Math.cos(midAngle)
-                  const outY = cy + (r + 16) * Math.sin(midAngle)
-                  // 折弯点
-                  const bendX = side > 0 ? 360 : 80
-                  const bendY = cy + (r + 30) * Math.sin(midAngle)
-                  // 标签位置：右侧排右栏，左侧排左栏（文字向右）
-                  const labelY = Math.max(22, Math.min(bendY, 198))
-                  const labelX = side > 0 ? 270 : 10
-
+                  // 标签列在右侧，按扇形位置排列
+                  const gapY = 28
+                  const labelX = 220, startY = 26
+                  const labelY = startY + i * gapY
+                  // 线从扇区的外缘连到右侧标签
+                  const outX = cx + (r + 12) * Math.cos(midAngle)
+                  const outY = cy + (r + 12) * Math.sin(midAngle)
+                  // 折弯：先水平拉到 x=180，再水平到标签
+                  const mx = 180
                   return (
                     <g key={name}>
                       <circle cx={cx} cy={cy} r={r} fill="none" stroke={color}
                         strokeWidth="20" strokeDasharray={`${dash} ${c - dash}`}
                         strokeDashoffset={offset} transform={`rotate(-90 ${cx} ${cy})`} />
-                      <polyline points={`${outX},${outY} ${bendX},${bendY} ${labelX},${labelY}`}
+                      <polyline points={`${outX},${outY} ${mx},${outY} ${mx},${labelY} 190,${labelY}`}
                         fill="none" stroke={color} strokeWidth="1.2" opacity="0.8" />
-                      <circle cx={labelX + (side > 0 ? 0 : 14)} cy={labelY} r="3" fill={color} />
-                      <text x={labelX + (side > 0 ? 8 : 22)} y={labelY + 4} textAnchor="start"
-                        fill="#333" fontSize="12" fontWeight="500">{name}</text>
-                      <text x={labelX + (side > 0 ? 8 : 22)} y={labelY + 18} textAnchor="start"
-                        fill={color} fontSize="11" fontWeight="600">{v} 个</text>
+                      <circle cx={labelX - 6} cy={labelY} r="4" fill={color} />
+                      <text x={labelX} y={labelY + 4} textAnchor="start" fill="#333" fontSize="13" fontWeight="500">{name}</text>
+                      <text x={labelX + 85} y={labelY + 4} textAnchor="start" fill={color} fontSize="13" fontWeight="600">{v} 个</text>
+                      <text x={labelX + 130} y={labelY + 4} textAnchor="start" fill="#999" fontSize="12">{((v / fileTotal) * 100).toFixed(0)}%</text>
                     </g>
                   )
                 })
