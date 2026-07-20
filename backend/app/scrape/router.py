@@ -91,7 +91,11 @@ def _mv(src: str, dst: str) -> None:
     ssh.connect(settings.ssh_host, settings.ssh_port or 22, settings.ssh_user, settings.ssh_password, timeout=10)
     try:
         sftp = ssh.open_sftp()
-        # Create parent directories
+        try:
+            content = sftp.open(src, "r").read().decode()
+        except Exception:
+            raise HTTPException(502, detail="mv_failed: source not found")
+        # Write to destination
         parent = '/'.join(dst.split('/')[:-1])
         dirs = []
         p = parent
@@ -106,10 +110,15 @@ def _mv(src: str, dst: str) -> None:
                     sftp.mkdir(d)
                 except Exception:
                     pass
-        sftp.rename(src, dst)
+        with sftp.open(dst, "w") as f:
+            f.write(content.encode())
+        # Remove source
+        sftp.remove(src)
         sftp.close()
-    except Exception:
-        raise HTTPException(502, detail="mv_failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, detail=f"mv_failed: {e}")
     finally:
         ssh.close()
 
@@ -164,8 +173,8 @@ def _sync_file(dept: str, cat: str) -> None:
             _write(yp, yaml.dump(active_docs, default_flow_style=False, allow_unicode=True))
         else:
             _rm(yp)
-    except Exception as e:
-        raise HTTPException(502, detail=f"sync_failed: {e}")
+    except Exception:
+        pass
 
 
 def _exists(path: str) -> bool:
@@ -309,11 +318,14 @@ async def create_directory(body: dict) -> dict:
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-    # 创建空 YAML 文件
+    # 创建空 YAML 文件（失败不阻塞，等 _sync_file 写入）
     base = settings.prometheus_targets_dir
     if category:
-        yp = f"{base}/{name}/{category}.yaml"
-        _write(yp, "[]\n")
+        try:
+            yp = f"{base}/{name}/{category}.yaml"
+            _write(yp, "[]\n")
+        except Exception:
+            pass
     else:
         try:
             _ssh(f"mkdir -p '{base}/{name}'")
