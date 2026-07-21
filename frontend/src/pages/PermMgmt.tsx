@@ -63,7 +63,7 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                   if (e.target.checked) onChange([...new Set([...checked, ...ks])])
                   else onChange(checked.filter(k => !ks.includes(k)))
                 }}
-                style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 13 }}>{item.label}</Checkbox>
+                style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 14 }}>{item.label}</Checkbox>
             </div>
             {hasChildren && isExpanded && (
               <div style={{ paddingLeft: 22, marginTop: 2 }}>
@@ -80,14 +80,14 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                               const ks = collectKeys(gc)
                               if (e.target.checked) onChange([...new Set([...checked, ...ks])])
                               else onChange(checked.filter(k => !ks.includes(k)))
-                            }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
+                            }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
                           <div style={{ paddingLeft: 22 }}>
                             {gc.map(g => (
                               <div key={g.key}>
                                 <Checkbox checked={checked.includes(g.key)} onChange={e => {
                                   if (e.target.checked) onChange([...checked, g.key])
                                   else onChange(checked.filter(k => k !== g.key))
-                                }} style={{ fontSize: 11 }}>{g.label}</Checkbox>
+                                }} style={{ fontSize: 13 }}>{g.label}</Checkbox>
                               </div>
                             ))}
                           </div>
@@ -96,7 +96,7 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                         <Checkbox checked={childChecked} onChange={e => {
                           if (e.target.checked) onChange([...checked, child.key])
                           else onChange(checked.filter(k => k !== child.key))
-                        }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
+                        }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
                       )}
                     </div>
                   )
@@ -123,7 +123,7 @@ function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (
                 const ks = perms.map(p => p.key)
                 if (e.target.checked) onChange([...new Set([...checked, ...ks])])
                 else onChange(checked.filter(k => !ks.includes(k)))
-              }} style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+              }} style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
               {menuKey}
             </Checkbox>
             <div style={{ paddingLeft: 22 }}>
@@ -132,7 +132,7 @@ function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (
                   <Checkbox checked={checked.includes(p.key)} onChange={e => {
                     if (e.target.checked) onChange([...checked, p.key])
                     else onChange(checked.filter(k => k !== p.key))
-                  }} style={{ fontSize: 12, color: '#666' }}>{p.label}</Checkbox>
+                  }} style={{ fontSize: 13, color: '#666' }}>{p.label}</Checkbox>
                 </div>
               ))}
             </div>
@@ -204,12 +204,12 @@ function UserPermPane() {
         <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           {selected ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.displayName || selected.username}</strong></span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
+                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
                 <Space>
-                  <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
-                    options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
-                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                  <Text style={{ fontSize: 13, color: '#666' }}>{selected.displayName || selected.username}</Text>
+                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存</Button>
                 </Space>
               </div>
               {permMode === 'menu'
@@ -273,12 +273,12 @@ function RolePermPane() {
         <Card size="small" styles={{ body: { padding: 12, height: '100%', display: 'flex', flexDirection: 'column', background: '#fafafa' } }}>
           {selected ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.label}</strong></span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
+                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
                 <Space>
-                  <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
-                    options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
-                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                  <Text style={{ fontSize: 13, color: '#666' }}>{selected.label}</Text>
+                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存</Button>
                 </Space>
               </div>
               {permMode === 'menu'
