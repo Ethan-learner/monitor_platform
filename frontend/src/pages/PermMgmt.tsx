@@ -51,6 +51,20 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
   ],
 }
 
+function findMenuLabel(key: string): string {
+  const find = (items: MenuItem[]): string | null => {
+    for (const item of items) {
+      if (item.key === key) return item.label
+      if (item.children) {
+        const r = find(item.children)
+        if (r) return r
+      }
+    }
+    return null
+  }
+  return find(roleMenus.ops?.menus || []) || key
+}
+
 function collectKeys(items: MenuItem[]): string[] {
   const keys: string[] = []
   for (const item of items) {
@@ -143,31 +157,44 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
 }
 
 function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const entries = Object.entries(FEATURE_PERMS)
+
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-      {Object.entries(FEATURE_PERMS).map(([menuKey, perms]) => {
+      {entries.map(([menuKey, perms]) => {
+        const label = findMenuLabel(menuKey)
         const allChecked = perms.every(p => checked.includes(p.key))
         const someChecked = perms.some(p => checked.includes(p.key))
+        const isExpanded = expanded[menuKey] ?? false
         return (
-          <div key={menuKey} style={{ marginBottom: 16 }}>
-            <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
-              onChange={e => {
-                const ks = perms.map(p => p.key)
-                if (e.target.checked) onChange([...new Set([...checked, ...ks])])
-                else onChange(checked.filter(k => !ks.includes(k)))
-              }} style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-              {menuKey}
-            </Checkbox>
-            <div style={{ paddingLeft: 24 }}>
-              {perms.map(p => (
-                <div key={p.key} style={{ margin: '3px 0' }}>
-                  <Checkbox checked={checked.includes(p.key)} onChange={e => {
-                    if (e.target.checked) onChange([...checked, p.key])
-                    else onChange(checked.filter(k => k !== p.key))
-                  }} style={{ fontSize: 14, color: '#555' }}>{p.label}</Checkbox>
-                </div>
-              ))}
+          <div key={menuKey} style={{ marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span onClick={() => setExpanded({ ...expanded, [menuKey]: !isExpanded })}
+                style={{ cursor: 'pointer', fontSize: 10, color: '#999', width: 14, textAlign: 'center', userSelect: 'none' }}>
+                {isExpanded ? '▼' : '▶'}
+              </span>
+              <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
+                onChange={e => {
+                  const ks = perms.map(p => p.key)
+                  if (e.target.checked) onChange([...new Set([...checked, ...ks])])
+                  else onChange(checked.filter(k => !ks.includes(k)))
+                }} style={{ fontWeight: 600, fontSize: 14 }}>
+                {label}
+              </Checkbox>
             </div>
+            {isExpanded && (
+              <div style={{ paddingLeft: 24, marginTop: 2 }}>
+                {perms.map(p => (
+                  <div key={p.key} style={{ margin: '3px 0' }}>
+                    <Checkbox checked={checked.includes(p.key)} onChange={e => {
+                      if (e.target.checked) onChange([...checked, p.key])
+                      else onChange(checked.filter(k => k !== p.key))
+                    }} style={{ fontSize: 14, color: '#555' }}>{p.label}</Checkbox>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}
