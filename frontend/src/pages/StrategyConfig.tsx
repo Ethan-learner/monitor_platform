@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Table, Button, Tag, Space, Typography, Modal, Form, Input, Select, Popconfirm, message } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Table, Button, Tag, Space, Typography, Modal, Input, Select, message } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ReloadOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
 const { Title } = Typography
@@ -12,18 +12,10 @@ type SevLevel = typeof SEV_LEVELS[number]
 const SEV_LABELS: Record<SevLevel, string> = { critical: '严重 critical', warning: '警告 warning', info: '信息 info' }
 const SEV_SHORT: Record<string, string> = { critical: '严重', warning: '警告', info: '信息' }
 const SEV_COLORS: Record<SevLevel, string> = { critical: '#cf1322', warning: '#d48806', info: '#1677ff' }
-const FMT = { marginBottom: 14 }
+const CHANNELS = ['email', 'lark'] as const
+const CHANNEL_LABELS: Record<string, string> = { email: '邮件', lark: '飞书' }
 
-const getHighestLevel = (cfg: Record<string, Record<string, string[]>>) => {
-  return SEV_LEVELS.find(l => cfg[l] && Object.keys(cfg[l]).length > 0)
-}
-const sevNotifiyStr = (cfg: Record<string, Record<string, string[]>>, sev: SevLevel) => {
-  const ch = cfg[sev] || {}
-  const parts: string[] = []
-  if (ch.email && ch.email.length > 0) parts.push(`邮件:${ch.email.join(',')}`)
-  if (ch.lark && ch.lark.length > 0) parts.push(`飞书:${ch.lark.join(',')}`)
-  return parts.length > 0 ? parts.join(' | ') : '—'
-}
+type CfgState = Record<SevLevel, Record<string, string[]>>
 
 interface FlatRow { key: string; sid: number; label: string; description: string; enabled: number; config: Record<string, Record<string, string[]>>; sev: SevLevel; rowSpan: number; created_at: string }
 
@@ -37,79 +29,12 @@ export default function StrategyConfig() {
   const [disableRefs, setDisableRefs] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState<Strategy | null>(null)
   const [deleteRefs, setDeleteRefs] = useState(0)
-  const [form] = Form.useForm()
-  const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
 
   const load = async () => { setLoading(true); try { setData((await api.get('/alerts/strategies')).data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load() }, [])
 
-  const getCfgStr = (cfg: any, sev: string) => {
-    const ch = cfg?.[sev] || {}
-    return Object.entries(ch).map(([k, v]) => `${k}:${(v as string[]).join(',')}`).join('; ')
-  }
-
-  const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
-
-  const flatData = useMemo(() => {
-    const rows: FlatRow[] = []
-    for (const d of data.filter(x => x.enabled !== -1)) {
-      const hl = getHighestLevel(d.config) || 'info'
-      const levels = visibleLevels(hl)
-      levels.forEach((sev, i) => {
-        rows.push({ key: `${d.id}_${sev}`, sid: d.id, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0, created_at: d.created_at })
-      })
-    }
-    return rows
-  }, [data])
-
-  const saveConfig = async (vals: any) => {
-    if (!vals.label) { message.warning('请填写显示名'); return }
-    try {
-      const buildCh = (s: string) => {
-        const ch: Record<string, string[]> = {}
-        if (!s) return ch
-        s.split(';').forEach(part => {
-          const [chan, recips] = part.split(':')
-          if (chan && recips) ch[chan.trim()] = recips.split(',').map((r: string) => r.trim()).filter(Boolean)
-        })
-        return ch
-      }
-      const config: Record<string, Record<string, string[]>> = {}
-      for (const sev of SEV_LEVELS) {
-        config[sev] = visibleLevels(maxLevel).includes(sev) ? buildCh(vals[`cfg_${sev}`] || '') : {}
-      }
-      const body = { label: vals.label, description: vals.description || '', config }
-      if (editing) {
-        body['enabled'] = editing.enabled
-        await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新')
-      } else {
-        const res = (await api.post('/alerts/strategies', body)).data
-        const msg = res.relinked > 0 ? `已创建，${res.relinked} 条规则已恢复链接` : '已创建'
-        message.success(msg)
-      }
-      setModalOpen(false); form.resetFields(); setMaxLevel('critical'); setEditing(null); load()
-    } catch (e: any) {
-      if (e?.response?.status === 409) { setDupModal(true); return }
-      message.error('保存失败')
-    }
-  }
-
-  const handleEdit = (r: Strategy) => {
-    setEditing(r)
-    const highest = getHighestLevel(r.config) || 'info'
-    setMaxLevel(highest)
-    form.setFieldsValue({
-      label: r.label, description: r.description,
-      cfg_critical: getCfgStr(r.config, 'critical'),
-      cfg_warning: getCfgStr(r.config, 'warning'),
-      cfg_info: getCfgStr(r.config, 'info'),
-    })
-    setModalOpen(true)
-  }
-
-  const resetModal = () => {
-    setEditing(null); form.resetFields(); setMaxLevel('critical'); setModalOpen(true)
-  }
+  const handleEdit = (r: Strategy) => { setEditing(r); setModalOpen(true) }
+  const resetModal = () => { setEditing(null); setModalOpen(true) }
 
   const handleDisableStrategy = async () => {
     if (!disableTarget) return
@@ -130,6 +55,34 @@ export default function StrategyConfig() {
     } catch { message.error('删除失败') }
   }
 
+  const getHighestLevel = (cfg: Record<string, Record<string, string[]>>) => {
+    return SEV_LEVELS.find(l => cfg[l] && Object.keys(cfg[l]).length > 0)
+  }
+  const sevNotifiyStr = (cfg: Record<string, Record<string, string[]>>, sev: SevLevel) => {
+    const ch = cfg[sev] || {}
+    const parts: string[] = []
+    for (const [chan, recips] of Object.entries(ch)) {
+      if (recips && recips.length > 0) {
+        parts.push(`${CHANNEL_LABELS[chan] || chan}:${recips.join(',')}`)
+      }
+    }
+    return parts.length > 0 ? parts.join(' | ') : '—'
+  }
+
+  const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
+
+  const flatData = useMemo(() => {
+    const rows: FlatRow[] = []
+    for (const d of data.filter(x => x.enabled !== -1)) {
+      const hl = getHighestLevel(d.config) || 'info'
+      const levels = visibleLevels(hl)
+      levels.forEach((sev, i) => {
+        rows.push({ key: `${d.id}_${sev}`, sid: d.id, label: d.label, description: d.description, enabled: d.enabled, config: d.config, sev, rowSpan: i === 0 ? levels.length : 0, created_at: d.created_at })
+      })
+    }
+    return rows
+  }, [data])
+
   return (
     <div style={{ padding: 16 }}>
       <Space style={{ marginBottom: 12, justifyContent: 'space-between', width: '100%' }}>
@@ -145,7 +98,7 @@ export default function StrategyConfig() {
         columns={[
           { title: '名称', dataIndex: 'label', width: 120, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (s: string) => <span><strong>{s}</strong></span> },
           { title: '创建时间', width: 140, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => <span style={{ fontSize: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span> },
-          { title: '告警级别', width: 70, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
+          { title: '告警级别', width: 100, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_: any, r: FlatRow) => {
             const hl = getHighestLevel(r.config)
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
@@ -182,22 +135,26 @@ export default function StrategyConfig() {
         ]}
       />
 
-      <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={620}>
-        <Form form={form} layout="vertical" onFinish={saveConfig}>
-          <Form.Item label="显示名" name="label" rules={[{ required: true }]} style={FMT}><Input placeholder="" /></Form.Item>
-          <Form.Item label="说明" name="description" style={FMT}><Input placeholder="" /></Form.Item>
-          <Form.Item label="覆盖级别" style={{ marginBottom: 18 }}>
-            <Select value={maxLevel} onChange={v => setMaxLevel(v)} options={[{ label: '严重 critical', value: 'critical' }, { label: '警告 warning', value: 'warning' }, { label: '信息 info', value: 'info' }]} />
-          </Form.Item>
-          {SEV_LEVELS.map(sev => (
-            <Form.Item key={sev} name={`cfg_${sev}`} label={<span style={{ color: SEV_COLORS[sev] }}>{SEV_LABELS[sev]}</span>} style={{ marginBottom: 14, display: visibleLevels(maxLevel).includes(sev) ? 'block' : 'none' }}>
-              <Input placeholder="email:a@x.com; lark:id1" />
-            </Form.Item>
-          ))}
-          <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>保存</Button>
-          <Button onClick={() => setModalOpen(false)}>取消</Button>
-        </Form>
+      <Modal title={editing ? '编辑策略' : '新增策略'} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={640}>
+        <StrategyForm editing={editing} onSave={async (label, desc, config) => {
+          try {
+            const body: any = { label, description: desc, config }
+            if (editing) {
+              body.enabled = editing.enabled
+              await api.put(`/alerts/strategies/${editing.id}`, body); message.success('已更新')
+            } else {
+              const res = (await api.post('/alerts/strategies', body)).data
+              const msg = res.relinked > 0 ? `已创建，${res.relinked} 条规则已恢复链接` : '已创建'
+              message.success(msg)
+            }
+            setModalOpen(false); setEditing(null); load()
+          } catch (e: any) {
+            if (e?.response?.status === 409) { setDupModal(true); return }
+            message.error('保存失败')
+          }
+        }} onClose={() => setModalOpen(false)} />
       </Modal>
+
       <Modal title="提示" open={dupModal} onCancel={() => setDupModal(false)} footer={null}>
         <p>显示名已存在，请更换名称。</p>
       </Modal>
@@ -216,3 +173,108 @@ export default function StrategyConfig() {
     </div>
   )
 }
+
+function StrategyForm({ editing, onSave, onClose }: { editing: Strategy | null; onSave: (label: string, desc: string, config: Record<string, Record<string, string[]>>) => Promise<void>; onClose: () => void }) {
+  const [label, setLabel] = useState(editing?.label || '')
+  const [desc, setDesc] = useState(editing?.description || '')
+  const [maxLevel, setMaxLevel] = useState<SevLevel>('critical')
+  const [cfg, setCfg] = useState<CfgState>({ critical: {}, warning: {}, info: {} })
+
+  useEffect(() => {
+    if (editing) {
+      setLabel(editing.label)
+      setDesc(editing.description || '')
+      const hl = SEV_LEVELS.find(l => editing.config[l] && Object.keys(editing.config[l]).length > 0) || 'critical'
+      setMaxLevel(hl)
+      const init: CfgState = { critical: {}, warning: {}, info: {} }
+      for (const sev of SEV_LEVELS) {
+        for (const ch of CHANNELS) {
+          init[sev][ch] = [...(editing.config[sev]?.[ch] || [])]
+        }
+      }
+      setCfg(init)
+    } else {
+      setLabel(''); setDesc(''); setMaxLevel('critical')
+      setCfg({ critical: {}, warning: {}, info: {} })
+    }
+  }, [editing])
+
+  const addRecip = (sev: SevLevel, ch: string) => {
+    setCfg(prev => {
+      const next = { ...prev, [sev]: { ...prev[sev], [ch]: [...(prev[sev][ch] || []), ''] } }
+      return next
+    })
+  }
+  const setRecip = (sev: SevLevel, ch: string, idx: number, val: string) => {
+    setCfg(prev => {
+      const arr = [...(prev[sev][ch] || [])]
+      arr[idx] = val
+      return { ...prev, [sev]: { ...prev[sev], [ch]: arr } }
+    })
+  }
+  const removeRecip = (sev: SevLevel, ch: string, idx: number) => {
+    setCfg(prev => {
+      const arr = [...(prev[sev][ch] || [])]
+      arr.splice(idx, 1)
+      return { ...prev, [sev]: { ...prev[sev], [ch]: arr } }
+    })
+  }
+
+  const handleSave = async () => {
+    if (!label.trim()) { message.warning('请填写显示名'); return }
+    const config: Record<string, Record<string, string[]>> = {}
+    for (const sev of SEV_LEVELS) {
+      if (!visibleLevels(maxLevel).includes(sev)) { config[sev] = {}; continue }
+      config[sev] = {}
+      for (const ch of CHANNELS) {
+        const recips = (cfg[sev]?.[ch] || []).map(r => r.trim()).filter(Boolean)
+        if (recips.length > 0) config[sev][ch] = recips
+      }
+    }
+    await onSave(label.trim(), desc.trim(), config)
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>显示名</div>
+        <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="策略名称" />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>说明</div>
+        <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="" />
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 4, fontSize: 13, color: '#333' }}>覆盖级别</div>
+        <Select value={maxLevel} onChange={setMaxLevel} style={{ width: '100%' }}
+          options={SEV_LEVELS.map(l => ({ value: l, label: SEV_LABELS[l] }))} />
+      </div>
+      {SEV_LEVELS.filter(l => visibleLevels(maxLevel).includes(l)).map(sev => (
+        <div key={sev} style={{ marginBottom: 18, padding: '10px 12px', background: '#fafafa', borderRadius: 6 }}>
+          <div style={{ fontWeight: 600, color: SEV_COLORS[sev], marginBottom: 10, fontSize: 13 }}>{SEV_LABELS[sev]}</div>
+          {CHANNELS.map(ch => (
+            <div key={ch} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>{CHANNEL_LABELS[ch]}</div>
+              {(cfg[sev]?.[ch] || []).map((val, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+                  <Input size="small" value={val} onChange={e => setRecip(sev, ch, idx, e.target.value)}
+                    placeholder={ch === 'email' ? 'zhangsan@longcheer.com' : '飞书 ID'} style={{ flex: 1 }} />
+                  <Button size="small" type="text" danger icon={<MinusCircleOutlined />} onClick={() => removeRecip(sev, ch, idx)} />
+                </div>
+              ))}
+              <Button size="small" type="dashed" onClick={() => addRecip(sev, ch)} style={{ fontSize: 12 }}>
+                + 添加{CHANNEL_LABELS[ch]}
+              </Button>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button type="primary" onClick={handleSave}>保存</Button>
+        <Button onClick={onClose}>取消</Button>
+      </div>
+    </div>
+  )
+}
+
+const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
