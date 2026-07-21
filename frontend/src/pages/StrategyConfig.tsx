@@ -63,14 +63,12 @@ export default function StrategyConfig() {
     const parts: React.ReactNode[] = []
     for (const [chan, recips] of Object.entries(ch)) {
       if (recips && recips.length > 0) {
-        parts.push(
-          <li key={chan} style={{ marginLeft: 8 }}>
-            <Tag color="blue">{CHANNEL_LABELS[chan] || chan}</Tag> {recips.join(', ')}
-          </li>
-        )
+        parts.push(<span key={chan}><Tag color="blue">{CHANNEL_LABELS[chan] || chan}</Tag> {recips.join(', ')}</span>)
       }
     }
-    return parts.length > 0 ? <ul style={{ padding: 0, margin: 0, listStyle: 'none' }}>{parts}</ul> : '—'
+    if (parts.length === 0) return '—'
+    const withBreaks = parts.flatMap((el, i) => i === 0 ? [el] : [<br key={`br-${i}`} />, el])
+    return <>{withBreaks}</>
   }
 
   const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
