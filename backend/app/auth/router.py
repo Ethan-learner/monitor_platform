@@ -266,6 +266,10 @@ async def me(request: Request) -> dict:
     try:
         with get_db(readonly=True) as conn:
             cur = conn.cursor()
+            # ops 角色自动获得所有权限
+            if payload.get("role") == "ops":
+                cur.execute("SELECT `key` FROM system_permissions")
+                for r in cur.fetchall(): perms.add(r[0])
             # 用户直接权限
             cur.execute("SELECT permission_key FROM system_user_perms WHERE user_id=(SELECT id FROM users WHERE username=%s) AND granted=1", (username,))
             for r in cur.fetchall(): perms.add(r[0])
