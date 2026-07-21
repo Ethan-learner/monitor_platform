@@ -49,10 +49,7 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
     { key: 'user:toggle', label: '禁用/启用' },
     { key: 'user:role', label: '分配角色' },
   ],
-  'perm-mgmt': [
-    { key: 'perm:manage', label: '管理权限' },
-  ],
-} as const
+} as const as const
 
 function findMenuLabel(key: string): string {
   const hardcoded: Record<string, string> = { 'system-mgmt': '管理权限' }
