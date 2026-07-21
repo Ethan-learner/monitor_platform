@@ -5,10 +5,11 @@ from typing import List, Dict, Optional
 import httpx
 import paramiko
 import yaml
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from app.config import settings
 from app.db import get_db
+from app.deps import require_perm
 
 router = APIRouter(prefix="/api/scrape", tags=["scrape"])
 
@@ -330,7 +331,7 @@ async def create_directory(body: dict) -> dict:
 
 
 @router.delete("/directories/{did}")
-async def delete_directory(did: int) -> dict:
+async def delete_directory(did: int, _perm: bool = Depends(require_perm('scrape-configs:folder:delete'))) -> dict:
     """删除文件夹（移入 _deleted + 级联）"""
     try:
         with get_db(readonly=True) as conn:
@@ -351,7 +352,7 @@ async def delete_directory(did: int) -> dict:
 
 
 @router.delete("/file/{dept}/{cat}")
-async def delete_file(dept: str, cat: str) -> dict:
+async def delete_file(dept: str, cat: str, _perm: bool = Depends(require_perm('scrape-configs:file:delete'))) -> dict:
     """删除配置文件（级联所有 target → -1，文件移入 _deleted/）"""
     base = settings.prometheus_targets_dir
     src = f"{base}/{dept}/{cat}.yaml"
@@ -456,7 +457,7 @@ async def list_departments() -> List[str]:
 
 
 @router.post("/targets")
-async def create_target(body: dict) -> dict:
+async def create_target(body: dict, _perm: bool = Depends(require_perm('scrape-configs:create'))) -> dict:
     department = body.get("department", "").strip()
     category = body.get("category", "").strip()
     target = body.get("target", "").strip()
@@ -484,7 +485,7 @@ async def create_target(body: dict) -> dict:
 
 
 @router.put("/targets/{tid}")
-async def update_target(tid: int, body: dict) -> dict:
+async def update_target(tid: int, body: dict, _perm: bool = Depends(require_perm('scrape-configs:edit'))) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
@@ -520,7 +521,7 @@ async def update_target(tid: int, body: dict) -> dict:
 
 
 @router.delete("/targets/{tid}")
-async def delete_target(tid: int) -> dict:
+async def delete_target(tid: int, _perm: bool = Depends(require_perm('scrape-configs:delete'))) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()
@@ -542,7 +543,7 @@ async def delete_target(tid: int) -> dict:
 
 
 @router.post("/targets/{tid}/toggle")
-async def toggle_target(tid: int) -> dict:
+async def toggle_target(tid: int, _perm: bool = Depends(require_perm('scrape-configs:toggle'))) -> dict:
     try:
         with get_db(readonly=False) as conn:
             cur = conn.cursor()

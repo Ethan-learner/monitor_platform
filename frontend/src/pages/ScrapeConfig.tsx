@@ -11,9 +11,15 @@ import {
   toggleTarget, createDirectory, deleteDirectory, deleteFile, fetchHealth, refreshHealth,
   type ScrapeTarget, type DirectoryItem, type HealthReport,
 } from '../lib/scrape'
+import { useAuthStore } from '../store/authStore'
 
 const STATUS_LABEL: Record<number, string> = { 1: '启用', 0: '禁用', '-1': '已删除' }
 const PAGE_OPTIONS = [20, 50, 100]
+
+function usePerm(key: string): boolean {
+  const user = useAuthStore.getState().user
+  return !user || user.role === 'ops' || (user.permissions?.includes(key) ?? false)
+}
 
 export default function ScrapeConfig() {
   const [data, setData] = useState<ScrapeTarget[]>([])
@@ -138,13 +144,19 @@ export default function ScrapeConfig() {
       title: '操作', width: 130, key: 'action',
       render: (_: any, r: ScrapeTarget) => (
         <Space>
-          <Button size="small" type="text" icon={<EditOutlined style={{ color: '#1677ff' }} />} onClick={() => { setEditTarget(r); setSelectedDept(r.department); setSelectedCat(r.category); setModalOpen(true) }} />
-          <Popconfirm title={r.status === 1 ? '确认禁用？' : '确认启用？'} onConfirm={() => handleToggleTarget(r.id)}>
-            <Button size="small" type="text" icon={<StopOutlined style={{ color: r.status === 1 ? '#fa8c16' : '#999' }} />} />
-          </Popconfirm>
-          <Popconfirm title="确认删除？" onConfirm={() => handleDeleteTarget(r.id)}>
-            <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
-          </Popconfirm>
+          {usePerm('scrape-configs:edit') && (
+            <Button size="small" type="text" icon={<EditOutlined style={{ color: '#1677ff' }} />} onClick={() => { setEditTarget(r); setSelectedDept(r.department); setSelectedCat(r.category); setModalOpen(true) }} />
+          )}
+          {usePerm('scrape-configs:toggle') && (
+            <Popconfirm title={r.status === 1 ? '确认禁用？' : '确认启用？'} onConfirm={() => handleToggleTarget(r.id)}>
+              <Button size="small" type="text" icon={<StopOutlined style={{ color: r.status === 1 ? '#fa8c16' : '#999' }} />} />
+            </Popconfirm>
+          )}
+          {usePerm('scrape-configs:delete') && (
+            <Popconfirm title="确认删除？" onConfirm={() => handleDeleteTarget(r.id)}>
+              <Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#999' }} />} />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
