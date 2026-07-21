@@ -64,10 +64,10 @@ export default function StrategyConfig() {
     for (const [chan, recips] of Object.entries(ch)) {
       if (recips && recips.length > 0) {
         parts.push(
-          <span key={chan} style={{ display: 'block', marginBottom: 2, fontSize: 12 }}>
+          <div key={chan} style={{ marginBottom: 1, textAlign: 'left' }}>
             <Tag color="blue" style={{ marginRight: 4 }}>{CHANNEL_LABELS[chan] || chan}</Tag>
             {recips.join(', ')}
-          </span>
+          </div>
         )
       }
     }
@@ -108,7 +108,10 @@ export default function StrategyConfig() {
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
           { title: '通知策略', width: 280, align: 'center', render: (_: any, r: FlatRow) => (
-            <span style={{ fontSize: 12 }}><Tag color={SEV_COLORS[r.sev]} style={{ marginRight: 4 }}>{SEV_SHORT[r.sev]}</Tag>{sevNotifiyStr(r.config, r.sev)}</span>
+            <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Tag color={SEV_COLORS[r.sev]} style={{ margin: 0, alignSelf: 'flex-start' }}>{SEV_SHORT[r.sev]}</Tag>
+              <div style={{ textAlign: 'left' }}>{sevNotifiyStr(r.config, r.sev)}</div>
+            </div>
           )},
           { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
           { title: '状态', width: 60, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_, r) => {
