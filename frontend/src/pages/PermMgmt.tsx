@@ -1,10 +1,23 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Tag, Input, Space, Button, Typography, message, Tabs, Checkbox, Card, Row, Col } from 'antd'
-import { SearchOutlined, EditOutlined } from '@ant-design/icons'
+import { useEffect, useState } from 'react'
+import { Input, Button, Typography, message, Tabs, Checkbox, Card, Row, Col } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 import { roleMenus, type MenuItem } from '../config/menus'
 
 const { Text } = Typography
+
+// 功能权限定义：每个菜单 key → 操作权限列表
+const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
+  'scrape-configs': [
+    { key: 'scrape-configs:view', label: '查看目标' },
+    { key: 'scrape-configs:create', label: '新增目标' },
+    { key: 'scrape-configs:edit', label: '编辑目标' },
+    { key: 'scrape-configs:delete', label: '删除目标' },
+    { key: 'scrape-configs:toggle', label: '禁用/启用' },
+    { key: 'scrape-configs:folder', label: '管理文件夹' },
+    { key: 'scrape-configs:file', label: '管理配置文件' },
+  ],
+}
 
 function collectKeys(items: MenuItem[]): string[] {
   const keys: string[] = []
@@ -21,79 +34,120 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
 
   const allItemsChecked = (its: MenuItem[]): boolean => its.every(i => {
     if (i.children) return allItemsChecked(i.children)
+    const perms = FEATURE_PERMS[i.key]
+    if (perms) return perms.every(p => checked.includes(p.key))
     return checked.includes(i.key)
   })
   const someItemsChecked = (its: MenuItem[]): boolean => its.some(i => {
     if (i.children) return someItemsChecked(i.children)
+    const perms = FEATURE_PERMS[i.key]
+    if (perms) return perms.some(p => checked.includes(p.key))
     return checked.includes(i.key)
   })
 
+  const renderLeaf = (key: string, label: string, depth: number) => {
+    const perms = FEATURE_PERMS[key]
+    if (perms) {
+      const allChecked = perms.every(p => checked.includes(p.key))
+      const someChecked = perms.some(p => checked.includes(p.key))
+      return (
+        <div style={{ paddingLeft: depth * 22 }}>
+          <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
+            onChange={e => {
+              const ks = perms.map(p => p.key)
+              if (e.target.checked) onChange([...new Set([...checked, ...ks])])
+              else onChange(checked.filter(k => !ks.includes(k)))
+            }} style={{ fontSize: 12 - depth * 1 }}>{label}</Checkbox>
+          <div style={{ paddingLeft: 22 }}>
+            {perms.map(p => (
+              <div key={p.key} style={{ margin: '1px 0' }}>
+                <Checkbox checked={checked.includes(p.key)} onChange={e => {
+                  if (e.target.checked) onChange([...checked, p.key])
+                  else onChange(checked.filter(k => k !== p.key))
+                }} style={{ fontSize: 11, color: '#666' }}>◉ {p.label}</Checkbox>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div style={{ paddingLeft: depth * 22 }}>
+        <Checkbox checked={checked.includes(key)} onChange={e => {
+          if (e.target.checked) onChange([...checked, key])
+          else onChange(checked.filter(k => k !== key))
+        }} style={{ fontSize: 12 - depth * 1 }}>{label}</Checkbox>
+      </div>
+    )
+  }
+
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-        {items.map(item => {
-          if (item.key === 'overview') return null
-          const hasChildren = item.children && item.children.length > 0
-          const isExpanded = expanded[item.key] ?? false
-          return (
-            <div key={item.key} style={{ marginBottom: hasChildren ? 10 : 2 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {hasChildren ? (
-                  <span onClick={() => setExpanded({ ...expanded, [item.key]: !isExpanded })}
-                    style={{ cursor: 'pointer', fontSize: 10, color: '#999', width: 14, textAlign: 'center', userSelect: 'none' }}>
-                    {isExpanded ? '▼' : '▶'}
-                  </span>
-                ) : <span style={{ width: 14 }} />}
-                <Checkbox checked={allItemsChecked(item.children || [item] as MenuItem[])}
-                  indeterminate={hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)}
-                  onChange={e => {
-                    const ks = hasChildren ? collectKeys(item.children!) : [item.key]
-                    if (e.target.checked) onChange([...new Set([...checked, ...ks])])
-                    else onChange(checked.filter(k => !ks.includes(k)))
-                  }}
-                  style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 13 }}>{item.label}</Checkbox>
-              </div>
-              {hasChildren && isExpanded && (
-                <div style={{ paddingLeft: 22, marginTop: 2 }}>
-                  {item.children!.map(child => {
-                    const gc = child.children?.length ? child.children : undefined
-                    const childChecked = gc ? allItemsChecked(gc) : checked.includes(child.key)
-                    const childIndeterminate = gc && someItemsChecked(gc) && !allItemsChecked(gc)
-                    return (
-                      <div key={child.key} style={{ marginBottom: gc ? 6 : 1 }}>
-                        {gc ? (
-                          <>
-                            <Checkbox checked={childChecked} indeterminate={childIndeterminate}
-                              onChange={e => {
-                                const ks = collectKeys(gc)
-                                if (e.target.checked) onChange([...new Set([...checked, ...ks])])
-                                else onChange(checked.filter(k => !ks.includes(k)))
-                              }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
-                            <div style={{ paddingLeft: 22 }}>
-                              {gc.map(g => (
-                                <div key={g.key}>
-                                  <Checkbox checked={checked.includes(g.key)} onChange={e => {
-                                    if (e.target.checked) onChange([...checked, g.key])
-                                    else onChange(checked.filter(k => k !== g.key))
-                                  }} style={{ fontSize: 11 }}>{g.label}</Checkbox>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          <Checkbox checked={childChecked} onChange={e => {
-                            if (e.target.checked) onChange([...checked, child.key])
-                            else onChange(checked.filter(k => k !== child.key))
-                          }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+      {items.map(item => {
+        if (item.key === 'overview') return null
+        const hasChildren = item.children && item.children.length > 0
+        const isExpanded = expanded[item.key] ?? false
+        return (
+          <div key={item.key} style={{ marginBottom: hasChildren ? 10 : 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {hasChildren ? (
+                <span onClick={() => setExpanded({ ...expanded, [item.key]: !isExpanded })}
+                  style={{ cursor: 'pointer', fontSize: 10, color: '#999', width: 14, textAlign: 'center', userSelect: 'none' }}>
+                  {isExpanded ? '▼' : '▶'}
+                </span>
+              ) : <span style={{ width: 14 }} />}
+              <Checkbox checked={allItemsChecked(item.children || [item] as MenuItem[])}
+                indeterminate={hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)}
+                onChange={e => {
+                  const ks = hasChildren ? collectKeys(item.children!) : [item.key]
+                  if (e.target.checked) {
+                    const allKs = [...new Set([...checked, ...ks])]
+                    // 级联子操作权限
+                    if (!hasChildren) {
+                      const perms = FEATURE_PERMS[item.key]
+                      if (perms) perms.forEach(p => allKs.push(p.key))
+                    }
+                    onChange([...new Set(allKs)])
+                  } else {
+                    let filtered = checked.filter(k => !ks.includes(k))
+                    // 级联移除子操作权限
+                    if (!hasChildren) {
+                      const perms = FEATURE_PERMS[item.key]
+                      if (perms) filtered = filtered.filter(k => !perms.some(p => p.key === k))
+                    }
+                    onChange(filtered)
+                  }
+                }}
+                style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 13 }}>{item.label}</Checkbox>
             </div>
-          )
-        })}
-      </div>
+            {hasChildren && isExpanded && (
+              <div style={{ paddingLeft: 22, marginTop: 2 }}>
+                {item.children!.map(child => {
+                  const gc = child.children?.length ? child.children : undefined
+                  return (
+                    <div key={child.key} style={{ marginBottom: gc ? 6 : 1 }}>
+                      {gc ? (
+                        <>
+                          <Checkbox checked={allItemsChecked(gc)} indeterminate={someItemsChecked(gc) && !allItemsChecked(gc)}
+                            onChange={e => {
+                              const ks = collectKeys(gc)
+                              if (e.target.checked) onChange([...new Set([...checked, ...ks])])
+                              else onChange(checked.filter(k => !ks.includes(k)))
+                            }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
+                          <div style={{ paddingLeft: 22 }}>
+                            {gc.map(g => renderLeaf(g.key, g.label, 2))}
+                          </div>
+                        </>
+                      ) : renderLeaf(child.key, child.label, 1)}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
