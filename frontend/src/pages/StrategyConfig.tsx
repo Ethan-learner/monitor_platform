@@ -60,13 +60,18 @@ export default function StrategyConfig() {
   }
   const sevNotifiyStr = (cfg: Record<string, Record<string, string[]>>, sev: SevLevel) => {
     const ch = cfg[sev] || {}
-    const parts: string[] = []
+    const parts: React.ReactNode[] = []
     for (const [chan, recips] of Object.entries(ch)) {
       if (recips && recips.length > 0) {
-        parts.push(`${CHANNEL_LABELS[chan] || chan}:${recips.join(',')}`)
+        parts.push(
+          <span key={chan} style={{ display: 'block', marginBottom: 2, fontSize: 12 }}>
+            <Tag color="blue" style={{ marginRight: 4 }}>{CHANNEL_LABELS[chan] || chan}</Tag>
+            {recips.join(', ')}
+          </span>
+        )
       }
     }
-    return parts.length > 0 ? parts.join(' | ') : '—'
+    return parts.length > 0 ? <>{parts}</> : '—'
   }
 
   const visibleLevels = (level: SevLevel) => SEV_LEVELS.slice(SEV_LEVELS.indexOf(level))
