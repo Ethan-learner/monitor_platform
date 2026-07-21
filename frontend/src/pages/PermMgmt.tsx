@@ -17,6 +17,38 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
     { key: 'scrape-configs:folder', label: '管理文件夹' },
     { key: 'scrape-configs:file', label: '管理配置文件' },
   ],
+  rules: [
+    { key: 'rules:view', label: '查看规则' },
+    { key: 'rules:create', label: '创建规则' },
+    { key: 'rules:edit', label: '编辑规则' },
+    { key: 'rules:delete', label: '删除规则' },
+    { key: 'rules:toggle', label: '禁用/启用' },
+  ],
+  'alertmanager-silences': [
+    { key: 'silence:view', label: '查看静默' },
+    { key: 'silence:create', label: '创建静默' },
+    { key: 'silence:expire', label: '过期静默' },
+    { key: 'silence:delete', label: '删除静默' },
+  ],
+  'strategy-config': [
+    { key: 'strategy:view', label: '查看策略' },
+    { key: 'strategy:create', label: '创建策略' },
+    { key: 'strategy:edit', label: '编辑策略' },
+    { key: 'strategy:delete', label: '删除策略' },
+    { key: 'strategy:toggle', label: '禁用/启用' },
+  ],
+  'user-mgmt': [
+    { key: 'user:view', label: '查看用户' },
+    { key: 'user:create', label: '新增用户' },
+    { key: 'user:edit', label: '编辑用户' },
+    { key: 'user:delete', label: '删除用户' },
+    { key: 'user:toggle', label: '禁用/启用' },
+    { key: 'user:role', label: '分配角色' },
+  ],
+  'perm-mgmt': [
+    { key: 'perm:view', label: '查看权限' },
+    { key: 'perm:assign', label: '分配权限' },
+  ],
 }
 
 function collectKeys(items: MenuItem[]): string[] {
@@ -48,7 +80,7 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
         const hasChildren = item.children && item.children.length > 0
         const isExpanded = expanded[item.key] ?? false
         return (
-          <div key={item.key} style={{ marginBottom: hasChildren ? 10 : 2 }}>
+          <div key={item.key} style={{ marginBottom: hasChildren ? 14 : 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               {hasChildren ? (
                 <span onClick={() => setExpanded({ ...expanded, [item.key]: !isExpanded })}
@@ -66,13 +98,13 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                 style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 14 }}>{item.label}</Checkbox>
             </div>
             {hasChildren && isExpanded && (
-              <div style={{ paddingLeft: 22, marginTop: 2 }}>
+              <div style={{ paddingLeft: 24, marginTop: 4 }}>
                 {item.children!.map(child => {
                   const gc = child.children?.length ? child.children : undefined
                   const childChecked = gc ? allItemsChecked(gc) : checked.includes(child.key)
                   const childIndeterminate = gc && someItemsChecked(gc) && !allItemsChecked(gc)
                   return (
-                    <div key={child.key} style={{ marginBottom: gc ? 6 : 1 }}>
+                    <div key={child.key} style={{ marginBottom: gc ? 8 : 3 }}>
                       {gc ? (
                         <>
                           <Checkbox checked={childChecked} indeterminate={childIndeterminate}
@@ -80,14 +112,14 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                               const ks = collectKeys(gc)
                               if (e.target.checked) onChange([...new Set([...checked, ...ks])])
                               else onChange(checked.filter(k => !ks.includes(k)))
-                            }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
-                          <div style={{ paddingLeft: 22 }}>
+                            }} style={{ fontSize: 14 }}>{child.label}</Checkbox>
+                          <div style={{ paddingLeft: 24 }}>
                             {gc.map(g => (
-                              <div key={g.key}>
+                              <div key={g.key} style={{ margin: '3px 0' }}>
                                 <Checkbox checked={checked.includes(g.key)} onChange={e => {
                                   if (e.target.checked) onChange([...checked, g.key])
                                   else onChange(checked.filter(k => k !== g.key))
-                                }} style={{ fontSize: 13 }}>{g.label}</Checkbox>
+                                }} style={{ fontSize: 14 }}>{g.label}</Checkbox>
                               </div>
                             ))}
                           </div>
@@ -96,7 +128,7 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                         <Checkbox checked={childChecked} onChange={e => {
                           if (e.target.checked) onChange([...checked, child.key])
                           else onChange(checked.filter(k => k !== child.key))
-                        }} style={{ fontSize: 13 }}>{child.label}</Checkbox>
+                        }} style={{ fontSize: 14 }}>{child.label}</Checkbox>
                       )}
                     </div>
                   )
@@ -117,7 +149,7 @@ function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (
         const allChecked = perms.every(p => checked.includes(p.key))
         const someChecked = perms.some(p => checked.includes(p.key))
         return (
-          <div key={menuKey} style={{ marginBottom: 14 }}>
+          <div key={menuKey} style={{ marginBottom: 16 }}>
             <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
               onChange={e => {
                 const ks = perms.map(p => p.key)
@@ -126,13 +158,13 @@ function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (
               }} style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
               {menuKey}
             </Checkbox>
-            <div style={{ paddingLeft: 22 }}>
+            <div style={{ paddingLeft: 24 }}>
               {perms.map(p => (
-                <div key={p.key} style={{ margin: '2px 0' }}>
+                <div key={p.key} style={{ margin: '3px 0' }}>
                   <Checkbox checked={checked.includes(p.key)} onChange={e => {
                     if (e.target.checked) onChange([...checked, p.key])
                     else onChange(checked.filter(k => k !== p.key))
-                  }} style={{ fontSize: 13, color: '#666' }}>{p.label}</Checkbox>
+                  }} style={{ fontSize: 14, color: '#555' }}>{p.label}</Checkbox>
                 </div>
               ))}
             </div>
