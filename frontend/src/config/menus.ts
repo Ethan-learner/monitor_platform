@@ -55,13 +55,8 @@ export const roleMenus: Record<string, RoleConfig> = {
       },
       {
         key: 'db', label: '数据库监控', icon: 'DatabaseOutlined', children: [
-          { key: 'pmm-overview', label: '总览', url: '/grafana/d/mysql-instance-overview/mysql-instances-overview?orgId=1&kiosk' },
-          {
-            key: 'mysql', label: 'MySQL', children: [
-              { key: 'mysql-overview', label: 'Overview', url: '/grafana/d/mysql-instance-overview/mysql-instances-overview?orgId=1&kiosk' },
-              { key: 'mysql-summary', label: 'Summary', url: '/grafana/d/mysql-instance-summary/mysql-instance-summary?orgId=1&kiosk' },
-            ],
-          },
+          { key: 'mysql-overview', label: 'Overview', url: '/grafana/d/mysql-instance-overview/mysql-instances-overview?orgId=1&kiosk' },
+          { key: 'mysql-summary', label: 'Summary', url: '/grafana/d/mysql-instance-summary/mysql-instance-summary?orgId=1&kiosk' },
           { key: 'pmm-qan', label: 'Query Analytics', url: 'https://172.16.10.99/pmm-ui/graph/d/pmm-qan/pmm-query-analytics?orgId=1&kiosk', external: true },
         ],
       },
