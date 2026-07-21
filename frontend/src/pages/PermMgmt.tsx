@@ -65,77 +65,24 @@ function findMenuLabel(key: string): string {
   return find(roleMenus.ops?.menus || []) || key
 }
 
-// 管理权限 = 菜单权限全集 + 功能权限全集（下拉树）
-function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const menuItems = roleMenus.ops?.menus || []
-
-  const renderLeaf = (key: string, label: string, perms?: { key: string; label: string }[]) => {
-    if (!perms || perms.length === 0) {
-      return (
-        <div key={key} style={{ margin: '3px 0' }}>
-          <Checkbox checked={checked.includes(key)} onChange={e => {
-            if (e.target.checked) onChange([...checked, key])
-            else onChange(checked.filter(k => k !== key))
-          }} style={{ fontSize: 14, color: '#555' }}>{label}</Checkbox>
-        </div>
-      )
+// 管理权限 = 菜单权限全集 + 功能权限全集
+const ALL_MGMT_PERMS: { key: string; label: string }[] = (() => {
+  const result: { key: string; label: string }[] = []
+  // 菜单权限
+  const addMenuKeys = (items: MenuItem[]) => {
+    for (const item of items) {
+      if (item.key === 'overview') continue
+      result.push({ key: item.key, label: item.label })
+      if (item.children) addMenuKeys(item.children)
     }
-    const allKeys = [key, ...perms.map(p => p.key)]
-    const allChecked = allKeys.every(k => checked.includes(k))
-    const someChecked = allKeys.some(k => checked.includes(k))
-    const isExpanded = expanded[key] ?? false
-    return (
-      <div key={key} style={{ marginBottom: 6, background: '#fff', borderRadius: 6, border: '1px solid #f0f0f0', padding: '6px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span onClick={() => setExpanded({ ...expanded, [key]: !isExpanded })}
-            style={{ cursor: 'pointer', fontSize: 10, color: '#999', width: 14, textAlign: 'center', userSelect: 'none' }}>
-            {isExpanded ? '▼' : '▶'}
-          </span>
-          <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
-            onChange={e => {
-              if (e.target.checked) onChange([...new Set([...checked, ...allKeys])])
-              else onChange(checked.filter(k => !allKeys.includes(k)))
-            }} style={{ fontWeight: 600, fontSize: 14 }}>
-            {label}
-          </Checkbox>
-        </div>
-        {isExpanded && (
-          <div style={{ paddingLeft: 24, marginTop: 4, paddingTop: 4, borderTop: '1px dashed #f0f0f0' }}>
-            {perms.map(p => (
-              <div key={p.key} style={{ margin: '4px 0' }}>
-                <Checkbox checked={checked.includes(p.key)} onChange={e => {
-                  if (e.target.checked) onChange([...checked, p.key])
-                  else onChange(checked.filter(k => k !== p.key))
-                }} style={{ fontSize: 13, color: '#555' }}>{p.label}</Checkbox>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
   }
-
-  const renderNode = (item: MenuItem, depth: number): React.ReactNode => {
-    if (item.key === 'overview') return null
-    const perms = FEATURE_PERMS[item.key]
-    if (item.children && item.children.length > 0) {
-      return (
-        <div key={item.key} style={{ marginBottom: 6, paddingLeft: depth * 8 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#333', marginBottom: 6 }}>{item.label}</div>
-          {item.children.map(child => renderNode(child, depth + 1))}
-        </div>
-      )
-    }
-    return <div key={item.key} style={{ paddingLeft: depth * 8 }}>{renderLeaf(item.key, item.label, perms)}</div>
+  addMenuKeys(roleMenus.ops?.menus || [])
+  // 功能权限
+  for (const [k, v] of Object.entries(FEATURE_PERMS)) {
+    for (const p of v) result.push({ key: p.key, label: `${findMenuLabel(k)} - ${p.label}` })
   }
-
-  return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-      {menuItems.map(item => renderNode(item, 0))}
-    </div>
-  )
-}
+  return result
+})()
 
 function collectKeys(items: MenuItem[]): string[] {
   const keys: string[] = []
@@ -224,6 +171,23 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
+  return (
+    <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+      {ALL_MGMT_PERMS.map(p => (
+        <div key={p.key} style={{ margin: '6px 0', padding: p.label.startsWith('  ') ? '4px 10px' : '6px 10px', background: p.label.startsWith('  ') ? 'transparent' : '#fff', borderRadius: 6, border: p.label.startsWith('  ') ? 'none' : '1px solid #f0f0f0' }}>
+          <Checkbox checked={checked.includes(p.key)} onChange={e => {
+            if (e.target.checked) onChange([...checked, p.key])
+            else onChange(checked.filter(k => k !== p.key))
+          }} style={{ fontSize: 14, fontWeight: p.label.startsWith('  ') ? 400 : 600, color: p.label.startsWith('  ') ? '#555' : '#333' }}>
+            {p.label.trim()}
+          </Checkbox>
+        </div>
+      ))}
     </div>
   )
 }
