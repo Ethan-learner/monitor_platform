@@ -49,9 +49,18 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
     { key: 'perm:view', label: '查看权限' },
     { key: 'perm:assign', label: '分配权限' },
   ],
+  'system-mgmt': [
+    { key: 'system:user', label: '用户管理' },
+    { key: 'system:perm', label: '权限管理' },
+    { key: 'system:dir', label: '目录管理' },
+    { key: 'system:config', label: '系统配置' },
+    { key: 'system:ops', label: '智能运维' },
+  ],
 }
 
 function findMenuLabel(key: string): string {
+  const hardcoded: Record<string, string> = { 'system-mgmt': '系统管理' }
+  if (hardcoded[key]) return hardcoded[key]
   const find = (items: MenuItem[]): string | null => {
     for (const item of items) {
       if (item.key === key) return item.label
