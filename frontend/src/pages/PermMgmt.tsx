@@ -49,11 +49,9 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
     { key: 'user:toggle', label: '禁用/启用' },
     { key: 'user:role', label: '分配角色' },
   ],
-} as const as const
+} as const
 
 function findMenuLabel(key: string): string {
-  const hardcoded: Record<string, string> = { 'system-mgmt': '管理权限' }
-  if (hardcoded[key]) return hardcoded[key]
   const find = (items: MenuItem[]): string | null => {
     for (const item of items) {
       if (item.key === key) return item.label
@@ -66,6 +64,16 @@ function findMenuLabel(key: string): string {
   }
   return find(roleMenus.ops?.menus || []) || key
 }
+
+// 管理权限 = 菜单权限全集 + 功能权限全集
+const ALL_MGMT_PERMS: { key: string; label: string }[] = (() => {
+  const result: { key: string; label: string }[] = []
+  for (const [k, v] of Object.entries(FEATURE_PERMS)) {
+    result.push({ key: k, label: findMenuLabel(k) })
+    for (const p of v) result.push({ key: p.key, label: `  ${p.label}` })
+  }
+  return result
+})()
 
 function collectKeys(items: MenuItem[]): string[] {
   const keys: string[] = []
@@ -154,6 +162,23 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
+  return (
+    <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+      {ALL_MGMT_PERMS.map(p => (
+        <div key={p.key} style={{ margin: '6px 0', padding: p.label.startsWith('  ') ? '4px 10px' : '6px 10px', background: p.label.startsWith('  ') ? 'transparent' : '#fff', borderRadius: 6, border: p.label.startsWith('  ') ? 'none' : '1px solid #f0f0f0' }}>
+          <Checkbox checked={checked.includes(p.key)} onChange={e => {
+            if (e.target.checked) onChange([...checked, p.key])
+            else onChange(checked.filter(k => k !== p.key))
+          }} style={{ fontSize: 14, fontWeight: p.label.startsWith('  ') ? 400 : 600, color: p.label.startsWith('  ') ? '#555' : '#333' }}>
+            {p.label.trim()}
+          </Checkbox>
+        </div>
+      ))}
     </div>
   )
 }
@@ -283,7 +308,7 @@ function UserPermPane() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
                 <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
-                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
+                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }, { value: 'mgmt', label: '管理权限' }]} />
                 <Space>
                   <Text style={{ fontSize: 13, color: '#666' }}>{selected.displayName || selected.username}</Text>
                   <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存</Button>
@@ -291,6 +316,8 @@ function UserPermPane() {
               </div>
               {permMode === 'menu'
                 ? <MenuTree checked={permKeys} onChange={setPermKeys} />
+                : permMode === 'mgmt'
+                ? <MgmtPermList checked={permKeys} onChange={setPermKeys} />
                 : <FeaturePermList checked={permKeys} onChange={setPermKeys} />
               }
             </>
@@ -352,7 +379,7 @@ function RolePermPane() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
                 <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
-                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
+                  options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }, { value: 'mgmt', label: '管理权限' }]} />
                 <Space>
                   <Text style={{ fontSize: 13, color: '#666' }}>{selected.label}</Text>
                   <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存</Button>
@@ -360,6 +387,8 @@ function RolePermPane() {
               </div>
               {permMode === 'menu'
                 ? <MenuTree checked={permKeys} onChange={setPermKeys} />
+                : permMode === 'mgmt'
+                ? <MgmtPermList checked={permKeys} onChange={setPermKeys} />
                 : <FeaturePermList checked={permKeys} onChange={setPermKeys} />
               }
             </>
