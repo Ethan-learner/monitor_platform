@@ -28,9 +28,9 @@ export const roleMenus: Record<string, RoleConfig> = {
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
       {
         key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
-          { key: 'alertmanager-alerts', label: 'Alerts', native: true },
-          { key: 'rules', label: 'Rules', native: true },
-          { key: 'alertmanager-silences', label: 'Silences', native: true },
+          { key: 'alertmanager-alerts', label: '活跃告警', native: true },
+          { key: 'rules', label: '告警规则', native: true },
+          { key: 'alertmanager-silences', label: '静默', native: true },
           { key: 'alert-history', label: '历史告警', native: true },
           { key: 'strategy-config', label: '通知策略', native: true },
         ],
@@ -118,8 +118,8 @@ export const roleMenus: Record<string, RoleConfig> = {
     menus: [
       { key: 'overview', label: '总览首页', icon: 'DashboardOutlined', native: true },
       { key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
-          { key: 'dev-alerts', label: 'Alerts', native: true },
-          { key: 'dev-rules', label: 'Rules', native: true },
+          { key: 'dev-alerts', label: '活跃告警', native: true },
+          { key: 'dev-rules', label: '告警规则', native: true },
         ],
       },
       {
