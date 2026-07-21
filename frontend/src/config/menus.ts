@@ -30,7 +30,7 @@ export const roleMenus: Record<string, RoleConfig> = {
         key: 'alerts', label: '告警中心', icon: 'AlertOutlined', children: [
           { key: 'alertmanager-alerts', label: '活跃告警', native: true },
           { key: 'rules', label: '告警规则', native: true },
-          { key: 'alertmanager-silences', label: '静默', native: true },
+          { key: 'alertmanager-silences', label: '静默处理', native: true },
           { key: 'alert-history', label: '历史告警', native: true },
           { key: 'strategy-config', label: '通知策略', native: true },
         ],
