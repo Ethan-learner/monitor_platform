@@ -178,14 +178,22 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
 function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-      {ALL_MGMT_PERMS.map(p => (
-        <div key={p.key} style={{ margin: '6px 0', padding: p.label.startsWith('  ') ? '4px 10px' : '6px 10px', background: p.label.startsWith('  ') ? 'transparent' : '#fff', borderRadius: 6, border: p.label.startsWith('  ') ? 'none' : '1px solid #f0f0f0' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #f0f0f0' }}>菜单权限（可委托他人查看菜单）</div>
+      {ALL_MGMT_PERMS.filter(p => !p.label.includes(' - ')).map(p => (
+        <div key={p.key} style={{ margin: '4px 0', padding: '6px 10px', background: '#fff', borderRadius: 6, border: '1px solid #f0f0f0' }}>
           <Checkbox checked={checked.includes(p.key)} onChange={e => {
             if (e.target.checked) onChange([...checked, p.key])
             else onChange(checked.filter(k => k !== p.key))
-          }} style={{ fontSize: 14, fontWeight: p.label.startsWith('  ') ? 400 : 600, color: p.label.startsWith('  ') ? '#555' : '#333' }}>
-            {p.label.trim()}
-          </Checkbox>
+          }} style={{ fontSize: 14, color: '#333' }}>{p.label}</Checkbox>
+        </div>
+      ))}
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginTop: 16, marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #f0f0f0' }}>功能权限（可委托他人执行操作）</div>
+      {ALL_MGMT_PERMS.filter(p => p.label.includes(' - ')).map(p => (
+        <div key={p.key} style={{ margin: '4px 0', padding: '6px 10px', background: '#fff', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+          <Checkbox checked={checked.includes(p.key)} onChange={e => {
+            if (e.target.checked) onChange([...checked, p.key])
+            else onChange(checked.filter(k => k !== p.key))
+          }} style={{ fontSize: 13, color: '#555' }}>{p.label.replace(' - ', ' · ')}</Checkbox>
         </div>
       ))}
     </div>
