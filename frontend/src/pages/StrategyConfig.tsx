@@ -105,10 +105,10 @@ export default function StrategyConfig() {
             return hl ? <Tag color={SEV_COLORS[hl]}>{SEV_SHORT[hl]}</Tag> : <span style={{ color: '#999' }}>—</span>
           }},
           { title: '通知策略', width: 280, align: 'center', render: (_: any, r: FlatRow) => (
-            <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Tag color={SEV_COLORS[r.sev]} style={{ margin: 0, alignSelf: 'flex-start' }}>{SEV_SHORT[r.sev]}</Tag>
-              <div style={{ textAlign: 'left' }}>{sevNotifiyStr(r.config, r.sev)}</div>
-            </div>
+            <span style={{ fontSize: 12 }}>
+              <Tag color={SEV_COLORS[r.sev]}>{SEV_SHORT[r.sev]}</Tag><br />
+              {sevNotifiyStr(r.config, r.sev)}
+            </span>
           )},
           { title: '说明', dataIndex: 'description', ellipsis: true, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }) },
           { title: '状态', width: 60, align: 'center', onCell: (r) => ({ rowSpan: r.rowSpan }), render: (_, r) => {
