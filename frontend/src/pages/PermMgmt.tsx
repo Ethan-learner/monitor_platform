@@ -65,25 +65,6 @@ function findMenuLabel(key: string): string {
   return find(roleMenus.ops?.menus || []) || key
 }
 
-// 管理权限 = 菜单权限全集 + 功能权限全集
-const ALL_MGMT_PERMS: { key: string; label: string }[] = (() => {
-  const result: { key: string; label: string }[] = []
-  // 菜单权限
-  const addMenuKeys = (items: MenuItem[]) => {
-    for (const item of items) {
-      if (item.key === 'overview') continue
-      result.push({ key: item.key, label: item.label })
-      if (item.children) addMenuKeys(item.children)
-    }
-  }
-  addMenuKeys(roleMenus.ops?.menus || [])
-  // 功能权限
-  for (const [k, v] of Object.entries(FEATURE_PERMS)) {
-    for (const p of v) result.push({ key: p.key, label: `${findMenuLabel(k)} - ${p.label}` })
-  }
-  return result
-})()
-
 function collectKeys(items: MenuItem[]): string[] {
   const keys: string[] = []
   for (const item of items) {
@@ -177,26 +158,38 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
 
 function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const menuKeys = ALL_MGMT_PERMS.filter(p => !p.label.includes(' - '))
-  const featureKeys = ALL_MGMT_PERMS.filter(p => p.label.includes(' - '))
+  const items = roleMenus.ops?.menus || []
 
-  const section = (title: string, key: string, items: typeof ALL_MGMT_PERMS) => {
-    const open = expanded[key]
+  const renderLeaf = (item: MenuItem, depth: number): React.ReactNode => {
+    const perms = FEATURE_PERMS[item.key]
+    const hasPerms = perms && perms.length > 0
+    const isExpanded = expanded[item.key] ?? false
+    const allKeys = [item.key, ...(hasPerms ? perms!.map(p => p.key) : [])]
+    const allChecked = allKeys.every(k => checked.includes(k))
+    const someChecked = allKeys.some(k => checked.includes(k))
     return (
-      <div style={{ marginBottom: 10, background: '#fff', borderRadius: 6, border: '1px solid #f0f0f0', padding: '6px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-          onClick={() => setExpanded({ ...expanded, [key]: !open })}>
-          <span style={{ fontSize: 10, color: '#999', width: 14, textAlign: 'center' }}>{open ? '▼' : '▶'}</span>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>{title}</span>
+      <div key={item.key} style={{ marginBottom: 2, marginLeft: depth * 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {hasPerms ? (
+            <span onClick={() => setExpanded({ ...expanded, [item.key]: !isExpanded })}
+              style={{ cursor: 'pointer', fontSize: 10, color: '#999', width: 14, textAlign: 'center', userSelect: 'none' }}>
+              {isExpanded ? '▼' : '▶'}
+            </span>
+          ) : <span style={{ width: 14 }} />}
+          <Checkbox checked={allChecked} indeterminate={hasPerms && !allChecked && someChecked}
+            onChange={e => {
+              if (e.target.checked) onChange([...new Set([...checked, ...allKeys])])
+              else onChange(checked.filter(k => !allKeys.includes(k)))
+            }} style={{ fontSize: 14, fontWeight: hasPerms ? 600 : 400 }}>{item.label}</Checkbox>
         </div>
-        {open && (
-          <div style={{ paddingLeft: 20, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #f0f0f0' }}>
-            {items.map(p => (
-              <div key={p.key} style={{ margin: '4px 0' }}>
+        {hasPerms && isExpanded && (
+          <div style={{ marginLeft: 24, marginTop: 4, paddingTop: 4, borderTop: '1px dashed #f0f0f0' }}>
+            {perms!.map(p => (
+              <div key={p.key} style={{ margin: '3px 0' }}>
                 <Checkbox checked={checked.includes(p.key)} onChange={e => {
                   if (e.target.checked) onChange([...checked, p.key])
                   else onChange(checked.filter(k => k !== p.key))
-                }} style={{ fontSize: 13, color: '#555' }}>{p.label.replace(' - ', ' · ')}</Checkbox>
+                }} style={{ fontSize: 13, color: '#555' }}>{p.label}</Checkbox>
               </div>
             ))}
           </div>
@@ -205,10 +198,35 @@ function MgmtPermList({ checked, onChange }: { checked: string[]; onChange: (k: 
     )
   }
 
+  const renderNode = (item: MenuItem, depth: number): React.ReactNode => {
+    if (item.key === 'overview') return null
+    const hasChildren = item.children && item.children.length > 0
+    const isExpanded = expanded[item.key] ?? false
+    if (hasChildren) {
+      return (
+        <div key={item.key} style={{ marginBottom: 8, background: '#fff', borderRadius: 6, border: '1px solid #f0f0f0', padding: '6px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 2 }}
+            onClick={() => setExpanded({ ...expanded, [item.key]: !isExpanded })}>
+            <span style={{ fontSize: 10, color: '#999', width: 14, textAlign: 'center' }}>{isExpanded ? '▼' : '▶'}</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{item.label}</span>
+          </div>
+          {isExpanded && (
+            <div style={{ marginLeft: 4, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #f0f0f0' }}>
+              {item.children!.map(child => {
+                if (child.children && child.children.length > 0) return renderNode(child, depth + 1)
+                return renderLeaf(child, depth + 1)
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
+    return renderLeaf(item, depth)
+  }
+
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-      {section('菜单权限', 'menu', menuKeys)}
-      {section('功能权限', 'feature', featureKeys)}
+      {items.map(item => renderNode(item, 0))}
     </div>
   )
 }
