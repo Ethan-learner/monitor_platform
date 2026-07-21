@@ -52,7 +52,6 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
   'system-mgmt': [
     { key: 'system:user', label: '用户管理' },
     { key: 'system:perm', label: '权限管理' },
-    { key: 'system:log', label: '登录日志' },
   ],
 }
 
