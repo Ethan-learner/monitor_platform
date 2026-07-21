@@ -50,8 +50,7 @@ const FEATURE_PERMS: Record<string, { key: string; label: string }[]> = {
     { key: 'user:role', label: '分配角色' },
   ],
   'perm-mgmt': [
-    { key: 'perm:view', label: '查看权限' },
-    { key: 'perm:assign', label: '分配权限' },
+    { key: 'perm:manage', label: '管理权限' },
   ],
 } as const
 
