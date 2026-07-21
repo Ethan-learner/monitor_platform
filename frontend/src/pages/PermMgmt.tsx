@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Input, Button, Typography, message, Tabs, Checkbox, Card, Row, Col } from 'antd'
+import { Input, Button, Typography, message, Tabs, Checkbox, Card, Row, Col, Segmented, Space } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 import { roleMenus, type MenuItem } from '../config/menus'
@@ -34,52 +34,12 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
 
   const allItemsChecked = (its: MenuItem[]): boolean => its.every(i => {
     if (i.children) return allItemsChecked(i.children)
-    const perms = FEATURE_PERMS[i.key]
-    if (perms) return perms.every(p => checked.includes(p.key))
     return checked.includes(i.key)
   })
   const someItemsChecked = (its: MenuItem[]): boolean => its.some(i => {
     if (i.children) return someItemsChecked(i.children)
-    const perms = FEATURE_PERMS[i.key]
-    if (perms) return perms.some(p => checked.includes(p.key))
     return checked.includes(i.key)
   })
-
-  const renderLeaf = (key: string, label: string, depth: number) => {
-    const perms = FEATURE_PERMS[key]
-    if (perms) {
-      const allChecked = perms.every(p => checked.includes(p.key))
-      const someChecked = perms.some(p => checked.includes(p.key))
-      return (
-        <div style={{ paddingLeft: depth * 22 }}>
-          <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
-            onChange={e => {
-              const ks = perms.map(p => p.key)
-              if (e.target.checked) onChange([...new Set([...checked, ...ks])])
-              else onChange(checked.filter(k => !ks.includes(k)))
-            }} style={{ fontSize: 12 - depth * 1 }}>{label}</Checkbox>
-          <div style={{ paddingLeft: 22 }}>
-            {perms.map(p => (
-              <div key={p.key} style={{ margin: '1px 0' }}>
-                <Checkbox checked={checked.includes(p.key)} onChange={e => {
-                  if (e.target.checked) onChange([...checked, p.key])
-                  else onChange(checked.filter(k => k !== p.key))
-                }} style={{ fontSize: 11, color: '#666' }}>◉ {p.label}</Checkbox>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div style={{ paddingLeft: depth * 22 }}>
-        <Checkbox checked={checked.includes(key)} onChange={e => {
-          if (e.target.checked) onChange([...checked, key])
-          else onChange(checked.filter(k => k !== key))
-        }} style={{ fontSize: 12 - depth * 1 }}>{label}</Checkbox>
-      </div>
-    )
-  }
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
@@ -100,23 +60,8 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
                 indeterminate={hasChildren && someItemsChecked(item.children!) && !allItemsChecked(item.children!)}
                 onChange={e => {
                   const ks = hasChildren ? collectKeys(item.children!) : [item.key]
-                  if (e.target.checked) {
-                    const allKs = [...new Set([...checked, ...ks])]
-                    // 级联子操作权限
-                    if (!hasChildren) {
-                      const perms = FEATURE_PERMS[item.key]
-                      if (perms) perms.forEach(p => allKs.push(p.key))
-                    }
-                    onChange([...new Set(allKs)])
-                  } else {
-                    let filtered = checked.filter(k => !ks.includes(k))
-                    // 级联移除子操作权限
-                    if (!hasChildren) {
-                      const perms = FEATURE_PERMS[item.key]
-                      if (perms) filtered = filtered.filter(k => !perms.some(p => p.key === k))
-                    }
-                    onChange(filtered)
-                  }
+                  if (e.target.checked) onChange([...new Set([...checked, ...ks])])
+                  else onChange(checked.filter(k => !ks.includes(k)))
                 }}
                 style={{ fontWeight: hasChildren ? 600 : 400, fontSize: 13 }}>{item.label}</Checkbox>
             </div>
@@ -124,26 +69,73 @@ function MenuTree({ checked, onChange }: { checked: string[]; onChange: (k: stri
               <div style={{ paddingLeft: 22, marginTop: 2 }}>
                 {item.children!.map(child => {
                   const gc = child.children?.length ? child.children : undefined
+                  const childChecked = gc ? allItemsChecked(gc) : checked.includes(child.key)
+                  const childIndeterminate = gc && someItemsChecked(gc) && !allItemsChecked(gc)
                   return (
                     <div key={child.key} style={{ marginBottom: gc ? 6 : 1 }}>
                       {gc ? (
                         <>
-                          <Checkbox checked={allItemsChecked(gc)} indeterminate={someItemsChecked(gc) && !allItemsChecked(gc)}
+                          <Checkbox checked={childChecked} indeterminate={childIndeterminate}
                             onChange={e => {
                               const ks = collectKeys(gc)
                               if (e.target.checked) onChange([...new Set([...checked, ...ks])])
                               else onChange(checked.filter(k => !ks.includes(k)))
                             }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
                           <div style={{ paddingLeft: 22 }}>
-                            {gc.map(g => renderLeaf(g.key, g.label, 2))}
+                            {gc.map(g => (
+                              <div key={g.key}>
+                                <Checkbox checked={checked.includes(g.key)} onChange={e => {
+                                  if (e.target.checked) onChange([...checked, g.key])
+                                  else onChange(checked.filter(k => k !== g.key))
+                                }} style={{ fontSize: 11 }}>{g.label}</Checkbox>
+                              </div>
+                            ))}
                           </div>
                         </>
-                      ) : renderLeaf(child.key, child.label, 1)}
+                      ) : (
+                        <Checkbox checked={childChecked} onChange={e => {
+                          if (e.target.checked) onChange([...checked, child.key])
+                          else onChange(checked.filter(k => k !== child.key))
+                        }} style={{ fontSize: 12 }}>{child.label}</Checkbox>
+                      )}
                     </div>
                   )
                 })}
               </div>
             )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FeaturePermList({ checked, onChange }: { checked: string[]; onChange: (k: string[]) => void }) {
+  return (
+    <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+      {Object.entries(FEATURE_PERMS).map(([menuKey, perms]) => {
+        const allChecked = perms.every(p => checked.includes(p.key))
+        const someChecked = perms.some(p => checked.includes(p.key))
+        return (
+          <div key={menuKey} style={{ marginBottom: 14 }}>
+            <Checkbox checked={allChecked} indeterminate={!allChecked && someChecked}
+              onChange={e => {
+                const ks = perms.map(p => p.key)
+                if (e.target.checked) onChange([...new Set([...checked, ...ks])])
+                else onChange(checked.filter(k => !ks.includes(k)))
+              }} style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+              {menuKey}
+            </Checkbox>
+            <div style={{ paddingLeft: 22 }}>
+              {perms.map(p => (
+                <div key={p.key} style={{ margin: '2px 0' }}>
+                  <Checkbox checked={checked.includes(p.key)} onChange={e => {
+                    if (e.target.checked) onChange([...checked, p.key])
+                    else onChange(checked.filter(k => k !== p.key))
+                  }} style={{ fontSize: 12, color: '#666' }}>{p.label}</Checkbox>
+                </div>
+              ))}
+            </div>
           </div>
         )
       })}
@@ -169,6 +161,7 @@ function UserPermPane() {
   const [selected, setSelected] = useState<any>(null)
   const [permKeys, setPermKeys] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [permMode, setPermMode] = useState('menu')
 
   const loadUsers = async () => {
     const r = await api.get('/settings/users', { params: { limit: 200 } })
@@ -213,9 +206,16 @@ function UserPermPane() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.displayName || selected.username}</strong></span>
-                <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                <Space>
+                  <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
+                    options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
+                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                </Space>
               </div>
-              <MenuTree checked={permKeys} onChange={setPermKeys} />
+              {permMode === 'menu'
+                ? <MenuTree checked={permKeys} onChange={setPermKeys} />
+                : <FeaturePermList checked={permKeys} onChange={setPermKeys} />
+              }
             </>
           ) : (
             <div style={{ color: '#999', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>请选择左侧用户</div>
@@ -232,6 +232,7 @@ function RolePermPane() {
   const [selected, setSelected] = useState<any>(null)
   const [permKeys, setPermKeys] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [permMode, setPermMode] = useState('menu')
 
   const loadRoles = async () => {
     const r = await api.get('/settings/roles')
@@ -274,9 +275,16 @@ function RolePermPane() {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ color: '#666', fontSize: 12 }}>编辑权限: <strong>{selected.label}</strong></span>
-                <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                <Space>
+                  <Segmented size="small" value={permMode} onChange={v => setPermMode(v as string)}
+                    options={[{ value: 'menu', label: '菜单权限' }, { value: 'feature', label: '功能权限' }]} />
+                  <Button type="primary" size="small" loading={saving} onClick={savePerms}>保存权限</Button>
+                </Space>
               </div>
-              <MenuTree checked={permKeys} onChange={setPermKeys} />
+              {permMode === 'menu'
+                ? <MenuTree checked={permKeys} onChange={setPermKeys} />
+                : <FeaturePermList checked={permKeys} onChange={setPermKeys} />
+              }
             </>
           ) : (
             <div style={{ color: '#999', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>请选择左侧角色</div>
