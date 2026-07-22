@@ -144,13 +144,13 @@ export default function WebhookEvents() {
   }, {} as Record<string, number>) || {}
 
   const groupedLog = useMemo(() => {
-    const map: Record<string, { time: string; alert: string; instance: string; action: string; reason: string; hasEmail: boolean; hasLark: boolean; emailOk: boolean; larkOk: boolean; emailRecipient: string; larkRecipient: string }> = {}
+    const map: Record<string, { time: string; alert: string; instance: string; action: string; reason: string; hasEmail: boolean; hasLark: boolean; emailOk: boolean; larkOk: boolean; emailRecipients: string[]; larkRecipients: string[] }> = {}
     pushLog.forEach((r) => {
       const key = `${r.alertName}|${r.instance}`
-      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.action || r.summary || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }
+      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.action || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipients: [], larkRecipients: [] }
       const ok = r.status === 1 || r.status === '1' || r.status === 'success'
-      if (r.channel === 'email') { map[key].hasEmail = true; map[key].emailOk = ok; map[key].emailRecipient = r.recipient || '' }
-      if (r.channel === 'lark') { map[key].hasLark = true; map[key].larkOk = ok; map[key].larkRecipient = r.recipient || '' }
+      if (r.channel === 'email') { map[key].hasEmail = true; map[key].emailOk = ok; if (r.recipient && !map[key].emailRecipients.includes(r.recipient)) map[key].emailRecipients.push(r.recipient) }
+      if (r.channel === 'lark') { map[key].hasLark = true; map[key].larkOk = ok; if (r.recipient && !map[key].larkRecipients.includes(r.recipient)) map[key].larkRecipients.push(r.recipient) }
       if (r.createdAt > map[key].time) map[key].time = r.createdAt
     })
     return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
@@ -169,41 +169,54 @@ export default function WebhookEvents() {
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
         <Table
-          dataSource={groupedLog.length > 0 ? groupedLog : [{ time: '', alert: '', instance: '', reason: '', emailOk: false, larkOk: false, emailRecipient: '', larkRecipient: '' }]}
-          rowKey={(r, i) => r.time + i}
-          size="middle"
-          pagination={false}
+          dataSource={groupedLog}
+          rowKey={(r) => `${r.alert}|${r.instance}|${r.time}`}
+          size="small"
+          pagination={{
+            defaultPageSize: 10,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (t) => `共 ${t} 条`,
+          }}
           locale={{ emptyText: '暂无推送记录' }}
           columns={[
-            { title: '时间', dataIndex: 'time', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: '告警名称', dataIndex: 'alert', width: 160, align: 'center', render: (s: string) => s || '—' },
-            { title: '实例', dataIndex: 'instance', width: 150, align: 'center', render: (s: string) => s || '—' },
+            { title: '时间', dataIndex: 'time', width: 150, ellipsis: true, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: '告警名称', dataIndex: 'alert', width: 160, ellipsis: true, render: (s: string) => s || '—' },
+            { title: '实例', dataIndex: 'instance', width: 120, ellipsis: true, render: (s: string) => s || '—' },
             {
-              title: '邮件', width: 150, align: 'center',
+              title: '邮件', width: 160,
               render: (_: any, r: typeof groupedLog[0]) => {
                 if (!r.hasEmail) return <Tag color="default">未触发</Tag>
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <Tag color={r.emailOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.emailOk ? '成功' : '失败'}</Tag>
-                    {r.emailRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.emailRecipient}</span>}
+                  <div>
+                    <Tag color={r.emailOk ? 'green' : 'red'}>{r.emailOk ? '成功' : '失败'}</Tag>
+                    {r.emailRecipients.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                        {r.emailRecipients.join(', ')}
+                      </div>
+                    )}
                   </div>
                 )
               },
             },
             {
-              title: '飞书', width: 150, align: 'center',
+              title: '飞书', width: 160,
               render: (_: any, r: typeof groupedLog[0]) => {
                 if (!r.hasLark) return <Tag color="default">未触发</Tag>
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <Tag color={r.larkOk ? 'green' : 'red'} style={{ margin: 0 }}>{r.larkOk ? '成功' : '失败'}</Tag>
-                    {r.larkRecipient && <span style={{ fontSize: 12, color: '#999' }}>{r.larkRecipient}</span>}
+                  <div>
+                    <Tag color={r.larkOk ? 'green' : 'red'}>{r.larkOk ? '成功' : '失败'}</Tag>
+                    {r.larkRecipients.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                        {r.larkRecipients.join(', ')}
+                      </div>
+                    )}
                   </div>
                 )
               },
             },
-            { title: '推送操作', dataIndex: 'action', width: 100, align: 'center' },
-            { title: '原因', dataIndex: 'reason', ellipsis: true, width: 200, align: 'center' },
+            { title: '操作', dataIndex: 'action', width: 80, render: (s: string) => s || '—' },
+            { title: '原因', dataIndex: 'reason', ellipsis: true },
           ]}
         />
       </Card>
