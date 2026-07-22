@@ -46,6 +46,9 @@ export default function NewRules() {
   const [editCustomMode, setEditCustomMode] = useState(false)
   const [customSev, setCustomSev] = useState('warning')
   const [editCustomSev, setEditCustomSev] = useState('warning')
+  const [stormCount, setStormCount] = useState(0)
+  const [stormOpen, setStormOpen] = useState(false)
+  const [stormPending, setStormPending] = useState<() => void>(() => {})
 
   const load = async () => { setLoading(true); try { const cached = cacheGet('rules:parsed'); if (cached) setRules(cached); const data = await fetchParsedRules(); setRules(data); cacheSet('rules:parsed', data) } catch {} finally { setLoading(false) } }
   useEffect(() => { load(); api.get('/alerts/strategies').then(r => setStrategies(r.data || [])).catch(() => {}) }, [])
@@ -63,17 +66,42 @@ export default function NewRules() {
     } catch { setPreviewResult('查询失败'); setPreviewOpen(true) } finally { setPreviewLoading(false) }
   }
 
+  const checkStorm = async (expr: string, onConfirm: () => void) => {
+    // 未加标签过滤的表达式容易引发风暴
+    if (!expr.includes('{')) {
+      setStormCount(-1) // -1 表示无标签过滤
+      setStormPending(() => onConfirm)
+      setStormOpen(true)
+      return
+    }
+    // 预览匹配实例数
+    try {
+      const { data } = await api.get('/rules/preview', { params: { query: expr } })
+      const count = (data?.data?.result || []).length
+      if (count > 50) {
+        setStormCount(count)
+        setStormPending(() => onConfirm)
+        setStormOpen(true)
+        return
+      }
+    } catch {} // 预览失败不阻止
+    onConfirm()
+  }
+
   const handleCreate = async (values: any) => {
     setSubmitting(true)
-    try {
-      const prefix = CATEGORY_PREFIX[values.category] || 'other_'
-      const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
-      const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
-      await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); setCustomMode(false); load()
-    } catch (e: any) {
-      if (e?.response?.status === 409) { message.warning(e?.response?.data?.detail || '规则名重复'); return }
-      message.error('创建失败')
-    } finally { setSubmitting(false) }
+    const doCreate = async () => {
+      try {
+        const prefix = CATEGORY_PREFIX[values.category] || 'other_'
+        const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
+        const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
+        await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); setCustomMode(false); load()
+      } catch (e: any) {
+        if (e?.response?.status === 409) { message.warning(e?.response?.data?.detail || '规则名重复'); return }
+        message.error('创建失败')
+      } finally { setSubmitting(false) }
+    }
+    await checkStorm(values.expr, doCreate)
   }
 
   const handleDelete = async (ruleName: string) => {
@@ -85,10 +113,15 @@ export default function NewRules() {
 
   const handleEdit = async (values: any) => {
     if (!editTarget) return
-    try {
-      await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' })
-      await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
-    } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
+    setSubmitting(true)
+    const doEdit = async () => {
+      try {
+        await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' })
+        await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
+      } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
+      finally { setSubmitting(false) }
+    }
+    await checkStorm(values.expr, doEdit)
   }
 
   const getStrategyName = (sid: string | number, custom?: any) => {
@@ -255,8 +288,25 @@ export default function NewRules() {
     <Modal title="查询预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} footer={null} width={700}>
       <pre style={{ fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f6f8fa', padding: 12, borderRadius: 4 }}>{previewResult}</pre>
     </Modal>
-    <Modal title="无法启用" open={noStrategyModal} onCancel={() => setNoStrategyModal(false)} footer={null}>
-      <p>引用的策略不存在，请先修改规则的策略配置。</p>
-    </Modal>
-  </div>)
+      <Modal title="无法启用" open={noStrategyModal} onCancel={() => setNoStrategyModal(false)} footer={null}>
+        <p>引用的策略不存在，请先修改规则的策略配置。</p>
+      </Modal>
+      <Modal title="⚠️ 告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false) }}
+        onOk={() => { setStormOpen(false); stormPending() }}
+        okText="确认创建" okButtonProps={{ danger: true }}>
+        {stormCount === -1 ? (
+          <div>
+            <p style={{ fontSize: 14, marginBottom: 8 }}>该表达式<strong>未使用标签过滤</strong>（{`{}`}），将匹配该 metrics 下的<strong>所有时间序列</strong>。</p>
+            <p style={{ color: '#cf1322' }}>可能引发大量告警通知（告警风暴）。</p>
+            <p style={{ marginTop: 8 }}>建议添加标签过滤，如：{`metric_name{job="xxx"}`}</p>
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: 14, marginBottom: 8 }}>该表达式预计匹配 <strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount}</strong> 条时间序列。</p>
+            <p style={{ color: '#cf1322' }}>数量超过阈值（50条），可能引发告警风暴。</p>
+            <p style={{ marginTop: 8 }}>确认要继续创建吗？</p>
+          </div>
+        )}
+      </Modal>
+    </div>)
 }
