@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Card, Statistic, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
+import { useEffect, useState } from 'react'
+import { Card, Row, Col, Tag, Typography, Space, Button, Table } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
-import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title } = Typography
 
@@ -21,7 +20,7 @@ function FlowTopo({ health }: { health: HealthData | null }) {
   // Node center X positions
   const pmX = 80; const amX = 260; const whX = 440
   const sendX = 660; const sendW = 120
-  const subX = 920; const endX = 1080; const endW = 160
+  const subX = 920
 
 
   // Y positions
@@ -133,43 +132,12 @@ export default function WebhookEvents() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [loading, setLoading] = useState(false)
   const [pushLog, setPushLog] = useState<PushRecord[]>([])
-  const load = async () => { setLoading(true); try { const cached = cacheGet('webhook:health'); if (cached) setHealth(cached); const [{ data: h }, { data: p }] = await Promise.all([api.get('/webhook/health'), api.get('/webhook/push-log', { params: { limit: 20 } })]); setHealth(h); setPushLog(p || []); cacheSet('webhook:health', h) } catch { setHealth(null); setPushLog([]) }; setLoading(false) }
+  const load = async () => { setLoading(true); try { const [{ data: h }, { data: p }] = await Promise.all([api.get('/webhook/health'), api.get('/webhook/push-log', { params: { limit: 200 } })]); setHealth(h); setPushLog(p || []) } catch { setHealth(null); setPushLog([]) }; setLoading(false) }
   useEffect(() => { load() }, [])
 
   const nodes = health?.nodes || []
   const nodeNames = (i: number) => `webhook0${i + 1}`
-  const stats = health?.nodes?.reduce((a, n) => {
-    if (n.stats) Object.entries(n.stats).forEach(([k, v]) => { a[k] = (a[k] || 0) + (v as number) })
-    return a
-  }, {} as Record<string, number>) || {}
-
-  const groupedLog = useMemo(() => {
-    const map: Record<string, { time: string; alert: string; instance: string; action: string; reason: string; hasEmail: boolean; hasLark: boolean; emailOk: boolean; larkOk: boolean; emailRecipients: string[]; larkRecipients: string[] }> = {}
-    pushLog.forEach((r) => {
-      const key = `${r.alertName}|${r.instance}`
-      if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.action || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipients: [], larkRecipients: [] }
-      const ok = r.status === 1 || r.status === '1' || r.status === 'success'
-      // 拆分逗号分隔的接收人字符串
-      const recips = (r.recipient || '').split(',').map(s => s.trim()).filter(Boolean)
-      if (r.channel === 'email') {
-        map[key].hasEmail = true
-        if (!ok) map[key].emailOk = false
-        else if (map[key].emailRecipients.length === 0) map[key].emailOk = true
-        for (const rec of recips) { if (!map[key].emailRecipients.includes(rec)) map[key].emailRecipients.push(rec) }
-      }
-      if (r.channel === 'lark') {
-        map[key].hasLark = true
-        if (!ok) map[key].larkOk = false
-        else if (map[key].larkRecipients.length === 0) map[key].larkOk = true
-        for (const rec of recips) { if (!map[key].larkRecipients.includes(rec)) map[key].larkRecipients.push(rec) }
-      }
-      if (r.createdAt > map[key].time) {
-        map[key].time = r.createdAt
-        map[key].action = r.action || map[key].action
-      }
-    })
-    return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
-  }, [pushLog])
+  void health
 
   return (
     <div style={{ padding: 16 }}>
@@ -184,8 +152,8 @@ export default function WebhookEvents() {
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
         <Table
-          dataSource={groupedLog}
-          rowKey={(r) => `${r.alert}|${r.instance}|${r.time}`}
+          dataSource={pushLog}
+          rowKey={(_, i) => String(i)}
           size="small"
           pagination={{
             defaultPageSize: 10,
@@ -195,47 +163,33 @@ export default function WebhookEvents() {
           }}
           locale={{ emptyText: '暂无推送记录' }}
           columns={[
-            { title: '时间', dataIndex: 'time', width: 150, ellipsis: true, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: '告警名称', dataIndex: 'alert', width: 160, ellipsis: true, render: (s: string) => s || '—' },
+            { title: '时间', dataIndex: 'createdAt', width: 150, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true, render: (s: string) => s || '—' },
             { title: '实例', dataIndex: 'instance', width: 120, ellipsis: true, render: (s: string) => s || '—' },
             {
-              title: '邮件', width: 160,
-              render: (_: any, r: typeof groupedLog[0]) => {
-                if (!r.hasEmail) return <Tag color="default">未触发</Tag>
-                return (
-                  <div>
-                    <Tag color={r.emailOk ? 'green' : 'red'}>{r.emailOk ? '成功' : '失败'}</Tag>
-                    {r.emailRecipients.length > 0 && (
-                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-                        {r.emailRecipients.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )
+              title: '通道', dataIndex: 'channel', width: 70,
+              render: (s: string) => <Tag color={s === 'email' ? 'blue' : s === 'lark' ? 'cyan' : 'default'}>{s === 'email' ? '邮件' : s === 'lark' ? '飞书' : s}</Tag>,
+            },
+            {
+              title: '接收人', dataIndex: 'recipient', width: 200, ellipsis: true,
+              render: (s: string) => s || '—',
+            },
+            {
+              title: '状态', dataIndex: 'status', width: 70,
+              render: (s: any) => {
+                const ok = s === 1 || s === '1' || s === 'success'
+                return <Tag color={ok ? 'green' : 'red'}>{ok ? '成功' : '失败'}</Tag>
               },
             },
             {
-              title: '飞书', width: 160,
-              render: (_: any, r: typeof groupedLog[0]) => {
-                if (!r.hasLark) return <Tag color="default">未触发</Tag>
-                return (
-                  <div>
-                    <Tag color={r.larkOk ? 'green' : 'red'}>{r.larkOk ? '成功' : '失败'}</Tag>
-                    {r.larkRecipients.length > 0 && (
-                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-                        {r.larkRecipients.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )
+              title: '操作', dataIndex: 'action', width: 80,
+              render: (s: string) => {
+                if (!s) return '—'
+                const color = s === 'firing' ? 'red' : s === 'resolved' ? 'green' : 'blue'
+                return <Tag color={color}>{s === 'firing' ? '触发' : s === 'resolved' ? '恢复' : s}</Tag>
               },
             },
-            { title: '操作', dataIndex: 'action', width: 80, render: (s: string) => {
-              if (!s) return '—'
-              const color = s === 'firing' ? 'red' : s === 'resolved' ? 'green' : 'blue'
-              return <Tag color={color}>{s === 'firing' ? '触发' : s === 'resolved' ? '恢复' : s}</Tag>
-            }},
-            { title: '原因', dataIndex: 'reason', ellipsis: true },
+            { title: '摘要', dataIndex: 'summary', ellipsis: true, width: 200, render: (s: string) => s || '—' },
           ]}
         />
       </Card>
