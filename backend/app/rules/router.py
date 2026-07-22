@@ -262,6 +262,7 @@ async def save_rule_file(filename: str, body: dict) -> dict:
     operator = body.get("operator", "admin")
     strategy_id = body.get("strategy_id")
     custom_notify = body.get("custom_notify", "")
+    storm_risk = body.get("storm_risk", False)
     custom_notify_json = _parse_custom_notify(custom_notify)
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="invalid filename")
@@ -290,7 +291,10 @@ async def save_rule_file(filename: str, body: dict) -> dict:
         # 同步写入服务器 YAML 文件
         _write_file(filename, content)
         log_audit(operator, "rules", "create", f"file={filename}")
-        asyncio.create_task(_reload_all_nodes())
+        if storm_risk:
+            asyncio.create_task(_delayed_reload_with_notify(filename, operator))
+        else:
+            asyncio.create_task(_reload_all_nodes())
         return {"status": "saved", "filename": filename}
     except HTTPException:
         raise
@@ -311,6 +315,27 @@ async def _reload_all_nodes():
             except Exception: pass
 
 
+async def _delayed_reload_with_notify(filename: str, operator: str):
+    """延迟15分钟后热加载并通知管理员"""
+    await asyncio.sleep(15 * 60)
+    await _reload_all_nodes()
+    # 通知管理员
+    try:
+        nodes = [u.strip() for u in settings.webhook_nodes.split(",") if u.strip()] if hasattr(settings, "webhook_nodes") and settings.webhook_nodes else []
+        for url in nodes:
+            try:
+                async with httpx.AsyncClient(timeout=5.0, verify=False) as c:
+                    await c.post(f"{url}/test", json={
+                        "receiver": "email",
+                        "summary": f"[告警风暴预热] 规则文件 {filename} 已自动生效，操作人: {operator}",
+                        "severity": "warning"
+                    })
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+
 @router.post("/reload")
 async def reload_prometheus() -> dict:
     """三节点同时热加载"""
@@ -329,6 +354,7 @@ async def update_rule(body: dict) -> dict:
     summary = body.get("summary", "")
     strategy_id = body.get("strategy_id")
     custom_notify = body.get("custom_notify", "")
+    storm_risk = body.get("storm_risk", False)
     custom_notify_json = _parse_custom_notify(custom_notify)
     try:
         with get_db(readonly=False) as conn:
@@ -362,7 +388,10 @@ async def update_rule(body: dict) -> dict:
             _move_to_disabled(old_file)
         _write_file(new_file, new_yaml)
         log_audit(body.get("operator", "system"), "rules", "update", f"old={old_name}->{new_name} file={old_file}->{new_file}")
-        asyncio.create_task(_reload_all_nodes())
+        if storm_risk:
+            asyncio.create_task(_delayed_reload_with_notify(new_file, body.get("operator", "system")))
+        else:
+            asyncio.create_task(_reload_all_nodes())
         return {"status": "updated", "filename": new_file}
     except HTTPException:
         raise

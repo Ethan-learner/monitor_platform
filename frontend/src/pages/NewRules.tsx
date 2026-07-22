@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { Button, Table, Tag, Space, Typography, Badge, Modal, Form, Input, Select, message, Popconfirm } from 'antd'
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, StopOutlined } from '@ant-design/icons'
 import { fetchParsedRules, saveRuleFile, reloadPrometheus, type ParsedRule } from '../lib/rules'
@@ -47,6 +47,7 @@ export default function NewRules() {
   const [customSev, setCustomSev] = useState('warning')
   const [editCustomSev, setEditCustomSev] = useState('warning')
   const [stormCount, setStormCount] = useState(0)
+  const stormCountRef = useRef(0)
   const [stormNoLabel, setStormNoLabel] = useState(false)
   const [stormOpen, setStormOpen] = useState(false)
   const [stormPending, setStormPending] = useState<() => void>(() => {})
@@ -72,10 +73,11 @@ export default function NewRules() {
     try {
       const { data } = await api.get('/rules/preview', { params: { query: expr } })
       count = (data?.data?.result || []).length
+      stormCountRef.current = count
     } catch {}
-    // 无标签过滤 或 匹配数 > 50
+    // 无标签过滤 或 匹配数 > 0
     const noLabel = !expr.includes('{')
-    if (noLabel || count > 50) {
+    if (noLabel || count > 0) {
       setStormCount(count)
       setStormNoLabel(noLabel)
       setStormPending(() => onConfirm)
@@ -89,10 +91,11 @@ export default function NewRules() {
     setSubmitting(true)
     const doCreate = async () => {
       try {
+        const isStorm = stormCountRef.current > 0
         const prefix = CATEGORY_PREFIX[values.category] || 'other_'
         const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
         const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
-        await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' }); await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); setCustomMode(false); load()
+        await saveRuleFile(fn, yaml, { category: values.category, operator: 'admin', strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '', storm_risk: isStorm }); if (!isStorm) await reloadPrometheus(); message.success('创建成功'); setModalOpen(false); form.resetFields(); setCustomMode(false); load()
       } catch (e: any) {
         if (e?.response?.status === 409) { message.warning(e?.response?.data?.detail || '规则名重复'); return }
         message.error('创建失败')
@@ -113,8 +116,9 @@ export default function NewRules() {
     setSubmitting(true)
     const doEdit = async () => {
       try {
-        await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '' })
-        await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
+        const isStorm = stormCountRef.current > 0
+        await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '', storm_risk: isStorm })
+        if (!isStorm) await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
       } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
       finally { setSubmitting(false) }
     }
@@ -299,8 +303,10 @@ export default function NewRules() {
         <p style={{ marginTop: 8 }}>
           当前匹配条数：<strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount >= 0 ? stormCount : '获取失败'}</strong>
         </p>
-        {stormCount > 50 && (
-          <p style={{ color: '#cf1322', marginTop: 4 }}>数量超过阈值（50条），可能引发告警风暴。</p>
+        {stormCount > 0 && (
+          <p style={{ color: '#cf1322', marginTop: 4 }}>
+            规则将在15分钟后生效，预热通知已发送给管理员。
+          </p>
         )}
         <p style={{ marginTop: 8, fontSize: 13, color: '#666' }}>确认要继续创建吗？</p>
       </Modal>
