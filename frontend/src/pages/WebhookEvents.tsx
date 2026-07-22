@@ -151,7 +151,7 @@ export default function WebhookEvents() {
 
       <Card title="告警推送记录" size="small" style={{ marginBottom: 16 }}>
         <Table
-          dataSource={pushLog}
+          dataSource={pushLog.filter(r => r.channel !== 'vm')}
           rowKey={(_, i) => String(i)}
           size="small"
           pagination={{
