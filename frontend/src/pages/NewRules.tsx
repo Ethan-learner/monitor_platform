@@ -48,6 +48,7 @@ export default function NewRules() {
   const [editCustomSev, setEditCustomSev] = useState('warning')
   const [stormCount, setStormCount] = useState(0)
   const stormCountRef = useRef(0)
+  const stormIsRisk = useRef(false)
   const [stormNoLabel, setStormNoLabel] = useState(false)
   const [stormOpen, setStormOpen] = useState(false)
   const [stormPending, setStormPending] = useState<() => void>(() => {})
@@ -74,10 +75,12 @@ export default function NewRules() {
       const { data } = await api.get('/rules/preview', { params: { query: expr } })
       count = (data?.data?.result || []).length
       stormCountRef.current = count
+      stormIsRisk.current = false
     } catch {}
     // 无标签过滤 或 匹配数 > 0
     const noLabel = !expr.includes('{')
     if (noLabel || count > 0) {
+      stormIsRisk.current = true
       setStormCount(count)
       setStormNoLabel(noLabel)
       setStormPending(() => onConfirm)
@@ -91,7 +94,7 @@ export default function NewRules() {
     setSubmitting(true)
     const doCreate = async () => {
       try {
-        const isStorm = stormCountRef.current > 0
+        const isStorm = stormIsRisk.current
         const prefix = CATEGORY_PREFIX[values.category] || 'other_'
         const fn = `${prefix}${values.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.yml`
         const yaml = `groups:\n  - name: ${fn.replace('.yml', '')}\n    rules:\n      - alert: ${values.name}\n        expr: ${values.expr}\n        for: ${values.for || ''}\n        labels:\n          severity: ${values.severity || 'warning'}\n        annotations:\n          summary: "${values.summary || values.name}"\n`
@@ -116,7 +119,7 @@ export default function NewRules() {
     setSubmitting(true)
     const doEdit = async () => {
       try {
-        const isStorm = stormCountRef.current > 0
+        const isStorm = stormIsRisk.current
         await api.post('/rules/update', { filename: editTarget.file, groupName: editTarget.group, oldRuleName: editTarget.name, newName: values.name, expr: values.expr, for: values.for, severity: values.severity, summary: values.summary, strategy_id: values.strategy_id === '__custom__' ? null : values.strategy_id, custom_notify: values.custom_notify || '', storm_risk: isStorm })
         if (!isStorm) await reloadPrometheus(); message.success('规则已更新'); setEditTarget(null); setEditCustomMode(false); load()
       } catch (e: any) { message.error(e?.response?.data?.detail || '更新失败') }
@@ -294,7 +297,7 @@ export default function NewRules() {
       <Modal title="无法启用" open={noStrategyModal} onCancel={() => setNoStrategyModal(false)} footer={null}>
         <p>引用的策略不存在，请先修改规则的策略配置。</p>
       </Modal>
-      <Modal title="告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false) }}
+      <Modal title="告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false); stormIsRisk.current = false }}
         onOk={() => { setStormOpen(false); stormPending() }}
         okText="确认创建" okButtonProps={{ danger: true }}>
         <div style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.8 }}>
