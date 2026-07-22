@@ -158,9 +158,11 @@ export default function NewRules() {
           { title: '告警级别', width: 120, align: 'center', render: (_: any, r: any) => (
             <Tag color={SEV_COLORS[r.severity] || '#999'}>{SEV_LABELS[r.severity] || r.severity || '—'}</Tag>
           )},
-          { title: '状态', width: 120, align: 'center', render: (_: any, r: any) => (
-            <Tag color={r.status === 0 ? 'orange' : 'green'}>{r.status === 0 ? '禁用' : '启用'}</Tag>
-          )},
+          { title: '状态', width: 120, align: 'center', render: (_: any, r: any) => {
+            if (r.status === 2) return <Tag color="blue">待生效</Tag>
+            if (r.status === 0) return <Tag color="orange">禁用</Tag>
+            return <Tag color="green">启用</Tag>
+          }},
           { title: '操作', width: 120, align: 'center', render: (_: any, r: any) => (<Space>
             <Button size="small" type="text" icon={<EditOutlined style={{ color: '#999' }} />} onClick={() => {
               setEditTarget(r)

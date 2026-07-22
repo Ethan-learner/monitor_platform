@@ -34,6 +34,7 @@ export interface ParsedRule {
   file: string
   category: string
   active?: boolean
+  status?: number
 }
 
 export async function fetchRuleFiles(): Promise<RuleFile[]> {

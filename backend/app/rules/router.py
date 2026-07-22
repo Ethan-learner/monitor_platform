@@ -280,12 +280,13 @@ async def save_rule_file(filename: str, body: dict) -> dict:
                     if cur.fetchone():
                         raise HTTPException(status_code=409, detail=f"规则名 {alert_name} 已存在")
                     cur.execute(
-                        "INSERT INTO alert_rules (rule_name, category, expr, duration, severity, summary, file_name, operator, strategy_id, custom_notify) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        "INSERT INTO alert_rules (rule_name, category, expr, duration, severity, summary, file_name, operator, strategy_id, custom_notify, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (rule.get("alert", ""), category,
                          rule.get("expr", ""), rule.get("for", ""),
                          (rule.get("labels") or {}).get("severity", "warning"),
                          (rule.get("annotations") or {}).get("summary", ""),
-                         filename, operator, strategy_id or None, custom_notify_json),
+                         filename, operator, strategy_id or None, custom_notify_json,
+                         2 if storm_risk else 1),
                     )
             cur.close()
         # 同步写入服务器 YAML 文件
@@ -319,6 +320,13 @@ async def _delayed_reload_with_notify(filename: str, operator: str):
     """延迟15分钟后热加载并通知管理员"""
     await asyncio.sleep(15 * 60)
     await _reload_all_nodes()
+    try:
+        with get_db(readonly=False) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE alert_rules SET status=1 WHERE file_name=%s AND status=2", (filename,))
+            cur.close()
+    except Exception:
+        pass
     # 通知管理员
     try:
         nodes = [u.strip() for u in settings.webhook_nodes.split(",") if u.strip()] if hasattr(settings, "webhook_nodes") and settings.webhook_nodes else []
@@ -379,8 +387,8 @@ async def update_rule(body: dict) -> dict:
             else:
                 new_file = new_name.lower().replace(" ", "_") + ".yml"
             # 仅更新当前记录
-            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s, strategy_id=%s, custom_notify=%s WHERE id=%s",
-                        (new_name, expr, duration, severity, summary, strategy_id or None, custom_notify_json, rid))
+            cur.execute("UPDATE alert_rules SET rule_name=%s, expr=%s, duration=%s, severity=%s, summary=%s, strategy_id=%s, custom_notify=%s, status=%s WHERE id=%s",
+                        (new_name, expr, duration, severity, summary, strategy_id or None, custom_notify_json, 2 if storm_risk else 1, rid))
             cur.close()
         # 同步服务器 YAML
         new_yaml = f"groups:\n  - name: {new_file.replace('.yml', '')}\n    rules:\n      - alert: {new_name}\n        expr: {expr}\n        for: {duration}\n        labels:\n          severity: {severity}\n        annotations:\n          summary: \"{summary}\"\n"
@@ -496,12 +504,15 @@ async def disable_rule(body: dict) -> dict:
             if not row:
                 raise HTTPException(status_code=404, detail="rule_not_found")
             cur_status, file_name, rid = row
-            new_status = 0 if cur_status == 1 else 1
+            if cur_status == 2:
+                new_status = 0  # pending -> disabled
+            else:
+                new_status = 0 if cur_status == 1 else 1
             # 禁用：移文件到 alerts_disabled（保持原名）
             if new_status == 0 and file_name:
                 _move_to_disabled(file_name)
-            # 启用：移回文件
-            if new_status == 1 and file_name:
+            # 启用：移回文件（仅当之前是禁用状态）
+            if new_status == 1 and cur_status != 2 and file_name:
                 _move_from_disabled(file_name)
             cur.execute("UPDATE alert_rules SET status=%s WHERE id=%s", (new_status, rid))
             cur.close()
