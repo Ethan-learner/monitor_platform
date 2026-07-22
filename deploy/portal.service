@@ -1,12 +1,12 @@
 [Unit]
-Description=统一监控告警平台后端
+Description=Monitor Portal Backend
 After=network.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/data/software/monitor-portal/backend
-ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=5
 StandardOutput=journal
