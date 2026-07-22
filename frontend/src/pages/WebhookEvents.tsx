@@ -132,12 +132,11 @@ export default function WebhookEvents() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [loading, setLoading] = useState(false)
   const [pushLog, setPushLog] = useState<PushRecord[]>([])
-  const load = async () => { setLoading(true); try { const [{ data: h }, { data: p }] = await Promise.all([api.get('/webhook/health'), api.get('/webhook/push-log', { params: { limit: 200 } })]); setHealth(h); setPushLog(p || []) } catch { setHealth(null); setPushLog([]) }; setLoading(false) }
+  const load = async () => { setLoading(true); try { const [{ data: h }, { data: p }] = await Promise.all([api.get('/webhook/health'), api.get('/webhook/push-log', { params: { limit: 100 } })]); setHealth(h); setPushLog(p || []) } catch { setHealth(null); setPushLog([]) }; setLoading(false) }
   useEffect(() => { load() }, [])
 
   const nodes = health?.nodes || []
   const nodeNames = (i: number) => `webhook0${i + 1}`
-  void health
 
   return (
     <div style={{ padding: 16 }}>
