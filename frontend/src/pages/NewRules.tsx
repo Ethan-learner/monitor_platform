@@ -292,23 +292,18 @@ export default function NewRules() {
       <Modal title="无法启用" open={noStrategyModal} onCancel={() => setNoStrategyModal(false)} footer={null}>
         <p>引用的策略不存在，请先修改规则的策略配置。</p>
       </Modal>
-      <Modal title="⚠️ 告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false) }}
+      <Modal title="告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false) }}
         onOk={() => { setStormOpen(false); stormPending() }}
         okText="确认创建" okButtonProps={{ danger: true }}>
-        {stormNoLabel && (
-          <p style={{ fontSize: 14, marginBottom: 8 }}>
-            该表达式<strong>未使用标签过滤</strong>（{`{}`}），将匹配该 metrics 下的<strong>所有时间序列</strong>，可能引发大量告警通知。
+        <div style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.8 }}>
+          {stormNoLabel && (
+            <p style={{ marginBottom: 0 }}>该表达式<strong>未使用标签过滤</strong>（{`{}`}），将匹配该 metrics 下的<strong>所有时间序列</strong>。</p>
+          )}
+          <p style={{ marginTop: stormNoLabel ? 8 : 0, marginBottom: 0 }}>
+            当前匹配条数：<strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount >= 0 ? stormCount : '获取失败'}</strong>
           </p>
-        )}
-        <p style={{ marginTop: 8 }}>
-          当前匹配条数：<strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount >= 0 ? stormCount : '获取失败'}</strong>
-        </p>
-        {stormCount > 0 && (
-          <p style={{ color: '#cf1322', marginTop: 4 }}>
-            规则将在15分钟后生效，预热通知已发送给管理员。
-          </p>
-        )}
-        <p style={{ marginTop: 8, fontSize: 13, color: '#666' }}>确认要继续创建吗？</p>
+        </div>
+        <p style={{ fontSize: 13, color: '#666' }}>确认要继续创建吗？</p>
       </Modal>
     </div>)
 }
