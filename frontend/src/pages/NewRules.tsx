@@ -47,6 +47,7 @@ export default function NewRules() {
   const [customSev, setCustomSev] = useState('warning')
   const [editCustomSev, setEditCustomSev] = useState('warning')
   const [stormCount, setStormCount] = useState(0)
+  const [stormNoLabel, setStormNoLabel] = useState(false)
   const [stormOpen, setStormOpen] = useState(false)
   const [stormPending, setStormPending] = useState<() => void>(() => {})
 
@@ -67,24 +68,20 @@ export default function NewRules() {
   }
 
   const checkStorm = async (expr: string, onConfirm: () => void) => {
-    // 未加标签过滤的表达式容易引发风暴
-    if (!expr.includes('{')) {
-      setStormCount(-1) // -1 表示无标签过滤
+    let count = -2 // -2=未预览, -1=预览失败
+    try {
+      const { data } = await api.get('/rules/preview', { params: { query: expr } })
+      count = (data?.data?.result || []).length
+    } catch {}
+    // 无标签过滤 或 匹配数 > 50
+    const noLabel = !expr.includes('{')
+    if (noLabel || count > 50) {
+      setStormCount(count)
+      setStormNoLabel(noLabel)
       setStormPending(() => onConfirm)
       setStormOpen(true)
       return
     }
-    // 预览匹配实例数
-    try {
-      const { data } = await api.get('/rules/preview', { params: { query: expr } })
-      const count = (data?.data?.result || []).length
-      if (count > 50) {
-        setStormCount(count)
-        setStormPending(() => onConfirm)
-        setStormOpen(true)
-        return
-      }
-    } catch {} // 预览失败不阻止
     onConfirm()
   }
 
@@ -294,19 +291,18 @@ export default function NewRules() {
       <Modal title="⚠️ 告警风暴提醒" open={stormOpen} onCancel={() => { setStormOpen(false); setSubmitting(false) }}
         onOk={() => { setStormOpen(false); stormPending() }}
         okText="确认创建" okButtonProps={{ danger: true }}>
-        {stormCount === -1 ? (
-          <div>
-            <p style={{ fontSize: 14, marginBottom: 8 }}>该表达式<strong>未使用标签过滤</strong>（{`{}`}），将匹配该 metrics 下的<strong>所有时间序列</strong>。</p>
-            <p style={{ color: '#cf1322' }}>可能引发大量告警通知（告警风暴）。</p>
-            <p style={{ marginTop: 8 }}>建议添加标签过滤，如：{`metric_name{job="xxx"}`}</p>
-          </div>
-        ) : (
-          <div>
-            <p style={{ fontSize: 14, marginBottom: 8 }}>该表达式预计匹配 <strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount}</strong> 条时间序列。</p>
-            <p style={{ color: '#cf1322' }}>数量超过阈值（50条），可能引发告警风暴。</p>
-            <p style={{ marginTop: 8 }}>确认要继续创建吗？</p>
-          </div>
+        {stormNoLabel && (
+          <p style={{ fontSize: 14, marginBottom: 8 }}>
+            该表达式<strong>未使用标签过滤</strong>（{`{}`}），将匹配该 metrics 下的<strong>所有时间序列</strong>，可能引发大量告警通知。
+          </p>
         )}
+        <p style={{ marginTop: 8 }}>
+          当前匹配条数：<strong style={{ color: '#cf1322', fontSize: 18 }}>{stormCount >= 0 ? stormCount : '获取失败'}</strong>
+        </p>
+        {stormCount > 50 && (
+          <p style={{ color: '#cf1322', marginTop: 4 }}>数量超过阈值（50条），可能引发告警风暴。</p>
+        )}
+        <p style={{ marginTop: 8, fontSize: 13, color: '#666' }}>确认要继续创建吗？</p>
       </Modal>
     </div>)
 }
