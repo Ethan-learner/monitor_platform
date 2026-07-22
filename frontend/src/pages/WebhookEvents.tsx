@@ -149,9 +149,24 @@ export default function WebhookEvents() {
       const key = `${r.alertName}|${r.instance}`
       if (!map[key]) map[key] = { time: r.createdAt, alert: r.alertName, instance: r.instance, action: r.action || '', reason: r.summary || '', hasEmail: false, hasLark: false, emailOk: false, larkOk: false, emailRecipients: [], larkRecipients: [] }
       const ok = r.status === 1 || r.status === '1' || r.status === 'success'
-      if (r.channel === 'email') { map[key].hasEmail = true; map[key].emailOk = ok; if (r.recipient && !map[key].emailRecipients.includes(r.recipient)) map[key].emailRecipients.push(r.recipient) }
-      if (r.channel === 'lark') { map[key].hasLark = true; map[key].larkOk = ok; if (r.recipient && !map[key].larkRecipients.includes(r.recipient)) map[key].larkRecipients.push(r.recipient) }
-      if (r.createdAt > map[key].time) map[key].time = r.createdAt
+      // 拆分逗号分隔的接收人字符串
+      const recips = (r.recipient || '').split(',').map(s => s.trim()).filter(Boolean)
+      if (r.channel === 'email') {
+        map[key].hasEmail = true
+        if (!ok) map[key].emailOk = false
+        else if (map[key].emailRecipients.length === 0) map[key].emailOk = true
+        for (const rec of recips) { if (!map[key].emailRecipients.includes(rec)) map[key].emailRecipients.push(rec) }
+      }
+      if (r.channel === 'lark') {
+        map[key].hasLark = true
+        if (!ok) map[key].larkOk = false
+        else if (map[key].larkRecipients.length === 0) map[key].larkOk = true
+        for (const rec of recips) { if (!map[key].larkRecipients.includes(rec)) map[key].larkRecipients.push(rec) }
+      }
+      if (r.createdAt > map[key].time) {
+        map[key].time = r.createdAt
+        map[key].action = r.action || map[key].action
+      }
     })
     return Object.values(map).sort((a, b) => b.time.localeCompare(a.time))
   }, [pushLog])
@@ -215,7 +230,11 @@ export default function WebhookEvents() {
                 )
               },
             },
-            { title: '操作', dataIndex: 'action', width: 80, render: (s: string) => s || '—' },
+            { title: '操作', dataIndex: 'action', width: 80, render: (s: string) => {
+              if (!s) return '—'
+              const color = s === 'firing' ? 'red' : s === 'resolved' ? 'green' : 'blue'
+              return <Tag color={color}>{s === 'firing' ? '触发' : s === 'resolved' ? '恢复' : s}</Tag>
+            }},
             { title: '原因', dataIndex: 'reason', ellipsis: true },
           ]}
         />
