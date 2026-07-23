@@ -976,6 +976,7 @@ export default function Login() {
                 prefix={<UserOutlined style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} />}
                 placeholder="用户名 / 工号"
                 variant="outlined"
+                autoComplete="username"
                 autoFocus
                 style={{
                   background: '#0a0e1a',
