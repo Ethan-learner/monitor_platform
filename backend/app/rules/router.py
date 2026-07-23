@@ -312,8 +312,10 @@ async def _reload_all_nodes():
     ]
     async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
         for url in nodes:
-            try: await client.post(f"{url}/-/reload")
-            except Exception: pass
+            try:
+                await client.post(f"{url}/-/reload")
+            except Exception:
+                pass
 
 
 async def _delayed_reload_with_notify(filename: str, operator: str):
