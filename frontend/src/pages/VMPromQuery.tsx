@@ -67,7 +67,7 @@ export default function VMPromQuery() {
   }))
   columns.push({
     title: '值', dataIndex: ['value'] as const, width: 100, align: 'center' as const,
-    render: (_: any, r: any, __: any) => {
+    render: function(_: any, r: any) {
       if (mode === 'range') {
         const vals = r.values
         if (vals && vals.length > 0) return vals[vals.length - 1][1]
@@ -118,7 +118,7 @@ export default function VMPromQuery() {
           {viewMode === 'graph' && mode === 'range' ? (
             <div style={{ height: 300 }}><SimpleChart data={results} /></div>
           ) : (
-            <Table rowKey={(_: any, i: number) => i + ''} dataSource={results} size="small" pagination={false}
+            <Table rowKey={(_: any, i: number | undefined) => String(i ?? '')} dataSource={results} size="small" pagination={false}
               scroll={{ x: 800 }} bordered columns={columns as any} />
           )}
         </Card>

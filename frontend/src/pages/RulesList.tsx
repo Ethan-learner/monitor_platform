@@ -5,7 +5,7 @@ import { fetchActiveAlerts, type ActiveAlert } from '../lib/rules'
 import { useNavigate } from 'react-router-dom'
 import { cacheGet, cacheSet } from '../lib/cache'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 const CATEGORY_COLORS: Record<string, string> = {
   '应用告警': '#1677ff',

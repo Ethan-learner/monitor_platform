@@ -140,11 +140,7 @@ function UserTab() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [editUser, setEditUser] = useState<any>(null)
-  const [editPassword, setEditPassword] = useState('')
   const [allRoles, setAllRoles] = useState<any[]>([])
-  const [allPerms, setAllPerms] = useState<any[]>([])
-  const [userRoles, setUserRoles] = useState<number[]>([])
-  const [userPerms, setUserPerms] = useState<string[]>([])
   const [addOpen, setAddOpen] = useState(false)
 
   const load = async () => {
@@ -163,13 +159,10 @@ function UserTab() {
   const openEdit = async (user: any) => {
     setEditUser(user)
     try {
-      const [rRoles, rPerms, rUserRoles] = await Promise.all([
-        api.get('/settings/roles'), api.get('/settings/permissions'), api.get(`/settings/users/${user.id}/roles`),
+      const [rRoles, rUserRoles] = await Promise.all([
+        api.get('/settings/roles'), api.get(`/settings/users/${user.id}/roles`),
       ])
       setAllRoles(rRoles.data || [])
-      setAllPerms(rPerms.data || [])
-      setUserRoles((rUserRoles.data || []).map((r: any) => r.id))
-      setUserPerms([])
     } catch {}
   }
 
@@ -225,9 +218,7 @@ function UserTab() {
 
 function RoleTab() {
   const [roles, setRoles] = useState<any[]>([])
-  const [allPerms, setAllPerms] = useState<any[]>([])
   const [editRole, setEditRole] = useState<any>(null)
-  const [permKeys, setPermKeys] = useState<string[]>([])
   const [editRoleLabel, setEditRoleLabel] = useState('')
   const [editRoleDesc, setEditRoleDesc] = useState('')
   const [selectedRole, setSelectedRole] = useState<any>(null)
@@ -241,11 +232,10 @@ function RoleTab() {
 
   const load = async () => {
     try {
-      const [r, p, u] = await Promise.all([
-        api.get('/settings/roles'), api.get('/settings/permissions'), api.get('/settings/users', { params: { limit: 200 } }),
+      const [r, u] = await Promise.all([
+        api.get('/settings/roles'), api.get('/settings/users', { params: { limit: 200 } }),
       ])
       setRoles(r.data || [])
-      setAllPerms(p.data || [])
       setAllUsers((u.data?.data || []).filter((x: any) => x.username !== 'admin' && x.status !== -1))
     } catch {}
   }
@@ -287,9 +277,9 @@ function RoleTab() {
     } catch { message.error('操作失败') }
   }
 
-  const openEditRole = (role: any) => {
+  const handleAddRole = async () => {
     if (!addLabel) { message.warning('请输入角色名称'); return }
-    const name = addLabel.replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fff]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+    const name = addLabel.replace(/\s+/g, '_').replace(/[^\w一-鿿]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
     try {
       await api.post('/settings/roles', { name, label: addLabel, description: addRoleDesc })
       message.success('已创建'); setAddOpen(false); setAddLabel(''); setAddRoleDesc(''); load()
@@ -297,9 +287,8 @@ function RoleTab() {
   }
 
   const openEditRole = (role: any) => {
-    setEditRole(role); setPermKeys(role.permissions || []); setEditRoleLabel(role.label || ''); setEditRoleDesc(role.description || '')
+    setEditRole(role); setEditRoleLabel(role.label || ''); setEditRoleDesc(role.description || '')
   }
-
   const saveRoleMeta = async () => {
     if (!editRole) return
     try { await api.put(`/settings/roles/${editRole.id}`, { label: editRoleLabel, description: editRoleDesc }); message.success('已更新'); load() }

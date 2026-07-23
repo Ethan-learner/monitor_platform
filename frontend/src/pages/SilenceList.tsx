@@ -43,7 +43,7 @@ export default function SilenceList() {
     if (!end || end.isBefore(dayjs())) { message.warning('结束时间不能小于当前时间'); return }
     setSubmitting(true)
     try {
-      await expireSilence(resetTarget?.id)
+      if (resetTarget?.id) await expireSilence(resetTarget.id)
       await createSilence({
         matchers: matchers.filter(m => m.name && m.value),
         startsAt: start?.format('YYYY-MM-DD HH:mm:ss') || dayjs().format('YYYY-MM-DD HH:mm:ss'),
