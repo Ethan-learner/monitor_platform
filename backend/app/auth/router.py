@@ -38,7 +38,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
     full_name = username
     person_code = ""
     department = ""
-    role = "ops"
+    role = "dev"
     login_ok = False
     login_path = ""
 
