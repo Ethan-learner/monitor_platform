@@ -67,7 +67,7 @@ export default function VMPromQuery() {
   }))
   columns.push({
     title: '值', dataIndex: ['value'] as const, width: 100, align: 'center' as const,
-    render: function(_: any, r: any) {
+    render: function(_: any, r: any, __: any) {
       if (mode === 'range') {
         const vals = r.values
         if (vals && vals.length > 0) return vals[vals.length - 1][1]

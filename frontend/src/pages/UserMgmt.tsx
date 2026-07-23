@@ -159,7 +159,7 @@ function UserTab() {
   const openEdit = async (user: any) => {
     setEditUser(user)
     try {
-      const [rRoles, rUserRoles] = await Promise.all([
+      const [rRoles] = await Promise.all([
         api.get('/settings/roles'), api.get(`/settings/users/${user.id}/roles`),
       ])
       setAllRoles(rRoles.data || [])
