@@ -142,7 +142,7 @@ async def login_with_eip(body: dict, request: Request) -> Response:
                 # 从 system_user_roles 取角色，优先使用第一个角色
                 cur.execute("SELECT sr.name FROM system_user_roles sur JOIN system_roles sr ON sr.id=sur.role_id WHERE sur.user_id=%s ORDER BY sr.id", (uid,))
                 roles = [r[0] for r in cur.fetchall()]
-                new_role = roles[0] if roles else existing[1]
+                new_role = roles[0] if roles else "dev"
                 cur.execute("UPDATE users SET role=%s, display_name=%s, person_code=%s, department=%s, last_login=%s, updated_at=%s WHERE id=%s",
                             (new_role, full_name, person_code, department, now, now, uid))
                 role = new_role

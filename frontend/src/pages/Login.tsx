@@ -977,6 +977,8 @@ export default function Login() {
                 placeholder="用户名 / 工号"
                 variant="outlined"
                 autoComplete="username"
+                name="username"
+                id="username"
                 autoFocus
                 style={{
                   background: '#0a0e1a',
@@ -991,6 +993,8 @@ export default function Login() {
                 prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} />}
                 placeholder="密码"
                 autoComplete="current-password"
+                name="password"
+                id="password"
                 variant="outlined"
                 style={{
                   background: '#0a0e1a',
