@@ -35,6 +35,8 @@ export interface ParsedRule {
   category: string
   active?: boolean
   status?: number
+  strategy_id?: any
+  custom_notify?: any
 }
 
 export async function fetchRuleFiles(): Promise<RuleFile[]> {
@@ -83,6 +85,7 @@ export async function createSilence(body: {
   matchers: Array<{ name: string; value: string; isRegex: boolean }>
   startsAt: string
   endsAt: string
+  createdBy?: string
   comment: string
 }): Promise<{ silenceID: string }> {
   const { data } = await api.post('/alerts/silences', body)

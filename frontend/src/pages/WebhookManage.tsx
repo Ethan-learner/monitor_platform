@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Button, Tag, Space, Typography, Form, Input, Select, Statistic, Row, Col, message, Table, Tabs, Modal } from 'antd'
+import { Card, Button, Tag, Space, Typography, Form, Input, Select, Statistic, Row, Col, message, Table, Modal } from 'antd'
 import { ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined, SendOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 

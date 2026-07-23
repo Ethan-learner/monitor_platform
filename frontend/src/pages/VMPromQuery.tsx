@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Input, Button, Typography, Tag, Table, Card, message, Spin, Select, Tooltip, Space } from 'antd'
+import { Input, Button, Typography, Table, Card, message, Spin, Select, Tooltip, Space } from 'antd'
 import { SearchOutlined, HistoryOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
@@ -66,8 +66,8 @@ export default function VMPromQuery() {
     render: (v: string) => v || <Text type="secondary">—</Text>,
   }))
   columns.push({
-    title: '值', dataIndex: 'value', width: 100, align: 'center' as const,
-    render: (_: any, r: any) => {
+    title: '值', dataIndex: ['value'] as const, width: 100, align: 'center' as const,
+    render: (_: any, r: any, __: any) => {
       if (mode === 'range') {
         const vals = r.values
         if (vals && vals.length > 0) return vals[vals.length - 1][1]
@@ -91,7 +91,7 @@ export default function VMPromQuery() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 360, flex: 1 }}>
             <Tooltip title="历史查询"><HistoryOutlined style={{ color: '#999', fontSize: 16 }} /></Tooltip>
             <Select showSearch allowClear placeholder="" value={undefined}
-              onSearch={setKeyword} onSelect={(v: string) => { setExpr(v); setKeyword('') }}
+              onSearch={setKeyword} onSelect={(v: any) => { setExpr(v); setKeyword('') }}
               filterOption={false} style={{ flex: 1 }} dropdownMatchSelectWidth={false}
               options={Array.from(new Map(history.map(h => [h.promql, h])).values()).map(h => ({ value: h.promql, label: h.promql }))} />
           </div>
@@ -118,7 +118,7 @@ export default function VMPromQuery() {
           {viewMode === 'graph' && mode === 'range' ? (
             <div style={{ height: 300 }}><SimpleChart data={results} /></div>
           ) : (
-            <Table rowKey={(r, i) => i + ''} dataSource={results} size="small" pagination={false}
+            <Table rowKey={(_: any, i: number) => i + ''} dataSource={results} size="small" pagination={false}
               scroll={{ x: 800 }} bordered columns={columns as any} />
           )}
         </Card>

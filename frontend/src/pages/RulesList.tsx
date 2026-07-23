@@ -3,7 +3,6 @@ import { Table, Tag, Badge, Button, Space, Typography, Tooltip } from 'antd'
 import { ReloadOutlined, BellOutlined } from '@ant-design/icons'
 import { fetchActiveAlerts, type ActiveAlert } from '../lib/rules'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
 import { cacheGet, cacheSet } from '../lib/cache'
 
 const { Title, Text } = Typography
@@ -18,16 +17,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['服务器告警', '数据库告警', '平台组件告警', '应用告警', '性能告警']
 
-const lbl = (key: keyof ActiveAlert, title: string, w?: number) => ({
-  title, dataIndex: key, width: w, ellipsis: true, align: 'center' as const,
-  render: (v: string) => v || <Text type="secondary">—</Text>,
-})
-
 export default function RulesList() {
   const [alerts, setAlerts] = useState<ActiveAlert[]>([])
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
 
   const load = async () => {
     setLoading(true)

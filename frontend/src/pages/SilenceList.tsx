@@ -43,7 +43,7 @@ export default function SilenceList() {
     if (!end || end.isBefore(dayjs())) { message.warning('结束时间不能小于当前时间'); return }
     setSubmitting(true)
     try {
-      await expireSilence(resetTarget.id)
+      await expireSilence(resetTarget?.id)
       await createSilence({
         matchers: matchers.filter(m => m.name && m.value),
         startsAt: start?.format('YYYY-MM-DD HH:mm:ss') || dayjs().format('YYYY-MM-DD HH:mm:ss'),
@@ -114,12 +114,12 @@ export default function SilenceList() {
     <Modal title="新建静默" open={modalOpen} onCancel={closeModal} footer={null}>
       <Form form={form} layout="vertical" onFinish={handleCreate}>
         <Form.Item label="匹配规则" required style={{ marginBottom: 12 }}>{matcherForm}</Form.Item>
-        <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
+        <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, (_: any) => ({
           validator(_, value) { if (value && value[0] && value[1] && !value[1].isAfter(value[0])) return Promise.reject('结束时间必须大于开始时间'); return Promise.resolve() }
         })]}>
           <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />
         </Form.Item>
-        <Form.Item label="备注" name="comment"><Input.TextArea rows={3}/></Form.Item>
+        <Form.Item label="备注" name="comment"><Input.TextArea rows={3} /></Form.Item>
         <Space><Button type="primary" htmlType="submit" loading={submitting}>创建</Button><Button onClick={closeModal}>取消</Button></Space>
       </Form>
     </Modal>
@@ -129,7 +129,7 @@ export default function SilenceList() {
     <Modal title="重置静默" open={!!resetTarget} onCancel={closeModal} footer={null}>
       <Form form={form} layout="vertical" onFinish={handleReset}>
         <Form.Item label="匹配规则" required style={{ marginBottom: 12 }}>{matcherForm}</Form.Item>
-        <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
+        <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, (_: any) => ({
           validator(_, value) { if (value && value[0] && value[1] && !value[1].isAfter(value[0])) return Promise.reject('结束时间必须大于开始时间'); return Promise.resolve() }
         })]}>
           <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />

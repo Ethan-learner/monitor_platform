@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Input, Space, Button, Typography, Popconfirm, message, Tabs, Modal, Checkbox, Card, Row, Col, Select } from 'antd'
+import { Table, Tag, Input, Space, Button, Typography, Popconfirm, message, Tabs, Modal, Card, Row, Col, Select } from 'antd'
 import { EditOutlined, StopOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { api } from '../lib/api'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 const lineStyle: React.CSSProperties = { border: 'none', borderBottom: '1px solid #d9d9d9', borderRadius: 0, padding: '4px 0', boxShadow: 'none', outline: 'none', background: 'transparent' }
 const labelS: React.CSSProperties = { color: '#333', minWidth: 75, fontSize: 13, lineHeight: '32px' }
@@ -39,15 +39,15 @@ function AddUserModal({ open, onClose, onSuccess, allRoles }: { open: boolean; o
   return (
     <Modal title="新增用户" open={open} onCancel={onClose} onOk={handleAdd} okText="确定" cancelText="取消" width={520} confirmLoading={submitting}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
-        <LRow label="用户名"><LInput placeholder="请输入" value={name} onChange={e => setName(e.target.value)} /></LRow>
-        <LRow label="姓名"><LInput placeholder="请输入" value={display} onChange={e => setDisplay(e.target.value)} /></LRow>
+        <LRow label="用户名"><LInput placeholder="请输入" value={name} onChange={(e: any) => setName(e.target.value)} /></LRow>
+        <LRow label="姓名"><LInput placeholder="请输入" value={display} onChange={(e: any) => setDisplay(e.target.value)} /></LRow>
         <LRow label="密码">
-          <LPassword placeholder="留空自动生成" value={password} onChange={e => setPassword(e.target.value)} />
+          <LPassword placeholder="留空自动生成" value={password} onChange={(e: any) => setPassword(e.target.value)} />
           <Button size="small" onClick={() => setPassword(genPwd())}>生成</Button>
         </LRow>
-        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={e => setPhone(e.target.value)} /></LRow>
-        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={e => setEmail(e.target.value)} /></LRow>
-        <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" value={roleIds} onChange={v => setRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
+        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={(e: any) => setPhone(e.target.value)} /></LRow>
+        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={(e: any) => setEmail(e.target.value)} /></LRow>
+        <LRow label="角色"><LSelect mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="请选择" value={roleIds} onChange={(v: any) => setRoleIds(v)} options={allRoles.filter(r => r.status === 1).map(r => ({ value: r.id, label: r.label }))} /></LRow>
       </div>
     </Modal>
   )
@@ -100,14 +100,14 @@ function EditUserModal({ user, allRoles, onClose, onSuccess }: { user: any; allR
     <Modal title={`编辑用户：${user.username}`} open onCancel={onClose} onOk={handleSave} okText="保存" cancelText="取消" width={520} confirmLoading={submitting}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '16px 8px' }}>
         <LRow label="用户名"><Input value={user.username} disabled style={{ ...lineStyle, flex: 1, color: '#999' }} variant="borderless" /></LRow>
-        <LRow label="姓名"><LInput placeholder="请输入" value={displayName} onChange={e => setDisplayName(e.target.value)} /></LRow>
-        <LRow label="部门"><LInput placeholder="请输入" value={department} onChange={e => setDepartment(e.target.value)} /></LRow>
+        <LRow label="姓名"><LInput placeholder="请输入" value={displayName} onChange={(e: any) => setDisplayName(e.target.value)} /></LRow>
+        <LRow label="部门"><LInput placeholder="请输入" value={department} onChange={(e: any) => setDepartment(e.target.value)} /></LRow>
         <LRow label="密码">
-          <LPassword placeholder="留空则不修改" value={password} onChange={e => setPassword(e.target.value)} />
+          <LPassword placeholder="留空则不修改" value={password} onChange={(e: any) => setPassword(e.target.value)} />
           <Button size="small" onClick={() => setPassword(genPwd())}>生成</Button>
         </LRow>
-        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={e => setPhone(e.target.value)} /></LRow>
-        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={e => setEmail(e.target.value)} /></LRow>
+        <LRow label="手机"><LInput addonBefore="+86" placeholder="非必填" value={phone} onChange={(e: any) => setPhone(e.target.value)} /></LRow>
+        <LRow label="邮箱"><LInput placeholder="非必填" value={email} onChange={(e: any) => setEmail(e.target.value)} /></LRow>
         <LRow label="角色">
           <LSelect
             mode="multiple" allowClear showSearch optionFilterProp="label" placeholder={loaded ? '请选择' : '加载中...'}
@@ -173,48 +173,12 @@ function UserTab() {
     } catch {}
   }
 
-  const saveRoles = async () => {
-    if (!editUser) return
-    try {
-      const existing = await api.get(`/settings/users/${editUser.id}/roles`)
-      for (const r of (existing.data || [])) await api.delete(`/settings/users/${editUser.id}/roles/${r.id}`)
-      for (const rid of userRoles) await api.post(`/settings/users/${editUser.id}/roles`, { role_id: rid })
-      message.success('已更新'); setEditUser(null); load()
-    } catch { message.error('操作失败') }
-  }
-
-  const savePerms = async () => {
-    if (!editUser) return
-    try { await api.put(`/settings/users/${editUser.id}/permissions`, { permissions: userPerms }); message.success('已更新') }
-    catch { message.error('操作失败') }
-  }
-
-  const saveInfo = async () => {
-    if (!editUser) return
-    const getVal = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || ''
-    try {
-      await api.put(`/settings/users/${editUser.id}/info`, {
-        displayName: getVal('edit-displayName'),
-        department: editUser.department || '',
-        email: getVal('edit-email'),
-        phone: getVal('edit-phone'),
-        password: editPassword || undefined,
-      })
-      // save roles
-      const existing = await api.get(`/settings/users/${editUser.id}/roles`)
-      for (const r of (existing.data || [])) await api.delete(`/settings/users/${editUser.id}/roles/${r.id}`)
-      for (const rid of userRoles) await api.post(`/settings/users/${editUser.id}/roles`, { role_id: rid })
-      message.success('已更新'); setEditUser(null); setEditPassword(''); load()
-    } catch { message.error('操作失败') }
-  }
-
   const toggleStatus = async (uid: number, cur: number) => {
     try { await api.put(`/settings/users/${uid}/status`, { status: cur === 1 ? 0 : 1 }); message.success('已更新'); load() }
     catch { message.error('操作失败') }
   }
 
   const isProtected = (u: any) => u.username === 'admin'
-  const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
   return (
     <>
@@ -323,15 +287,7 @@ function RoleTab() {
     } catch { message.error('操作失败') }
   }
 
-  const openEdit = (role: any) => { setEditRole(role); setPermKeys(role.permissions || []) }
-
-  const saveRolePerms = async () => {
-    if (!editRole) return
-    try { await api.put(`/settings/roles/${editRole.id}/permissions`, { permissions: permKeys }) }
-    catch { message.error('操作失败') }
-  }
-
-  const handleAddRole = async () => {
+  const openEditRole = (role: any) => {
     if (!addLabel) { message.warning('请输入角色名称'); return }
     const name = addLabel.replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fff]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
     try {
@@ -356,7 +312,6 @@ function RoleTab() {
   }
 
   const filteredRoles = roles.filter(r => !roleSearch || r.label.includes(roleSearch) || r.name.includes(roleSearch))
-  const permModules = [...new Set(allPerms.map((p: any) => p.module))] as string[]
 
   return (
     <Row gutter={16} style={{ height: 'calc(100vh - 160px)' }}>

@@ -69,7 +69,7 @@ export default function SilenceNew() {
             ))}
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setMatchers(prev => [...prev, emptyMatcher()])} block>添加条件</Button>
           </Form.Item>
-          <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, ({ getFieldValue }) => ({
+          <Form.Item label="时间段" name="timeRange" rules={[{ required: true, message: '请选择时间' }, (_: any) => ({
             validator(_, value) { if (value && value[0] && value[1] && !value[1].isAfter(value[0])) return Promise.reject('结束时间必须大于开始时间'); return Promise.resolve() }
           })]}>
             <RangePicker showTime style={{ width: '100%' }} disabledDate={(d: any) => d && d.isBefore(dayjs().startOf('day'))} />

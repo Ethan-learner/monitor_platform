@@ -254,7 +254,7 @@ export default function NewRules() {
               const opts = [...strategies.filter((s: any) => s.enabled === 1).map((s: any) => ({ label: s.label || s.name, value: s.id })), { label: '自定义', value: '__custom__' }]
               if (editTarget?.strategy_id) {
                 const ds = strategies.find((s: any) => String(s.id) === String(editTarget.strategy_id))
-                if (ds && ds.enabled === -1) opts.unshift({ label: `${ds.label || ds.name}（已删除）`, value: ds.id, disabled: true })
+                if (ds && ds.enabled === -1) opts.unshift({ label: `${ds.label || ds.name}（已删除）`, value: ds.id, disabled: true } as any)
               }
               return opts
             })()}
