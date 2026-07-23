@@ -10,11 +10,17 @@ function hideFrameHeaders(proxyRes: any) {
 }
 
 export default defineConfig({
+  base: '/monitor_platform/',
   plugins: [react()],
   server: {
     port: 1009,
     strictPort: true,
     proxy: {
+      '/monitor_platform/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/monitor_platform\/api/, '/api'),
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,

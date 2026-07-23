@@ -64,7 +64,7 @@ function DashboardRoute() {
 export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#1677ff' } }}>
-      <BrowserRouter>
+      <BrowserRouter basename="/monitor_platform">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route

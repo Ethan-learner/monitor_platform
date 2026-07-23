@@ -5,13 +5,13 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/data/software/monitor-portal/backend
+WorkingDirectory=/data/monitor/backend
 ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-EnvironmentFile=/data/software/monitor-portal/backend/.env
+EnvironmentFile=/data/monitor/backend/.env
 
 [Install]
 WantedBy=multi-user.target

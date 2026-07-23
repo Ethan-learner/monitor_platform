@@ -162,33 +162,33 @@ export default function WebhookEvents() {
           }}
           locale={{ emptyText: '暂无推送记录' }}
           columns={[
-            { title: '时间', dataIndex: 'createdAt', width: 150, render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
-            { title: '告警名称', dataIndex: 'alertName', width: 160, ellipsis: true, render: (s: string) => s || '—' },
-            { title: '实例', dataIndex: 'instance', width: 120, ellipsis: true, render: (s: string) => s || '—' },
+            { title: '时间', dataIndex: 'createdAt', width: 150, align: 'center', render: (s: string) => s ? new Date(s).toLocaleString() : '—' },
+            { title: '告警名称', dataIndex: 'alertName', width: 160, align: 'center', ellipsis: true, render: (s: string) => s || '—' },
+            { title: '实例', dataIndex: 'instance', width: 120, align: 'center', ellipsis: true, render: (s: string) => s || '—' },
             {
-              title: '通道', dataIndex: 'channel', width: 70,
+              title: '通道', dataIndex: 'channel', width: 70, align: 'center',
               render: (s: string) => <Tag color={s === 'email' ? 'blue' : s === 'lark' ? 'cyan' : 'default'}>{s === 'email' ? '邮件' : s === 'lark' ? '飞书' : s}</Tag>,
             },
             {
-              title: '接收人', dataIndex: 'recipient', width: 200, ellipsis: true,
+              title: '接收人', dataIndex: 'recipient', width: 200, align: 'center', ellipsis: true,
               render: (s: string) => s || '—',
             },
             {
-              title: '状态', dataIndex: 'status', width: 70,
+              title: '状态', dataIndex: 'status', width: 70, align: 'center',
               render: (s: any) => {
                 const ok = s === 1 || s === '1' || s === 'success'
                 return <Tag color={ok ? 'green' : 'red'}>{ok ? '成功' : '失败'}</Tag>
               },
             },
             {
-              title: '操作', dataIndex: 'action', width: 80,
+              title: '操作', dataIndex: 'action', width: 80, align: 'center',
               render: (s: string) => {
                 if (!s) return '—'
                 const color = s === 'firing' ? 'red' : s === 'resolved' ? 'green' : 'blue'
                 return <Tag color={color}>{s === 'firing' ? '触发' : s === 'resolved' ? '恢复' : s}</Tag>
               },
             },
-            { title: '摘要', dataIndex: 'summary', ellipsis: true, width: 200, render: (s: string) => s || '—' },
+            { title: '摘要', dataIndex: 'summary', ellipsis: true, width: 200, align: 'center', render: (s: string) => s || '—' },
           ]}
         />
       </Card>

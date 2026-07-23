@@ -2,11 +2,11 @@
 # ============================================
 # 统一监控告警平台 - 部署脚本
 # 用法: bash deploy.sh [部署目录]
-# 默认部署到 /data/software/monitor-portal
+# 默认部署到 /data/monitor
 # ============================================
 set -e
 
-DEPLOY_DIR="${1:-/data/software/monitor-portal}"
+DEPLOY_DIR="${1:-/data/monitor}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -58,10 +58,12 @@ echo "===== 部署完成 ====="
 echo ""
 echo "注意事项:"
 echo "  1. 请编辑 $DEPLOY_DIR/backend/.env 填写实际配置"
-echo "     - PORTAL_JWT_SECRET: 建议改为随机密钥 (当前 dev 密钥可先用)"
-echo "     - 其余字段已预填本地值, 确认无误即可"
-echo "  2. 配置 Nginx: 将 deploy/portal-nginx.conf 添加到 Nginx 配置"
-echo "     - 注意 proxy_pass 端口为 8001（如服务器 8001 也被占, 需同步修改）"
+echo "     - 已预填生产随机密钥, 确认其他字段无误即可"
+echo "  2. 配置 Nginx: 将 deploy/portal-nginx.conf 加入主配置"
+echo "     - 主 nginx server 块中添加: include /etc/nginx/conf.d/monitor-platform.conf;"
+echo "     - 或直接复制 deploy/nginx-portal.conf 到 /etc/nginx/conf.d/portal.conf"
+echo "     - 访问路径: http://<server_ip>/monitor_platform/"
+echo "     - 后端 proxy_pass 端口为 8001（确认未被占用）"
 echo "  3. 重启 Nginx: systemctl reload nginx"
 echo "  4. 检查服务状态: systemctl status portal"
 echo "  5. 查看日志: journalctl -u portal -f"

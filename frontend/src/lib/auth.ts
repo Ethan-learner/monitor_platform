@@ -10,7 +10,7 @@ export interface PortalUser {
 const isDev = !!(import.meta as any).env?.DEV
 
 export async function login() {
-  window.location.href = isDev ? '/api/auth/dev-login?username=admin' : '/api/auth/login'
+  window.location.href = isDev ? '/monitor_platform/api/auth/dev-login?username=admin' : '/monitor_platform/api/auth/login'
 }
 
 export async function fetchMe(): Promise<PortalUser> {
