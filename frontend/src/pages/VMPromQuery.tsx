@@ -76,7 +76,7 @@ export default function VMPromQuery() {
       const v = r.value?.[1]
       return v ? v : '—'
     },
-  })
+  } as any)
 
   return (
     <div style={{ padding: 16 }}>
