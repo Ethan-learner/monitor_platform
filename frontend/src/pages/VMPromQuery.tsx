@@ -63,7 +63,7 @@ export default function VMPromQuery() {
 
   const columns = allKeys.map(k => ({
     title: k, dataIndex: ['metric', k], width: 120, ellipsis: true,
-    render: (v: string) => v || <Text type="secondary">—</Text>,
+    render: (v: string, _: any, __: any) => v || <Text type="secondary">—</Text>,
   }))
   columns.push({
     title: '值', dataIndex: ['value'] as const, width: 100, align: 'center' as const,
